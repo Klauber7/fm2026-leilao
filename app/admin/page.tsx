@@ -85,7 +85,7 @@ export default function AdminPage() {
 
       if (
         adminError ||
-        adminRole !== "master"
+        !["owner", "master"].includes(String(adminRole))
       ) {
         console.error(
           adminError

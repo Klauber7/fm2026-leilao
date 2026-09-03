@@ -81,7 +81,7 @@ export default function AdministratorsPage() {
         return;
       }
 
-      if (myRole !== "master") {
+      if (!["owner", "master"].includes(String(myRole))) {
         router.replace("/dashboard");
         return;
       }
@@ -435,7 +435,7 @@ export default function AdministratorsPage() {
           <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
             <p className="font-black text-purple-400">ADM MASTER</p>
             <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Tem acesso administrativo completo dentro do FriendZone League FM. Código, GitHub, Vercel e estrutura técnica ficam fora do painel.
+              Tem acesso administrativo completo dentro do FriendZone League FM.
             </p>
           </div>
         </section>
