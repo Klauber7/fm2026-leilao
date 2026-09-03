@@ -76,21 +76,16 @@ export default function AdminPage() {
       }
 
       const {
-        data: adminData,
+        data: adminRole,
         error: adminError,
       } =
-        await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
+        await supabase.rpc(
+          "get_my_admin_role"
+        );
 
       if (
         adminError ||
-        !adminData
+        adminRole !== "master"
       ) {
         console.error(
           adminError
@@ -529,6 +524,16 @@ export default function AdminPage() {
               description="Aprove, recuse ou reabra o acesso dos presidentes antes da entrada na liga."
               action="GERENCIAR USUÁRIOS →"
               color="red"
+            />
+
+            <AdminCard
+              href="/admin/administrators"
+              eyebrow="Permissões"
+              title="Administradores"
+              icon="👑"
+              description="Escolha entre os presidentes quem será Presidente, ADM ou ADM MASTER."
+              action="GERENCIAR ADMINISTRADORES →"
+              color="purple"
             />
 
             <AdminCard
