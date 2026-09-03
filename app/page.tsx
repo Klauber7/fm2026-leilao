@@ -8,7 +8,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-8 py-24">
 
           <p className="text-green-400 font-bold uppercase tracking-widest">
-            TEMPORADA 2026
+            TEMPORADA 1
           </p>
 
           <h1 className="text-7xl font-black mt-4">
@@ -21,20 +21,13 @@ export default function Home() {
             Faça história.
           </p>
 
-          <div className="flex gap-4 mt-10">
+          <div className="mt-10">
 
             <Link
-              href="/players"
-              className="bg-green-600 hover:bg-green-500 px-8 py-4 rounded-xl font-bold"
+              href="/login"
+              className="inline-block bg-green-600 hover:bg-green-500 px-10 py-4 rounded-xl font-bold"
             >
-              Mercado
-            </Link>
-
-            <Link
-              href="/teams"
-              className="border border-zinc-700 hover:border-green-500 px-8 py-4 rounded-xl font-bold"
-            >
-              Clubes
+              Entre
             </Link>
 
           </div>
@@ -44,7 +37,7 @@ export default function Home() {
 
       <section className="max-w-7xl mx-auto px-8 py-16">
 
-        <div className="grid md:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
 
           <div className="bg-zinc-900 rounded-2xl p-8">
             <p className="text-zinc-400">Clubes</p>
@@ -52,20 +45,41 @@ export default function Home() {
           </div>
 
           <div className="bg-zinc-900 rounded-2xl p-8">
-            <p className="text-zinc-400">Jogadores</p>
-            <h2 className="text-5xl font-black mt-2">15.000</h2>
+            <p className="text-zinc-400">Presidentes</p>
+            <h2 className="text-5xl font-black mt-2">20</h2>
           </div>
 
           <div className="bg-zinc-900 rounded-2xl p-8">
-            <p className="text-zinc-400">Treinadores</p>
-            <h2 className="text-5xl font-black mt-2">500</h2>
+            <p className="text-zinc-400">Competições</p>
+            <h2 className="text-5xl font-black mt-2">4</h2>
           </div>
 
           <div className="bg-zinc-900 rounded-2xl p-8">
-            <p className="text-zinc-400">Orçamento Total</p>
+            <p className="text-zinc-400">Orçamento por Clube</p>
             <h2 className="text-3xl font-black mt-2 text-green-400">
-              R$ 6 Bi
+              R$ 400M
             </h2>
+          </div>
+
+          <div className="bg-zinc-900 rounded-2xl p-8">
+            <p className="text-zinc-400">Transmissões</p>
+            <h2 className="text-3xl font-black mt-2 text-green-400">
+              Jogos ao Vivo no YouTube
+            </h2>
+          </div>
+
+          <div className="bg-zinc-900 rounded-2xl p-8">
+            <p className="text-zinc-400">Canal Oficial</p>
+
+            <a
+              href="https://www.youtube.com/@FriendZoneFM"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-3 rounded-xl bg-green-600 px-6 py-3 font-black text-white transition hover:bg-green-500"
+            >
+              <span className="text-2xl">▶️</span>
+              Clique aqui
+            </a>
           </div>
 
         </div>

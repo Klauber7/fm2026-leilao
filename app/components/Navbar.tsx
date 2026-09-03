@@ -55,6 +55,8 @@ export default function Navbar() {
   return (
     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-72 border-r border-zinc-800 bg-zinc-950 text-white lg:block">
       <div className="flex h-full flex-col p-6">
+
+        {/* LOGO */}
         <Link href="/dashboard" className="mb-10 block">
           <h1 className="text-2xl font-black leading-tight">
             <span className="text-green-400">
@@ -67,7 +69,10 @@ export default function Navbar() {
           </h1>
         </Link>
 
+        {/* MENU */}
         <nav className="space-y-2 text-sm font-bold text-zinc-300">
+
+          {/* DASHBOARD */}
           <Link
             href="/dashboard"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -75,13 +80,23 @@ export default function Navbar() {
             🏠 Dashboard
           </Link>
 
+          {/* MERCADO DE JOGADORES */}
           <Link
             href="/players"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
           >
-            🌍 Mercado
+            🌍 Mercado de Jogadores
           </Link>
 
+          {/* MERCADO DE TREINADORES */}
+          <Link
+            href="/coaches"
+            className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
+          >
+            🧥 Mercado de Treinadores
+          </Link>
+
+          {/* BID */}
           <Link
             href="/bid"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -89,6 +104,7 @@ export default function Navbar() {
             📢 BID
           </Link>
 
+          {/* ELENCO */}
           <Link
             href="/squad"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -96,6 +112,7 @@ export default function Navbar() {
             ⚽ Elenco
           </Link>
 
+          {/* COMISSÃO TÉCNICA */}
           <Link
             href="/staff"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -103,6 +120,7 @@ export default function Navbar() {
             👨‍💼 Comissão Técnica
           </Link>
 
+          {/* LEILÕES DE JOGADORES */}
           <Link
             href="/auctions"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -110,6 +128,7 @@ export default function Navbar() {
             🔥 Leilões de Jogadores
           </Link>
 
+          {/* LEILÃO DA COMISSÃO */}
           <Link
             href="/staff-auctions"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -117,6 +136,7 @@ export default function Navbar() {
             🔨 Leilão da Comissão
           </Link>
 
+          {/* CONTRATAÇÕES */}
           <Link
             href="/transfers"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -124,6 +144,7 @@ export default function Navbar() {
             📄 Contratações
           </Link>
 
+          {/* HISTÓRICO */}
           <Link
             href="/history"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -131,6 +152,7 @@ export default function Navbar() {
             📊 Histórico
           </Link>
 
+          {/* CLUBES */}
           <Link
             href="/teams"
             className="block rounded-xl px-4 py-3 hover:bg-zinc-900 hover:text-green-400"
@@ -138,6 +160,7 @@ export default function Navbar() {
             🏟️ Clubes
           </Link>
 
+          {/* ADMINISTRAÇÃO */}
           {isAdmin && (
             <>
               <div className="my-3 border-t border-zinc-800" />
@@ -152,6 +175,7 @@ export default function Navbar() {
           )}
         </nav>
 
+        {/* SAIR */}
         <div className="mt-auto">
           <button
             type="button"
@@ -161,6 +185,7 @@ export default function Navbar() {
             Sair
           </button>
         </div>
+
       </div>
     </aside>
   );

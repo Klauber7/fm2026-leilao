@@ -21,7 +21,6 @@ type Player = {
   ca: number | null;
   cp: number | null;
   value: number | null;
-  salary: string | null;
   image_url: string | null;
   category: string[] | null;
   team_id: number | null;
@@ -105,21 +104,6 @@ function getCategoryLabel(
     default:
       return category;
   }
-}
-
-function getInitials(
-  name: string
-) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase()
-    )
-    .join("");
 }
 
 function getCAColor(
@@ -610,7 +594,6 @@ export default function PlayersPage() {
               ca,
               cp,
               value,
-              salary,
               image_url,
               category,
               team_id
@@ -1307,31 +1290,17 @@ export default function PlayersPage() {
                     className="block"
                   >
 
-                    <div className="flex justify-center">
-
-                      <div className="flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-full border-2 border-zinc-700 bg-zinc-800 shadow">
-
-                        {player.image_url ? (
+                    {player.image_url && (
+                      <div className="flex justify-center">
+                        <div className="flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-full border-2 border-zinc-700 bg-zinc-800 shadow">
                           <img
-                            src={
-                              player.image_url
-                            }
-                            alt={
-                              player.name
-                            }
+                            src={player.image_url}
+                            alt={player.name}
                             className="h-full w-full object-cover"
                           />
-                        ) : (
-                          <div className="text-3xl font-black text-zinc-400">
-                            {getInitials(
-                              player.name
-                            )}
-                          </div>
-                        )}
-
+                        </div>
                       </div>
-
-                    </div>
+                    )}
 
                     {/* NOME */}
 
@@ -1375,6 +1344,15 @@ export default function PlayersPage() {
                         }
                       </span>
 
+                    </div>
+
+                    {/* CP */}
+
+                    <div className="mt-2 text-sm font-black text-zinc-200">
+                      CP -{" "}
+                      <span className="text-blue-400">
+                        {player.cp ?? "-"}
+                      </span>
                     </div>
 
                     {/* CLUBE */}
@@ -1451,39 +1429,18 @@ export default function PlayersPage() {
                       : "🛒 ADICIONAR À LISTA"}
                   </button>
 
-                  {/* VALOR E SALÁRIO */}
+                  {/* VALOR */}
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
-
-                    <div>
-
-                      <div className="text-[12px] font-black uppercase text-red-400">
-                        Valor
-                      </div>
-
-                      <div className="mt-1 text-[13px] font-medium text-red-300">
-                        {formatMoney(
-                          player.value
-                        )}
-                      </div>
-
+                  <div className="mt-4 border-t border-zinc-800 pt-3">
+                    <div className="text-[12px] font-black uppercase text-red-400">
+                      Valor
                     </div>
 
-                    <div>
-
-                      <div className="text-[12px] font-black uppercase text-red-400">
-                        Salário
-                      </div>
-
-                      <div className="mt-1 text-[13px] font-medium text-red-300">
-                        {
-                          player.salary ||
-                          "R$ 0,00"
-                        }
-                      </div>
-
+                    <div className="mt-1 text-[13px] font-medium text-red-300">
+                      {formatMoney(
+                        player.value
+                      )}
                     </div>
-
                   </div>
 
                 </div>

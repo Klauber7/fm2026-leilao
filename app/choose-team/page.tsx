@@ -315,7 +315,7 @@ export default function ChooseTeamPage() {
       - impede nome duplicado
       - cria a equipe
       - vincula o presidente
-      - aplica R$ 390M de orçamento inicial
+      - aplica R$ 400M de orçamento inicial
     */
 
     const {
@@ -531,7 +531,7 @@ export default function ChooseTeamPage() {
           <p className="mt-3 text-sm font-bold text-slate-400">
             Orçamento inicial:{" "}
             <span className="text-white">
-              R$ 390.000.000
+              R$ 400.000.000
             </span>
           </p>
 
@@ -670,7 +670,7 @@ export default function ChooseTeamPage() {
             </p>
 
             <p className="mt-3 font-black">
-              R$ 390M
+              R$ 400M
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
