@@ -29,9 +29,13 @@ type Team = {
 
 type PositionGroup =
   | "goalkeepers"
-  | "defenders"
-  | "midfielders"
-  | "attackers"
+  | "center_backs"
+  | "full_backs"
+  | "defensive_midfielders"
+  | "central_midfielders"
+  | "attacking_midfielders"
+  | "wingers"
+  | "strikers"
   | "others";
 
 type SquadSection = {
@@ -41,22 +45,15 @@ type SquadSection = {
   players: Player[];
 };
 
-function money(
-  value: number | null | undefined
-) {
-  return Number(value || 0).toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-    }
-  );
+function money(value: number | null | undefined) {
+  return Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 }
 
-function normalizePosition(
-  position: string | null
-) {
+function normalizePosition(position: string | null) {
   return (position || "")
     .trim()
     .toLowerCase()
@@ -64,105 +61,106 @@ function normalizePosition(
     .replace(/[\u0300-\u036f]/g, "");
 }
 
-function getPositionGroup(
-  position: string | null
-): PositionGroup {
-  const normalized =
-    normalizePosition(position);
+function getPositionGroup(position: string | null): PositionGroup {
+  const p = normalizePosition(position);
 
-  const goalkeeperTerms = [
-    "gk",
-    "goalkeeper",
-    "goleiro",
-    "guarda-redes",
-    "guarda redes",
-  ];
-
-  const defenderTerms = [
-    "dc",
-    "cb",
-    "defender",
-    "defensor",
-    "zagueiro",
-    "central defender",
-    "dl",
-    "dr",
-    "lb",
-    "rb",
-    "left back",
-    "right back",
-    "lateral",
-    "ala",
-    "wb",
-  ];
-
-  const midfielderTerms = [
-    "dm",
-    "mc",
-    "cm",
-    "am",
-    "midfielder",
-    "meio-campista",
-    "meio campista",
-    "volante",
-    "meia",
-    "ml",
-    "mr",
-    "aml",
-    "amr",
-  ];
-
-  const attackerTerms = [
-    "st",
-    "cf",
-    "fw",
-    "attacker",
-    "atacante",
-    "avancado",
-    "avançado",
-    "striker",
-    "forward",
-    "ponta",
-  ];
-
+  // GOLEIROS
   if (
-    goalkeeperTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
+    ["gk", "goalkeeper", "goleiro", "guarda-redes", "guarda redes"].some(
+      (term) => p === term || p.includes(term)
     )
   ) {
     return "goalkeepers";
   }
 
+  // ZAGUEIROS
   if (
-    defenderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
+    ["dc", "cb", "zagueiro", "central defender", "defesa central"].some(
+      (term) => p === term || p.includes(term)
     )
   ) {
-    return "defenders";
+    return "center_backs";
   }
 
+  // LATERAIS / ALAS
   if (
-    midfielderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
+    [
+      "dl",
+      "dr",
+      "lb",
+      "rb",
+      "left back",
+      "right back",
+      "lateral",
+      "ala",
+      "wb",
+      "wing back",
+    ].some((term) => p === term || p.includes(term))
   ) {
-    return "midfielders";
+    return "full_backs";
   }
 
+  // VOLANTES
   if (
-    attackerTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
+    ["dm", "dmc", "volante", "defensive midfielder", "medio defensivo"].some(
+      (term) => p === term || p.includes(term)
     )
   ) {
-    return "attackers";
+    return "defensive_midfielders";
+  }
+
+  // MEIAS ARMADORES
+  if (
+    [
+      "am",
+      "amc",
+      "meia armador",
+      "meia-atacante",
+      "meia atacante",
+      "attacking midfielder",
+    ].some((term) => p === term || p.includes(term))
+  ) {
+    return "attacking_midfielders";
+  }
+
+  // PONTAS
+  if (
+    [
+      "aml",
+      "amr",
+      "ml",
+      "mr",
+      "ponta",
+      "winger",
+      "left winger",
+      "right winger",
+      "extremo",
+    ].some((term) => p === term || p.includes(term))
+  ) {
+    return "wingers";
+  }
+
+  // ATACANTES
+  if (
+    ["st", "cf", "fw", "atacante", "avancado", "striker", "forward"].some(
+      (term) => p === term || p.includes(term)
+    )
+  ) {
+    return "strikers";
+  }
+
+  // MEIO-CAMPISTAS
+  if (
+    [
+      "mc",
+      "cm",
+      "meio-campista",
+      "meio campista",
+      "midfielder",
+      "central midfielder",
+    ].some((term) => p === term || p.includes(term))
+  ) {
+    return "central_midfielders";
   }
 
   return "others";
@@ -178,92 +176,102 @@ function PlayerCard({
   onRelease: (player: Player) => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 transition hover:border-zinc-700">
-      <div className="h-52 w-full bg-zinc-800">
-        {player.image_url ? (
-          <img
-            src={player.image_url}
-            alt={player.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center text-zinc-500">
-            <span className="text-5xl font-black">
-              {player.name
-                .charAt(0)
-                .toUpperCase()}
-            </span>
+    <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 transition hover:border-green-500/50">
+      {/* Tudo aqui abre o perfil */}
+      <Link
+        href={`/players/${player.id}`}
+        className="block transition hover:bg-zinc-800/20"
+      >
+        <div className="h-52 w-full bg-zinc-800">
+          {player.image_url ? (
+            <img
+              src={player.image_url}
+              alt={player.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center text-zinc-500">
+              <span className="text-5xl font-black">
+                {player.name.charAt(0).toUpperCase()}
+              </span>
 
-            <span className="mt-2 text-sm">
-              Sem imagem
-            </span>
+              <span className="mt-2 text-sm">
+                Sem imagem
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black text-green-400">
+                {player.position || "Sem posição"}
+              </p>
+
+              <h3 className="mt-1 break-words text-xl font-black leading-tight">
+                {player.name}
+              </h3>
+
+              <p className="mt-2 text-zinc-400">
+                {player.age ?? "-"} anos
+              </p>
+            </div>
+
+            <div className="shrink-0 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-center">
+              <p className="text-xs font-bold uppercase text-zinc-400">
+                CA
+              </p>
+
+              <p className="text-xl font-black leading-none text-green-400">
+                {player.ca ?? "-"}
+              </p>
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <h3 className="break-words text-xl font-black leading-tight">
-              {player.name}
-            </h3>
+          <p className="mt-2 text-sm text-zinc-500">
+            {player.nationality || "Nacionalidade não informada"}
+          </p>
 
-            <p className="mt-2 text-zinc-400">
-              {player.position ||
-                "Sem posição"}{" "}
-              • {player.age ?? "-"} anos
-            </p>
-          </div>
-
-          <div className="shrink-0 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-center">
-            <p className="text-xs font-bold uppercase text-zinc-400">
-              CA
+          <div className="mt-5 border-t border-zinc-800 pt-4">
+            <p className="text-sm text-zinc-500">
+              Valor estimado
             </p>
 
-            <p className="text-xl font-black leading-none text-green-400">
-              {player.ca ?? "-"}
+            <p className="mt-1 font-black text-green-400">
+              {money(player.value)}
+            </p>
+
+            <p className="mt-4 text-xs font-black uppercase tracking-wider text-zinc-500">
+              Clique para abrir o perfil →
             </p>
           </div>
         </div>
+      </Link>
 
-        <p className="mt-2 text-sm text-zinc-500">
-          {player.nationality ||
-            "Nacionalidade não informada"}
-        </p>
-
-        <div className="mt-5 border-t border-zinc-800 pt-4">
-          <p className="text-sm text-zinc-500">
-            Valor estimado
+      {/* Botão fora do Link para não navegar quando dispensar */}
+      <div className="border-t border-zinc-800 p-5 pt-4">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+            Dispensa
           </p>
 
-          <p className="mt-1 font-black text-green-400">
-            {money(player.value)}
+          <p className="mt-2 text-sm text-zinc-300">
+            Você recebe 25% do valor:
           </p>
 
-          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Dispensa
-            </p>
+          <p className="mt-1 font-black text-yellow-400">
+            {money(Number(player.value || 0) * 0.25)}
+          </p>
 
-            <p className="mt-2 text-sm text-zinc-300">
-              Você recebe 25% do valor:
-            </p>
-
-            <p className="mt-1 font-black text-yellow-400">
-              {money(Number(player.value || 0) * 0.25)}
-            </p>
-
-            <button
-              type="button"
-              onClick={() => onRelease(player)}
-              disabled={releasing}
-              className="mt-4 w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {releasing
-                ? "Dispensando..."
-                : "Dispensar jogador"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onRelease(player)}
+            disabled={releasing}
+            className="mt-4 w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {releasing ? "Dispensando..." : "Dispensar jogador"}
+          </button>
         </div>
       </div>
     </article>
@@ -271,140 +279,98 @@ function PlayerCard({
 }
 
 export default function SquadPage() {
-  const [team, setTeam] =
-    useState<Team | null>(null);
-
-  const [players, setPlayers] =
-    useState<Player[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  const [successMessage, setSuccessMessage] =
-    useState("");
-
+  const [team, setTeam] = useState<Team | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [releasingPlayerId, setReleasingPlayerId] =
     useState<number | null>(null);
 
-  const loadSquad =
-    useCallback(async () => {
-      setLoading(true);
-      setErrorMessage("");
+  const loadSquad = useCallback(async () => {
+    setLoading(true);
+    setErrorMessage("");
 
-      try {
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-        if (userError) {
-          throw userError;
-        }
+      if (userError) throw userError;
 
-        if (!user) {
-          setTeam(null);
-          setPlayers([]);
-          return;
-        }
-
-        const {
-          data: teamData,
-          error: teamError,
-        } = await supabase
-          .from("teams")
-          .select("id, name, budget")
-          .eq("manager_id", user.id)
-          .maybeSingle();
-
-        if (teamError) {
-          throw teamError;
-        }
-
-        if (!teamData) {
-          setTeam(null);
-          setPlayers([]);
-          return;
-        }
-
-        const loadedTeam =
-          teamData as Team;
-
-        setTeam(loadedTeam);
-
-        const {
-          data: squadPlayers,
-          error: playersError,
-        } = await supabase
-          .from("players")
-          .select(`
-            id,
-            name,
-            position,
-            age,
-            nationality,
-            ca,
-            value,
-            image_url,
-            team_id
-          `)
-          .eq("team_id", loadedTeam.id)
-          .order("ca", {
-            ascending: false,
-            nullsFirst: false,
-          })
-          .order("name", {
-            ascending: true,
-          });
-
-        if (playersError) {
-          throw playersError;
-        }
-
-        setPlayers(
-          (squadPlayers || []) as Player[]
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao carregar elenco:",
-          error
-        );
-
-        if (
-          typeof error === "object" &&
-          error !== null &&
-          "message" in error
-        ) {
-          setErrorMessage(
-            String(
-              (
-                error as {
-                  message: unknown;
-                }
-              ).message
-            )
-          );
-        } else {
-          setErrorMessage(
-            "Não foi possível carregar o elenco."
-          );
-        }
-      } finally {
-        setLoading(false);
+      if (!user) {
+        setTeam(null);
+        setPlayers([]);
+        return;
       }
-    }, []);
+
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .select("id, name, budget")
+        .eq("manager_id", user.id)
+        .maybeSingle();
+
+      if (teamError) throw teamError;
+
+      if (!teamData) {
+        setTeam(null);
+        setPlayers([]);
+        return;
+      }
+
+      const loadedTeam = teamData as Team;
+      setTeam(loadedTeam);
+
+      const { data: squadPlayers, error: playersError } = await supabase
+        .from("players")
+        .select(`
+          id,
+          name,
+          position,
+          age,
+          nationality,
+          ca,
+          value,
+          image_url,
+          team_id
+        `)
+        .eq("team_id", loadedTeam.id)
+        // NÃO ordena mais por CA.
+        // A organização por posição é feita abaixo.
+        .order("name", {
+          ascending: true,
+        });
+
+      if (playersError) throw playersError;
+
+      setPlayers((squadPlayers || []) as Player[]);
+    } catch (error) {
+      console.error("Erro ao carregar elenco:", error);
+
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error
+      ) {
+        setErrorMessage(
+          String((error as { message: unknown }).message)
+        );
+      } else {
+        setErrorMessage("Não foi possível carregar o elenco.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadSquad();
 
     const authSubscription =
-      supabase.auth.onAuthStateChange(
-        () => {
-          loadSquad();
-        }
-      );
+      supabase.auth.onAuthStateChange(() => {
+        loadSquad();
+      });
 
     return () => {
       authSubscription.data.subscription.unsubscribe();
@@ -412,12 +378,9 @@ export default function SquadPage() {
   }, [loadSquad]);
 
   async function releasePlayer(player: Player) {
-    if (releasingPlayerId !== null) {
-      return;
-    }
+    if (releasingPlayerId !== null) return;
 
-    const refund =
-      Number(player.value || 0) * 0.25;
+    const refund = Number(player.value || 0) * 0.25;
 
     const confirmed = window.confirm(
       `Dispensar ${player.name}?\n\n` +
@@ -426,9 +389,7 @@ export default function SquadPage() {
         "O jogador voltará ao mercado com o valor normal dele."
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setReleasingPlayerId(player.id);
     setErrorMessage("");
@@ -442,44 +403,21 @@ export default function SquadPage() {
     );
 
     if (error) {
-      console.error(
-        "Erro ao dispensar jogador:",
-        error
-      );
+      console.error("Erro ao dispensar jogador:", error);
 
-      const message = String(
-        error.message || ""
-      );
+      const message = String(error.message || "");
 
-      if (
-        message.includes(
-          "PLAYER_NOT_OWNED"
-        )
-      ) {
+      if (message.includes("PLAYER_NOT_OWNED")) {
         setErrorMessage(
           "Esse jogador não pertence mais ao seu clube."
         );
-      } else if (
-        message.includes(
-          "TEAM_NOT_FOUND"
-        )
-      ) {
+      } else if (message.includes("TEAM_NOT_FOUND")) {
         setErrorMessage(
           "Não foi possível localizar seu clube."
         );
-      } else if (
-        message.includes(
-          "PLAYER_NOT_FOUND"
-        )
-      ) {
-        setErrorMessage(
-          "Jogador não encontrado."
-        );
-      } else if (
-        message.includes(
-          "NOT_AUTHENTICATED"
-        )
-      ) {
+      } else if (message.includes("PLAYER_NOT_FOUND")) {
+        setErrorMessage("Jogador não encontrado.");
+      } else if (message.includes("NOT_AUTHENTICATED")) {
         setErrorMessage(
           "Sua sessão expirou. Entre novamente."
         );
@@ -498,11 +436,7 @@ export default function SquadPage() {
       typeof data === "object" &&
       "refund" in data
         ? Number(
-            (
-              data as {
-                refund?: number;
-              }
-            ).refund || 0
+            (data as { refund?: number }).refund || 0
           )
         : refund;
 
@@ -513,14 +447,11 @@ export default function SquadPage() {
     );
 
     await loadSquad();
-
     setReleasingPlayerId(null);
   }
 
   useEffect(() => {
-    if (!team?.id) {
-      return;
-    }
+    if (!team?.id) return;
 
     const channel = supabase
       .channel(`squad-${team.id}`)
@@ -555,75 +486,99 @@ export default function SquadPage() {
     };
   }, [team?.id, loadSquad]);
 
-  const sections =
-    useMemo<SquadSection[]>(() => {
-      const grouped: Record<
-        PositionGroup,
-        Player[]
-      > = {
-        goalkeepers: [],
-        defenders: [],
-        midfielders: [],
-        attackers: [],
-        others: [],
-      };
+  const sections = useMemo<SquadSection[]>(() => {
+    const grouped: Record<PositionGroup, Player[]> = {
+      goalkeepers: [],
+      center_backs: [],
+      full_backs: [],
+      defensive_midfielders: [],
+      central_midfielders: [],
+      attacking_midfielders: [],
+      wingers: [],
+      strikers: [],
+      others: [],
+    };
 
-      players.forEach((player) => {
-        const group = getPositionGroup(
-          player.position
-        );
+    players.forEach((player) => {
+      grouped[getPositionGroup(player.position)].push(player);
+    });
 
-        grouped[group].push(player);
-      });
-
-      const allSections: SquadSection[] =
-        [
-          {
-            key: "goalkeepers",
-            title: "Goleiros",
-            abbreviation: "GK",
-            players:
-              grouped.goalkeepers,
-          },
-          {
-            key: "defenders",
-            title: "Defensores",
-            abbreviation: "DEF",
-            players: grouped.defenders,
-          },
-          {
-            key: "midfielders",
-            title: "Meio-campistas",
-            abbreviation: "MID",
-            players:
-              grouped.midfielders,
-          },
-          {
-            key: "attackers",
-            title: "Atacantes",
-            abbreviation: "ATA",
-            players: grouped.attackers,
-          },
-          {
-            key: "others",
-            title: "Outros jogadores",
-            abbreviation: "OUT",
-            players: grouped.others,
-          },
-        ];
-
-      return allSections.filter(
-        (section) =>
-          section.players.length > 0
+    // Dentro de cada posição: ordem alfabética, NÃO CA.
+    Object.values(grouped).forEach((group) => {
+      group.sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR", {
+          sensitivity: "base",
+        })
       );
-    }, [players]);
+    });
+
+    const allSections: SquadSection[] = [
+      {
+        key: "goalkeepers",
+        title: "Goleiros",
+        abbreviation: "GK",
+        players: grouped.goalkeepers,
+      },
+      {
+        key: "center_backs",
+        title: "Zagueiros",
+        abbreviation: "ZAG",
+        players: grouped.center_backs,
+      },
+      {
+        key: "full_backs",
+        title: "Laterais",
+        abbreviation: "LAT",
+        players: grouped.full_backs,
+      },
+      {
+        key: "defensive_midfielders",
+        title: "Volantes",
+        abbreviation: "VOL",
+        players: grouped.defensive_midfielders,
+      },
+      {
+        key: "central_midfielders",
+        title: "Meio-campistas",
+        abbreviation: "MC",
+        players: grouped.central_midfielders,
+      },
+      {
+        key: "attacking_midfielders",
+        title: "Meias Armadores",
+        abbreviation: "MEI",
+        players: grouped.attacking_midfielders,
+      },
+      {
+        key: "wingers",
+        title: "Pontas",
+        abbreviation: "PON",
+        players: grouped.wingers,
+      },
+      {
+        key: "strikers",
+        title: "Atacantes",
+        abbreviation: "ATA",
+        players: grouped.strikers,
+      },
+      {
+        key: "others",
+        title: "Outros jogadores",
+        abbreviation: "OUT",
+        players: grouped.others,
+      },
+    ];
+
+    return allSections.filter(
+      (section) => section.players.length > 0
+    );
+  }, [players]);
 
   const totalValue = useMemo(
     () =>
       players.reduce(
         (total, player) =>
-          total +
-          Number(player.value || 0),
+          total + Number(player.value || 0),
         0
       ),
     [players]
@@ -631,29 +586,17 @@ export default function SquadPage() {
 
   const averageCa = useMemo(() => {
     const playersWithCa =
-      players.filter(
-        (player) =>
-          player.ca !== null
-      );
+      players.filter((player) => player.ca !== null);
 
-    if (
-      playersWithCa.length === 0
-    ) {
-      return 0;
-    }
+    if (playersWithCa.length === 0) return 0;
 
-    const totalCa =
-      playersWithCa.reduce(
-        (total, player) =>
-          total +
-          Number(player.ca || 0),
-        0
-      );
-
-    return Math.round(
-      totalCa /
-        playersWithCa.length
+    const totalCa = playersWithCa.reduce(
+      (total, player) =>
+        total + Number(player.ca || 0),
+      0
     );
+
+    return Math.round(totalCa / playersWithCa.length);
   }, [players]);
 
   if (loading) {
@@ -677,28 +620,12 @@ export default function SquadPage() {
           </p>
 
           <h1 className="mt-3 text-4xl font-black md:text-5xl">
-            Você ainda não possui um
-            clube
+            Você ainda não possui um clube
           </h1>
 
           <p className="mt-4 text-lg text-zinc-400">
-            Escolha ou crie seu clube
-            para começar a montar o
-            elenco.
+            Entre em contato com a administração.
           </p>
-
-          {errorMessage && (
-            <div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
-              {errorMessage}
-            </div>
-          )}
-
-          <Link
-            href="/teams"
-            className="mt-8 inline-block rounded-xl bg-green-600 px-6 py-4 font-black transition hover:bg-green-500"
-          >
-            Ir para clubes
-          </Link>
         </div>
       </main>
     );
@@ -719,13 +646,12 @@ export default function SquadPage() {
               </h1>
 
               <p className="mt-3 text-lg text-zinc-400">
-                Jogadores contratados
-                pelo clube.
+                Jogadores organizados por posição.
               </p>
             </div>
 
             <Link
-              href="/auctions"
+              href="/players"
               className="rounded-xl bg-green-600 px-6 py-3 text-center font-black transition hover:bg-green-500"
             >
               Buscar jogadores
@@ -747,20 +673,14 @@ export default function SquadPage() {
 
         <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-zinc-400">
-              Jogadores
-            </p>
-
+            <p className="text-zinc-400">Jogadores</p>
             <p className="mt-2 text-4xl font-black">
               {players.length}
             </p>
           </div>
 
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-zinc-400">
-              CA médio
-            </p>
-
+            <p className="text-zinc-400">CA médio</p>
             <p className="mt-2 text-4xl font-black text-green-400">
               {averageCa || "-"}
             </p>
@@ -770,7 +690,6 @@ export default function SquadPage() {
             <p className="text-zinc-400">
               Valor do elenco
             </p>
-
             <p className="mt-2 text-2xl font-black text-green-400">
               {money(totalValue)}
             </p>
@@ -780,7 +699,6 @@ export default function SquadPage() {
             <p className="text-zinc-400">
               Orçamento disponível
             </p>
-
             <p className="mt-2 text-2xl font-black text-green-400">
               {money(team.budget)}
             </p>
@@ -792,65 +710,39 @@ export default function SquadPage() {
             <h2 className="text-3xl font-black">
               Elenco vazio
             </h2>
-
-            <p className="mt-3 text-zinc-400">
-              Seu clube ainda não
-              contratou nenhum jogador.
-            </p>
-
-            <Link
-              href="/auctions"
-              className="mt-7 inline-block rounded-xl bg-green-600 px-6 py-4 font-black transition hover:bg-green-500"
-            >
-              Participar dos leilões
-            </Link>
           </section>
         ) : (
           <div className="mt-14 space-y-14">
-            {sections.map(
-              (section) => (
-                <section
-                  key={section.key}
-                >
-                  <div className="mb-6 flex items-center gap-4">
-                    <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-black text-green-400">
-                      {
-                        section.abbreviation
+            {sections.map((section) => (
+              <section key={section.key}>
+                <div className="mb-6 flex items-center gap-4">
+                  <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-black text-green-400">
+                    {section.abbreviation}
+                  </span>
+
+                  <h2 className="text-3xl font-black">
+                    {section.title}
+                  </h2>
+
+                  <span className="font-bold text-zinc-500">
+                    {section.players.length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {section.players.map((player) => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      releasing={
+                        releasingPlayerId === player.id
                       }
-                    </span>
-
-                    <h2 className="text-3xl font-black">
-                      {section.title}
-                    </h2>
-
-                    <span className="font-bold text-zinc-500">
-                      {
-                        section.players
-                          .length
-                      }
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {section.players.map(
-                      (player) => (
-                        <PlayerCard
-                          key={player.id}
-                          player={player}
-                          releasing={
-                            releasingPlayerId ===
-                            player.id
-                          }
-                          onRelease={
-                            releasePlayer
-                          }
-                        />
-                      )
-                    )}
-                  </div>
-                </section>
-              )
-            )}
+                      onRelease={releasePlayer}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </div>

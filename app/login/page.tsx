@@ -7,11 +7,10 @@ import { supabase } from "@/lib/supabase";
 export default function LoginPage() {
   const router = useRouter();
 
-  const [managerName, setManagerName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
+  const [recovering, setRecovering] = useState(false);
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -22,7 +21,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Remove qualquer sessão antiga antes de entrar
       await supabase.auth.signOut();
 
       const { data, error } =
@@ -32,7 +30,7 @@ export default function LoginPage() {
         });
 
       if (error) {
-        alert(error.message);
+        alert("Email ou senha incorretos.");
         return;
       }
 
@@ -41,7 +39,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Verifica se ESTE usuário já possui clube
       const { data: team, error: teamError } =
         await supabase
           .from("teams")
@@ -62,90 +59,64 @@ export default function LoginPage() {
         return;
       }
 
-      // Se já possui clube
       if (team) {
         router.replace("/dashboard");
         router.refresh();
         return;
       }
 
-      // Se ainda não possui clube
-      router.replace("/choose-team");
-      router.refresh();
+      alert(
+        "Sua conta ainda não está vinculada a um clube. Entre em contato com a administração."
+      );
+
+      await supabase.auth.signOut();
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleRegister() {
-    if (
-      !managerName.trim() ||
-      !email.trim() ||
-      !password
-    ) {
-      alert("Preencha nome, email e senha.");
-      return;
-    }
+  async function handleForgotPassword() {
+    const cleanEmail = email.trim();
 
-    if (password.length < 6) {
+    if (!cleanEmail) {
       alert(
-        "A senha precisa ter pelo menos 6 caracteres."
+        "Digite seu email primeiro e depois clique em Esqueci minha senha."
       );
       return;
     }
 
-    setLoading(true);
+    setRecovering(true);
 
     try {
-      // MUITO IMPORTANTE:
-      // encerra qualquer conta anterior antes do cadastro
-      await supabase.auth.signOut();
+      const redirectTo =
+        `${window.location.origin}/reset-password`;
 
-      const { data, error } =
-        await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              manager_name: managerName.trim(),
-            },
-          },
-        });
+      const { error } =
+        await supabase.auth.resetPasswordForEmail(
+          cleanEmail,
+          {
+            redirectTo,
+          }
+        );
 
       if (error) {
-        alert(error.message);
-        return;
-      }
-
-      if (!data.user) {
-        alert(
-          "Não foi possível criar a conta."
+        console.error(
+          "Erro ao enviar recuperação:",
+          error
         );
+
+        alert(
+          "Não foi possível enviar o email de recuperação."
+        );
+
         return;
       }
-
-      /*
-        IMPORTANTE:
-
-        Se o Supabase estiver configurado sem confirmação
-        de email, o signUp pode fazer login automaticamente.
-
-        Por isso fazemos signOut aqui novamente.
-
-        Assim uma conta recém-criada nunca herda ou mantém
-        uma sessão anterior.
-      */
-
-      await supabase.auth.signOut();
 
       alert(
-        "Conta criada com sucesso! Agora faça login."
+        "Email de recuperação enviado! Abra o email e clique no link para criar uma nova senha."
       );
-
-      setManagerName("");
-      setPassword("");
     } finally {
-      setLoading(false);
+      setRecovering(false);
     }
   }
 
@@ -157,19 +128,8 @@ export default function LoginPage() {
         </h1>
 
         <p className="text-zinc-400 text-center mb-8">
-          Login do Manager
+          Acesso do Presidente
         </p>
-
-        <input
-          type="text"
-          placeholder="Nome do manager"
-          value={managerName}
-          onChange={(e) =>
-            setManagerName(e.target.value)
-          }
-          disabled={loading}
-          className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-4 outline-none focus:border-green-500 disabled:opacity-50"
-        />
 
         <input
           type="email"
@@ -178,7 +138,7 @@ export default function LoginPage() {
           onChange={(e) =>
             setEmail(e.target.value)
           }
-          disabled={loading}
+          disabled={loading || recovering}
           className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-4 outline-none focus:border-green-500 disabled:opacity-50"
         />
 
@@ -194,31 +154,37 @@ export default function LoginPage() {
               handleLogin();
             }
           }}
-          disabled={loading}
-          className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-6 outline-none focus:border-green-500 disabled:opacity-50"
+          disabled={loading || recovering}
+          className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-3 outline-none focus:border-green-500 disabled:opacity-50"
         />
+
+        <div className="mb-6 text-right">
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={loading || recovering}
+            className="text-sm font-bold text-green-400 hover:text-green-300 disabled:opacity-50"
+          >
+            {recovering
+              ? "Enviando..."
+              : "Esqueci minha senha"}
+          </button>
+        </div>
 
         <button
           type="button"
           onClick={handleLogin}
-          disabled={loading}
-          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 p-4 rounded-xl font-bold mb-3"
+          disabled={loading || recovering}
+          className="w-full bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 p-4 rounded-xl font-bold"
         >
           {loading
-            ? "Carregando..."
+            ? "Entrando..."
             : "Entrar"}
         </button>
 
-        <button
-          type="button"
-          onClick={handleRegister}
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-600 p-4 rounded-xl font-bold"
-        >
-          {loading
-            ? "Carregando..."
-            : "Criar conta"}
-        </button>
+        <p className="mt-6 text-center text-xs text-zinc-500">
+          Contas são criadas e vinculadas aos clubes pela administração.
+        </p>
       </div>
     </main>
   );
