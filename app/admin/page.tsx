@@ -76,19 +76,21 @@ export default function AdminPage() {
       }
 
       const {
-        data: adminRole,
+        data: hasAdminAccess,
         error: adminError,
       } =
         await supabase.rpc(
-          "get_my_admin_role"
+          "is_site_master"
         );
 
       if (
         adminError ||
-        !["owner", "master"].includes(String(adminRole))
+        hasAdminAccess !== true
       ) {
         console.error(
-          adminError
+          "Erro ao verificar acesso administrativo:",
+          adminError,
+          hasAdminAccess
         );
 
         router.replace(
