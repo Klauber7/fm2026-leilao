@@ -198,34 +198,36 @@ export default function TransferWindowsAdminPage() {
       }
 
       /*
-        ADMIN
+        ACESSO AO CONTROLE DO MERCADO
+        DONO + ADM MASTER + ADM
       */
 
       const {
         data:
-          adminData,
+          adminRole,
         error:
           adminError,
       } =
-        await supabase
-          .from(
-            "admin_users"
-          )
-          .select(
-            "user_id"
-          )
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
+        await supabase.rpc(
+          "get_my_admin_role"
+        );
 
       if (
         adminError ||
-        !adminData
+        ![
+          "owner",
+          "master",
+          "admin",
+        ].includes(
+          String(
+            adminRole
+          )
+        )
       ) {
         console.error(
-          adminError
+          "Erro ao verificar acesso ao mercado:",
+          adminError,
+          adminRole
         );
 
         router.replace(

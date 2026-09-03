@@ -5,43 +5,61 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+type AdminRole = "owner" | "master" | "admin" | null;
+
 export default function Navbar() {
   const router = useRouter();
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRole, setAdminRole] =
+    useState<AdminRole>(null);
 
   useEffect(() => {
-    checkAdmin();
+    checkAdminRole();
   }, []);
 
-  async function checkAdmin() {
+  async function checkAdminRole() {
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      setIsAdmin(false);
+      setAdminRole(null);
       return;
     }
 
-    const { data, error } = await supabase
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const {
+      data,
+      error,
+    } = await supabase.rpc(
+      "get_my_admin_role"
+    );
 
     if (error) {
-      console.error("Erro ao verificar admin:", error);
-      setIsAdmin(false);
+      console.error(
+        "Erro ao verificar nível administrativo:",
+        error
+      );
+
+      setAdminRole(null);
       return;
     }
 
-    setIsAdmin(Boolean(data));
+    if (
+      data === "owner" ||
+      data === "master" ||
+      data === "admin"
+    ) {
+      setAdminRole(data);
+      return;
+    }
+
+    setAdminRole(null);
   }
 
   async function handleLogout() {
-    const { error } = await supabase.auth.signOut();
+    const { error } =
+      await supabase.auth.signOut();
 
     if (error) {
       alert("Erro ao sair da conta.");
@@ -52,12 +70,22 @@ export default function Navbar() {
     router.refresh();
   }
 
+  const canOpenFullAdmin =
+    adminRole === "owner" ||
+    adminRole === "master";
+
+  const isLimitedAdmin =
+    adminRole === "admin";
+
   return (
     <aside className="fixed left-0 top-0 z-50 hidden h-screen w-72 border-r border-zinc-800 bg-zinc-950 text-white lg:block">
       <div className="flex h-full flex-col p-6">
 
         {/* LOGO */}
-        <Link href="/dashboard" className="mb-10 block">
+        <Link
+          href="/dashboard"
+          className="mb-10 block"
+        >
           <h1 className="text-2xl font-black leading-tight">
             <span className="text-green-400">
               FriendZone
@@ -160,8 +188,8 @@ export default function Navbar() {
             🏟️ Clubes
           </Link>
 
-          {/* ADMINISTRAÇÃO */}
-          {isAdmin && (
+          {/* DONO / ADM MASTER */}
+          {canOpenFullAdmin && (
             <>
               <div className="my-3 border-t border-zinc-800" />
 
@@ -170,6 +198,20 @@ export default function Navbar() {
                 className="block rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
               >
                 ⚙️ Administração
+              </Link>
+            </>
+          )}
+
+          {/* ADM */}
+          {isLimitedAdmin && (
+            <>
+              <div className="my-3 border-t border-zinc-800" />
+
+              <Link
+                href="/admin/finance/windows"
+                className="block rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3 text-green-400 transition hover:bg-green-500/10 hover:text-green-300"
+              >
+                🪟 Controle do Mercado
               </Link>
             </>
           )}
