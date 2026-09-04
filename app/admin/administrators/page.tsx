@@ -266,12 +266,21 @@ export default function AdministratorsPage() {
             </p>
           </div>
 
-          <Link
-            href="/admin"
-            className="rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-3 text-center font-black transition hover:bg-zinc-800"
-          >
-            ← Administração
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/admin/presidents"
+              className="rounded-xl bg-purple-600 px-5 py-3 text-center font-black text-white transition hover:bg-purple-500"
+            >
+              + Criar Presidente
+            </Link>
+
+            <Link
+              href="/admin"
+              className="rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-3 text-center font-black transition hover:bg-zinc-800"
+            >
+              ← Administração
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -435,7 +444,8 @@ export default function AdministratorsPage() {
           <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
             <p className="font-black text-purple-400">ADM MASTER</p>
             <p className="mt-2 text-sm leading-6 text-zinc-300">
-              Tem acesso administrativo completo dentro do FriendZone League FM.</p>
+              Tem acesso administrativo completo dentro do FriendZone League FM.
+            </p>
           </div>
         </section>
       </div>
