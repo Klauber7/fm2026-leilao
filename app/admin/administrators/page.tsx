@@ -275,6 +275,13 @@ export default function AdministratorsPage() {
             </Link>
 
             <Link
+              href="/admin/president-assignments"
+              className="rounded-xl bg-cyan-600 px-5 py-3 text-center font-black text-white transition hover:bg-cyan-500"
+            >
+              👤 Atribuir Presidentes
+            </Link>
+
+            <Link
               href="/admin"
               className="rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-3 text-center font-black transition hover:bg-zinc-800"
             >
