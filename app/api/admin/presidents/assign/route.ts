@@ -320,7 +320,10 @@ export async function POST(request: NextRequest) {
 
   if (!assignedTeam) {
     return NextResponse.json(
-      { error: "Esse time deixou de estar disponível. Atualize a página e tente novamente." },
+      {
+        error:
+          "Esse time deixou de estar disponível. Atualize a página e tente novamente.",
+      },
       { status: 409 }
     );
   }
