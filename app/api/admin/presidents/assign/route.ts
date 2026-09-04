@@ -7,16 +7,13 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function envError() {
-  return NextResponse.json(
-    { error: "Configuração do Supabase incompleta no servidor." },
-    { status: 500 }
-  );
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ error: message }, { status });
 }
 
 async function authorize(request: NextRequest) {
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
-    return { error: envError() };
+    return { error: jsonError("Configuração do Supabase incompleta no servidor.", 500) };
   }
 
   const authHeader = request.headers.get("authorization") || "";
@@ -25,12 +22,7 @@ async function authorize(request: NextRequest) {
     : "";
 
   if (!token) {
-    return {
-      error: NextResponse.json(
-        { error: "Sessão não encontrada." },
-        { status: 401 }
-      ),
-    };
+    return { error: jsonError("Sessão não encontrada.", 401) };
   }
 
   const authClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -46,15 +38,10 @@ async function authorize(request: NextRequest) {
   } = await authClient.auth.getUser(token);
 
   if (userError || !user) {
-    return {
-      error: NextResponse.json(
-        { error: "Sessão inválida ou expirada." },
-        { status: 401 }
-      ),
-    };
+    return { error: jsonError("Sessão inválida ou expirada.", 401) };
   }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin: any = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -74,9 +61,9 @@ async function authorize(request: NextRequest) {
     !["owner", "master"].includes(String(roleRow.role))
   ) {
     return {
-      error: NextResponse.json(
-        { error: "Somente OWNER ou ADM MASTER pode alterar presidentes." },
-        { status: 403 }
+      error: jsonError(
+        "Somente OWNER ou ADM MASTER pode alterar presidentes.",
+        403
       ),
     };
   }
@@ -84,9 +71,7 @@ async function authorize(request: NextRequest) {
   return { admin };
 }
 
-async function listAllAuthUsers(
-  admin: ReturnType<typeof createClient>
-) {
+async function listAllAuthUsers(admin: any) {
   const users: any[] = [];
   let page = 1;
 
@@ -98,12 +83,10 @@ async function listAllAuthUsers(
 
     if (error) throw error;
 
-    users.push(...(data.users || []));
+    const batch = data?.users || [];
+    users.push(...batch);
 
-    if (!data.users || data.users.length < 1000) {
-      break;
-    }
-
+    if (batch.length < 1000) break;
     page += 1;
   }
 
@@ -117,29 +100,22 @@ export async function GET(request: NextRequest) {
     return authorized.error;
   }
 
-  const { admin } = authorized;
+  const admin = authorized.admin;
 
   try {
     const [authUsers, teamsResult, adminsResult] = await Promise.all([
       listAllAuthUsers(admin),
-
       admin
         .from("teams")
         .select("id, name, manager_id, manager_name")
         .order("name", { ascending: true }),
-
       admin
         .from("site_admins")
         .select("user_id, role, is_active"),
     ]);
 
-    if (teamsResult.error) {
-      throw teamsResult.error;
-    }
-
-    if (adminsResult.error) {
-      throw adminsResult.error;
-    }
+    if (teamsResult.error) throw teamsResult.error;
+    if (adminsResult.error) throw adminsResult.error;
 
     const teams = teamsResult.data || [];
 
@@ -147,8 +123,7 @@ export async function GET(request: NextRequest) {
       (adminsResult.data || [])
         .filter(
           (item: any) =>
-            item.is_active &&
-            String(item.role) === "owner"
+            item.is_active && String(item.role) === "owner"
         )
         .map((item: any) => String(item.user_id))
     );
@@ -162,14 +137,9 @@ export async function GET(request: NextRequest) {
     });
 
     const presidents = authUsers
-      .filter(
-        (user: any) =>
-          !protectedIds.has(String(user.id))
-      )
+      .filter((user: any) => !protectedIds.has(String(user.id)))
       .map((user: any) => {
-        const team =
-          teamByManager.get(String(user.id)) || null;
-
+        const team = teamByManager.get(String(user.id)) || null;
         const metadata = user.user_metadata || {};
 
         const name = String(
@@ -184,26 +154,19 @@ export async function GET(request: NextRequest) {
           userId: user.id,
           email: user.email || "",
           name,
-          currentTeamId: team?.id || null,
-          currentTeamName: team?.name || null,
+          currentTeamId: team?.id ?? null,
+          currentTeamName: team?.name ?? null,
         };
       })
       .sort((a: any, b: any) =>
         a.name.localeCompare(b.name, "pt-BR")
       );
 
-    return NextResponse.json({
-      presidents,
-      teams,
-    });
+    return NextResponse.json({ presidents, teams });
   } catch (error: any) {
-    return NextResponse.json(
-      {
-        error:
-          error?.message ||
-          "Não foi possível carregar os presidentes.",
-      },
-      { status: 500 }
+    return jsonError(
+      error?.message || "Não foi possível carregar os presidentes.",
+      500
     );
   }
 }
@@ -215,30 +178,21 @@ export async function POST(request: NextRequest) {
     return authorized.error;
   }
 
-  const { admin } = authorized;
+  const admin = authorized.admin;
 
-  let body: {
-    userId?: string;
-    teamId?: number | string;
-  };
+  let body: { userId?: string; teamId?: number | string };
 
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Dados inválidos." },
-      { status: 400 }
-    );
+    return jsonError("Dados inválidos.", 400);
   }
 
   const userId = String(body.userId || "").trim();
   const teamId = Number(body.teamId);
 
   if (!userId || !Number.isFinite(teamId)) {
-    return NextResponse.json(
-      { error: "Presidente ou time inválido." },
-      { status: 400 }
-    );
+    return jsonError("Presidente ou time inválido.", 400);
   }
 
   const { data: targetTeam, error: teamError } = await admin
@@ -248,20 +202,14 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (teamError || !targetTeam) {
-    return NextResponse.json(
-      { error: "Time não encontrado." },
-      { status: 404 }
-    );
+    return jsonError("Time não encontrado.", 404);
   }
 
   if (
     targetTeam.manager_id &&
     String(targetTeam.manager_id) !== userId
   ) {
-    return NextResponse.json(
-      { error: "Esse time já possui outro presidente." },
-      { status: 409 }
-    );
+    return jsonError("Esse time já possui outro presidente.", 409);
   }
 
   const {
@@ -270,14 +218,10 @@ export async function POST(request: NextRequest) {
   } = await admin.auth.admin.getUserById(userId);
 
   if (userError || !user) {
-    return NextResponse.json(
-      { error: "Usuário não encontrado no Supabase Auth." },
-      { status: 404 }
-    );
+    return jsonError("Usuário não encontrado no Supabase Auth.", 404);
   }
 
   const metadata = user.user_metadata || {};
-
   const presidentName = String(
     metadata.name ||
       metadata.full_name ||
@@ -285,19 +229,24 @@ export async function POST(request: NextRequest) {
       "Presidente"
   );
 
+  const { data: currentTeams, error: currentError } = await admin
+    .from("teams")
+    .select("id, name")
+    .eq("manager_id", userId);
+
+  if (currentError) {
+    return jsonError("Não foi possível localizar o time atual.", 500);
+  }
+
+  const oldTeam = currentTeams?.[0] || null;
+
   const { error: clearError } = await admin
     .from("teams")
-    .update({
-      manager_id: null,
-      manager_name: null,
-    })
+    .update({ manager_id: null, manager_name: null })
     .eq("manager_id", userId);
 
   if (clearError) {
-    return NextResponse.json(
-      { error: "Não foi possível liberar o time atual." },
-      { status: 500 }
-    );
+    return jsonError("Não foi possível liberar o time atual.", 500);
   }
 
   const { data: assignedTeam, error: assignError } = await admin
@@ -311,20 +260,22 @@ export async function POST(request: NextRequest) {
     .select("id, name, manager_id, manager_name")
     .maybeSingle();
 
-  if (assignError) {
-    return NextResponse.json(
-      { error: "Não foi possível vincular o novo time." },
-      { status: 500 }
-    );
-  }
+  if (assignError || !assignedTeam) {
+    if (oldTeam?.id) {
+      await admin
+        .from("teams")
+        .update({
+          manager_id: userId,
+          manager_name: presidentName,
+        })
+        .eq("id", oldTeam.id)
+        .is("manager_id", null);
+    }
 
-  if (!assignedTeam) {
-    return NextResponse.json(
-      {
-        error:
-          "Esse time deixou de estar disponível. Atualize a página e tente novamente.",
-      },
-      { status: 409 }
+    return jsonError(
+      assignError?.message ||
+        "Esse time deixou de estar disponível. Atualize a página e tente novamente.",
+      409
     );
   }
 
@@ -346,46 +297,32 @@ export async function DELETE(request: NextRequest) {
     return authorized.error;
   }
 
-  const { admin } = authorized;
+  const admin = authorized.admin;
 
-  let body: {
-    userId?: string;
-  };
+  let body: { userId?: string };
 
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Dados inválidos." },
-      { status: 400 }
-    );
+    return jsonError("Dados inválidos.", 400);
   }
 
   const userId = String(body.userId || "").trim();
 
   if (!userId) {
-    return NextResponse.json(
-      { error: "Presidente inválido." },
-      { status: 400 }
-    );
+    return jsonError("Presidente inválido.", 400);
   }
 
   const { data: removedTeams, error } = await admin
     .from("teams")
-    .update({
-      manager_id: null,
-      manager_name: null,
-    })
+    .update({ manager_id: null, manager_name: null })
     .eq("manager_id", userId)
     .select("id, name");
 
   if (error) {
-    return NextResponse.json(
-      {
-        error:
-          "Não foi possível remover o presidente do time.",
-      },
-      { status: 500 }
+    return jsonError(
+      "Não foi possível remover o presidente do time.",
+      500
     );
   }
 
