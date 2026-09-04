@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,11 +22,10 @@ export default function LoginPage() {
     try {
       await supabase.auth.signOut();
 
-      const { data, error } =
-        await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
 
       if (error) {
         alert("Email ou senha incorretos.");
@@ -39,23 +37,30 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: team, error: teamError } =
-        await supabase
-          .from("teams")
-          .select("id")
-          .eq("manager_id", data.user.id)
-          .maybeSingle();
+      // OWNER / MASTER: bypass total da exigência de time
+      const { data: adminRole, error: roleError } =
+        await supabase.rpc("get_my_admin_role");
+
+      if (roleError) {
+        console.error("Erro ao verificar nível administrativo:", roleError);
+      }
+
+      if (adminRole === "owner" || adminRole === "master") {
+        router.replace("/admin");
+        router.refresh();
+        return;
+      }
+
+      // Demais usuários: precisam de time
+      const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("manager_id", data.user.id)
+        .maybeSingle();
 
       if (teamError) {
-        console.error(
-          "Erro ao verificar clube:",
-          teamError
-        );
-
-        alert(
-          "Login realizado, mas ocorreu um erro ao verificar sua equipe."
-        );
-
+        console.error("Erro ao verificar clube:", teamError);
+        alert("Login realizado, mas ocorreu um erro ao verificar sua equipe.");
         return;
       }
 
@@ -65,10 +70,16 @@ export default function LoginPage() {
         return;
       }
 
+      // ADM comum pode operar a área permitida mesmo sem time
+      if (adminRole === "admin") {
+        router.replace("/admin/windows");
+        router.refresh();
+        return;
+      }
+
       alert(
         "Sua conta ainda não está vinculada a um clube. Entre em contato com a administração."
       );
-
       await supabase.auth.signOut();
     } finally {
       setLoading(false);
@@ -79,36 +90,20 @@ export default function LoginPage() {
     const cleanEmail = email.trim();
 
     if (!cleanEmail) {
-      alert(
-        "Digite seu email primeiro e depois clique em Esqueci minha senha."
-      );
+      alert("Digite seu email primeiro e depois clique em Esqueci minha senha.");
       return;
     }
 
     setRecovering(true);
 
     try {
-      const redirectTo =
-        `${window.location.origin}/reset-password`;
-
-      const { error } =
-        await supabase.auth.resetPasswordForEmail(
-          cleanEmail,
-          {
-            redirectTo,
-          }
-        );
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
       if (error) {
-        console.error(
-          "Erro ao enviar recuperação:",
-          error
-        );
-
-        alert(
-          "Não foi possível enviar o email de recuperação."
-        );
-
+        console.error("Erro ao enviar recuperação:", error);
+        alert("Não foi possível enviar o email de recuperação.");
         return;
       }
 
@@ -135,9 +130,7 @@ export default function LoginPage() {
           type="email"
           placeholder="Seu email"
           value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
+          onChange={(e) => setEmail(e.target.value)}
           disabled={loading || recovering}
           className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-4 outline-none focus:border-green-500 disabled:opacity-50"
         />
@@ -146,13 +139,9 @@ export default function LoginPage() {
           type="password"
           placeholder="Sua senha"
           value={password}
-          onChange={(e) =>
-            setPassword(e.target.value)
-          }
+          onChange={(e) => setPassword(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              handleLogin();
-            }
+            if (e.key === "Enter") handleLogin();
           }}
           disabled={loading || recovering}
           className="w-full p-4 rounded-xl bg-zinc-800 border border-zinc-700 mb-3 outline-none focus:border-green-500 disabled:opacity-50"
@@ -165,9 +154,7 @@ export default function LoginPage() {
             disabled={loading || recovering}
             className="text-sm font-bold text-green-400 hover:text-green-300 disabled:opacity-50"
           >
-            {recovering
-              ? "Enviando..."
-              : "Esqueci minha senha"}
+            {recovering ? "Enviando..." : "Esqueci minha senha"}
           </button>
         </div>
 
@@ -177,9 +164,7 @@ export default function LoginPage() {
           disabled={loading || recovering}
           className="w-full bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 p-4 rounded-xl font-bold"
         >
-          {loading
-            ? "Entrando..."
-            : "Entrar"}
+          {loading ? "Entrando..." : "Entrar"}
         </button>
 
         <p className="mt-6 text-center text-xs text-zinc-500">
