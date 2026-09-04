@@ -1560,6 +1560,11 @@ export default function PlayersPage() {
 
                   </div>
 
+                  <Link
+                    href={`/players/${player.id}`}
+                    className="block"
+                  >
+
                     {/* NOME */}
 
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
