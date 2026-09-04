@@ -75,26 +75,35 @@ export default function AdminUsersPage() {
       }
 
       /*
-        CONFIRMA ADMIN
+        CONFIRMA PERMISSÃO ADMINISTRATIVA
+        OWNER + ADM MASTER
       */
 
       const {
-        data: adminData,
+        data: adminRole,
         error: adminError,
-      } = await supabase
-        .from("admin_users")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      } = await supabase.rpc(
+        "get_my_admin_role"
+      );
 
       if (adminError) {
         console.error(
-          "Erro ao verificar admin:",
+          "Erro ao verificar nível administrativo:",
           adminError
         );
+
+        setError(
+          "Não foi possível verificar sua permissão administrativa."
+        );
+
+        return;
       }
 
-      if (!adminData) {
+      if (
+        !["owner", "master"].includes(
+          String(adminRole)
+        )
+      ) {
         router.replace("/dashboard");
         return;
       }
