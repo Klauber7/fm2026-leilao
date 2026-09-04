@@ -21,7 +21,6 @@ type Player = {
   ca: number | null;
   cp: number | null;
   value: number | null;
-  image_url: string | null;
   category: string[] | null;
   team_id: number | null;
 };
@@ -40,6 +39,57 @@ type TransferWindow = {
 };
 
 const PAGE_SIZE = 50;
+
+const ATTRIBUTE_OPTIONS = [
+  "(Tendência) para Saídas da Baliza",
+  "Aceleração",
+  "Agilidade",
+  "Agressividade",
+  "Alcance Aéreo",
+  "Antecipação",
+  "Aptidão Física",
+  "Bravura",
+  "Cabeceamento",
+  "Cantos",
+  "Comando de Área",
+  "Compostura",
+  "Comunicação",
+  "Concentração",
+  "Cruzamentos",
+  "Decisões",
+  "Desarme",
+  "Determinação",
+  "Equilíbrio",
+  "Excentricidade",
+  "Finalização",
+  "Finta",
+  "Força",
+  "Imprevisibilidade",
+  "Impulsão",
+  "Índice de Trabalho",
+  "Jogo de Mãos",
+  "Lançamentos",
+  "Lançamentos Longos",
+  "Liderança",
+  "Livres",
+  "Marcação",
+  "Marcação de Penáltis",
+  "Passe",
+  "Pontapé",
+  "Posicionamento",
+  "Primeiro Toque",
+  "Reflexos",
+  "Remates de Longe",
+  "Resistência",
+  "Saídas a Punhos",
+  "Sem Bola",
+  "Técnica",
+  "Trabalho de Equipa",
+  "Um Para Um",
+  "Velocidade",
+  "Visão de Jogo",
+] as const;
+
 
 const categories = [
   "Todos",
@@ -194,6 +244,36 @@ export default function PlayersPage() {
   const [
     maxAge,
     setMaxAge,
+  ] =
+    useState("");
+
+  const [
+    minValue,
+    setMinValue,
+  ] =
+    useState("");
+
+  const [
+    maxValue,
+    setMaxValue,
+  ] =
+    useState("");
+
+  const [
+    selectedAttribute,
+    setSelectedAttribute,
+  ] =
+    useState("");
+
+  const [
+    minAttribute,
+    setMinAttribute,
+  ] =
+    useState("");
+
+  const [
+    maxAttribute,
+    setMaxAttribute,
   ] =
     useState("");
 
@@ -734,6 +814,58 @@ export default function PlayersPage() {
             );
         }
 
+        if (minValue) {
+          query =
+            query.gte(
+              "value",
+              Number(
+                minValue
+              )
+            );
+        }
+
+        if (maxValue) {
+          query =
+            query.lte(
+              "value",
+              Number(
+                maxValue
+              )
+            );
+        }
+
+        /*
+          ATRIBUTO JSONB:
+          attributes guarda os atributos do Football Manager.
+          O operador -> mantém o valor como JSON numérico,
+          permitindo comparação mínima/máxima.
+        */
+        if (
+          selectedAttribute &&
+          minAttribute
+        ) {
+          query =
+            query.gte(
+              `attributes->${selectedAttribute}`,
+              Number(
+                minAttribute
+              )
+            );
+        }
+
+        if (
+          selectedAttribute &&
+          maxAttribute
+        ) {
+          query =
+            query.lte(
+              `attributes->${selectedAttribute}`,
+              Number(
+                maxAttribute
+              )
+            );
+        }
+
         query =
           query.range(
             from,
@@ -781,6 +913,11 @@ export default function PlayersPage() {
         maxCP,
         minAge,
         maxAge,
+        minValue,
+        maxValue,
+        selectedAttribute,
+        minAttribute,
+        maxAttribute,
       ]
     );
 
@@ -887,6 +1024,16 @@ export default function PlayersPage() {
     setMinAge("");
 
     setMaxAge("");
+
+    setMinValue("");
+
+    setMaxValue("");
+
+    setSelectedAttribute("");
+
+    setMinAttribute("");
+
+    setMaxAttribute("");
 
     setNationality("");
 
@@ -1122,6 +1269,58 @@ export default function PlayersPage() {
 
             <input
               type="number"
+              placeholder="Preço mínimo"
+              value={
+                minValue
+              }
+              onChange={(
+                event
+              ) =>
+                setMinValue(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
+            />
+
+            <input
+              type="number"
+              placeholder="Preço máximo"
+              value={
+                maxValue
+              }
+              onChange={(
+                event
+              ) =>
+                setMaxValue(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
+            />
+
+            <input
+              type="number"
               placeholder="CA mínimo"
               value={
                 minCA
@@ -1218,6 +1417,84 @@ export default function PlayersPage() {
 
           </div>
 
+          <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+            <div className="mb-2 text-xs font-black uppercase tracking-wider text-indigo-300">
+              Filtro por atributo
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <select
+                value={selectedAttribute}
+                onChange={(event) => {
+                  setSelectedAttribute(
+                    event.target.value
+                  );
+
+                  if (!event.target.value) {
+                    setMinAttribute("");
+                    setMaxAttribute("");
+                  }
+                }}
+                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+              >
+                <option value="">
+                  Escolha um atributo
+                </option>
+
+                {ATTRIBUTE_OPTIONS.map(
+                  (attribute) => (
+                    <option
+                      key={attribute}
+                      value={attribute}
+                    >
+                      {attribute}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <input
+                type="number"
+                min="1"
+                max="20"
+                placeholder="Atributo mínimo (1-20)"
+                value={minAttribute}
+                disabled={!selectedAttribute}
+                onChange={(event) =>
+                  setMinAttribute(
+                    event.target.value
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+
+              <input
+                type="number"
+                min="1"
+                max="20"
+                placeholder="Atributo máximo (1-20)"
+                value={maxAttribute}
+                disabled={!selectedAttribute}
+                onChange={(event) =>
+                  setMaxAttribute(
+                    event.target.value
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    handleSearch();
+                  }
+                }}
+                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+              />
+            </div>
+          </div>
+
           <div className="mt-3 flex gap-2">
 
             <button
@@ -1283,25 +1560,6 @@ export default function PlayersPage() {
 
                   </div>
 
-                  {/* FOTO */}
-
-                  <Link
-                    href={`/players/${player.id}`}
-                    className="block"
-                  >
-
-                    {player.image_url && (
-                      <div className="flex justify-center">
-                        <div className="flex h-[88px] w-[88px] items-center justify-center overflow-hidden rounded-full border-2 border-zinc-700 bg-zinc-800 shadow">
-                          <img
-                            src={player.image_url}
-                            alt={player.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      </div>
-                    )}
-
                     {/* NOME */}
 
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
@@ -1349,10 +1607,16 @@ export default function PlayersPage() {
                     {/* CP */}
 
                     <div className="mt-2 text-sm font-black text-zinc-200">
+
                       CP -{" "}
-                      <span className="text-blue-400">
-                        {player.cp ?? "-"}
+
+                      <span className="text-sky-400">
+                        {
+                          player.cp ??
+                          "-"
+                        }
                       </span>
+
                     </div>
 
                     {/* CLUBE */}
@@ -1432,6 +1696,7 @@ export default function PlayersPage() {
                   {/* VALOR */}
 
                   <div className="mt-4 border-t border-zinc-800 pt-3">
+
                     <div className="text-[12px] font-black uppercase text-red-400">
                       Valor
                     </div>
@@ -1441,6 +1706,7 @@ export default function PlayersPage() {
                         player.value
                       )}
                     </div>
+
                   </div>
 
                 </div>
