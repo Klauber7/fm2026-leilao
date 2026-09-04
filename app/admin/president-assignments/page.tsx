@@ -28,6 +28,7 @@ export default function PresidentAssignmentsPage() {
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -101,7 +102,9 @@ export default function PresidentAssignmentsPage() {
   );
 
   const availableTeams = useMemo(() => {
-    if (!selectedPresident) return teams.filter((team) => !team.manager_id);
+    if (!selectedPresident) {
+      return teams.filter((team) => !team.manager_id);
+    }
 
     return teams.filter(
       (team) =>
@@ -165,17 +168,17 @@ export default function PresidentAssignmentsPage() {
     }
   }
 
-  async function removePresident(president: President) {
+  async function removePresidentFromTeam(president: President) {
     if (!president.currentTeamId) return;
 
     const confirmed = window.confirm(
-      `Remover ${president.name} do ${president.currentTeamName}? A conta continuará ativa, mas sem clube.`
+      `Remover ${president.name} do ${president.currentTeamName}? A conta continuará ativa, apenas ficará sem clube.`
     );
 
     if (!confirmed) return;
 
     try {
-      setSaving(true);
+      setProcessingUserId(president.userId);
       setError("");
       setMessage("");
 
@@ -196,17 +199,76 @@ export default function PresidentAssignmentsPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.error || "Não foi possível remover o presidente.");
+        throw new Error(data?.error || "Não foi possível remover do time.");
       }
 
       setMessage(`${president.name} agora está sem clube.`);
       await loadData();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Não foi possível remover o presidente."
+        err instanceof Error ? err.message : "Não foi possível remover do time."
       );
     } finally {
-      setSaving(false);
+      setProcessingUserId(null);
+    }
+  }
+
+  async function deletePresident(president: President) {
+    const firstConfirm = window.confirm(
+      `ATENÇÃO: excluir permanentemente a conta de ${president.name}?`
+    );
+
+    if (!firstConfirm) return;
+
+    const typed = window.prompt(
+      `Para confirmar a exclusão permanente, digite EXCLUIR`
+    );
+
+    if (typed !== "EXCLUIR") {
+      setError("Exclusão cancelada. Era necessário digitar EXCLUIR.");
+      return;
+    }
+
+    try {
+      setProcessingUserId(president.userId);
+      setError("");
+      setMessage("");
+
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch("/api/admin/presidents/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userId: president.userId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível excluir o presidente.");
+      }
+
+      setMessage(`${president.name} foi excluído permanentemente.`);
+      if (selectedUserId === president.userId) {
+        setSelectedUserId("");
+        setSelectedTeamId("");
+      }
+
+      await loadData();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível excluir o presidente."
+      );
+    } finally {
+      setProcessingUserId(null);
     }
   }
 
@@ -227,10 +289,10 @@ export default function PresidentAssignmentsPage() {
               Administração
             </p>
             <h1 className="mt-2 text-4xl font-black md:text-5xl">
-              👤 Atribuir Presidentes
+              👤 Gerenciar Presidentes
             </h1>
             <p className="mt-3 max-w-3xl text-zinc-400">
-              Vincule um presidente a uma vaga, troque de clube ou deixe o usuário temporariamente sem time.
+              Atribua times, remova do clube ou exclua permanentemente uma conta de presidente.
             </p>
           </div>
 
@@ -316,38 +378,53 @@ export default function PresidentAssignmentsPage() {
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px]">
+            <table className="w-full min-w-[980px]">
               <thead className="border-b border-zinc-800 bg-zinc-950/60">
                 <tr className="text-left text-xs font-black uppercase tracking-widest text-zinc-500">
                   <th className="px-6 py-4">Presidente</th>
                   <th className="px-6 py-4">Email</th>
                   <th className="px-6 py-4">Time atual</th>
-                  <th className="px-6 py-4">Ação</th>
+                  <th className="px-6 py-4">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {presidents.map((president) => (
-                  <tr
-                    key={president.userId}
-                    className="border-b border-zinc-800/80 last:border-b-0"
-                  >
-                    <td className="px-6 py-5 font-black">{president.name}</td>
-                    <td className="px-6 py-5 text-zinc-400">{president.email}</td>
-                    <td className="px-6 py-5 font-bold text-zinc-300">
-                      {president.currentTeamName || "SEM TIME"}
-                    </td>
-                    <td className="px-6 py-5">
-                      <button
-                        type="button"
-                        disabled={saving || !president.currentTeamId}
-                        onClick={() => removePresident(president)}
-                        className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 font-black text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
-                      >
-                        Remover do time
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {presidents.map((president) => {
+                  const processing = processingUserId === president.userId;
+
+                  return (
+                    <tr
+                      key={president.userId}
+                      className="border-b border-zinc-800/80 last:border-b-0"
+                    >
+                      <td className="px-6 py-5 font-black">{president.name}</td>
+                      <td className="px-6 py-5 text-zinc-400">{president.email}</td>
+                      <td className="px-6 py-5 font-bold text-zinc-300">
+                        {president.currentTeamName || "SEM TIME"}
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex flex-wrap gap-3">
+                          <button
+                            type="button"
+                            disabled={processing || !president.currentTeamId}
+                            onClick={() => removePresidentFromTeam(president)}
+                            className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 font-black text-yellow-300 transition hover:bg-yellow-500/20 disabled:opacity-40"
+                          >
+                            Remover do time
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={processing}
+                            onClick={() => deletePresident(president)}
+                            className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-black text-red-300 transition hover:bg-red-500/20 disabled:opacity-40"
+                          >
+                            {processing ? "Processando..." : "Excluir Presidente"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {presidents.length === 0 && (
                   <tr>
