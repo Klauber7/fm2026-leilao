@@ -38,7 +38,14 @@ type TransferWindow = {
   status: string;
 };
 
+type AttributeFilter = {
+  attribute: string;
+  min: string;
+  max: string;
+};
+
 const PAGE_SIZE = 50;
+const MAX_ATTRIBUTE_FILTERS = 6;
 
 const ATTRIBUTE_OPTIONS = [
   "(Tendência) para Saídas da Baliza",
@@ -260,22 +267,16 @@ export default function PlayersPage() {
     useState("");
 
   const [
-    selectedAttribute,
-    setSelectedAttribute,
+    attributeFilters,
+    setAttributeFilters,
   ] =
-    useState("");
-
-  const [
-    minAttribute,
-    setMinAttribute,
-  ] =
-    useState("");
-
-  const [
-    maxAttribute,
-    setMaxAttribute,
-  ] =
-    useState("");
+    useState<AttributeFilter[]>([
+      {
+        attribute: "",
+        min: "",
+        max: "",
+      },
+    ]);
 
   const [
     nationality,
@@ -835,35 +836,36 @@ export default function PlayersPage() {
         }
 
         /*
-          ATRIBUTO JSONB:
-          attributes guarda os atributos do Football Manager.
-          O operador -> mantém o valor como JSON numérico,
-          permitindo comparação mínima/máxima.
+          ATRIBUTOS JSONB:
+          permite combinar até 6 atributos do Football Manager.
+          Todos os filtros preenchidos são aplicados juntos (AND).
         */
-        if (
-          selectedAttribute &&
-          minAttribute
+        for (
+          const filter of attributeFilters
         ) {
-          query =
-            query.gte(
-              `attributes->${selectedAttribute}`,
-              Number(
-                minAttribute
-              )
-            );
-        }
+          if (!filter.attribute) {
+            continue;
+          }
 
-        if (
-          selectedAttribute &&
-          maxAttribute
-        ) {
-          query =
-            query.lte(
-              `attributes->${selectedAttribute}`,
-              Number(
-                maxAttribute
-              )
-            );
+          if (filter.min) {
+            query =
+              query.gte(
+                `attributes->${filter.attribute}`,
+                Number(
+                  filter.min
+                )
+              );
+          }
+
+          if (filter.max) {
+            query =
+              query.lte(
+                `attributes->${filter.attribute}`,
+                Number(
+                  filter.max
+                )
+              );
+          }
         }
 
         query =
@@ -915,9 +917,7 @@ export default function PlayersPage() {
         maxAge,
         minValue,
         maxValue,
-        selectedAttribute,
-        minAttribute,
-        maxAttribute,
+        attributeFilters,
       ]
     );
 
@@ -1007,6 +1007,81 @@ export default function PlayersPage() {
   }
 
   /*
+    FILTROS DE ATRIBUTOS
+  */
+
+  function updateAttributeFilter(
+    index: number,
+    field: keyof AttributeFilter,
+    value: string
+  ) {
+    setAttributeFilters(
+      (current) =>
+        current.map(
+          (filter, filterIndex) =>
+            filterIndex === index
+              ? {
+                  ...filter,
+                  [field]: value,
+                  ...(field === "attribute" &&
+                  !value
+                    ? {
+                        min: "",
+                        max: "",
+                      }
+                    : {}),
+                }
+              : filter
+        )
+    );
+  }
+
+  function addAttributeFilter() {
+    setAttributeFilters(
+      (current) => {
+        if (
+          current.length >=
+          MAX_ATTRIBUTE_FILTERS
+        ) {
+          return current;
+        }
+
+        return [
+          ...current,
+          {
+            attribute: "",
+            min: "",
+            max: "",
+          },
+        ];
+      }
+    );
+  }
+
+  function removeAttributeFilter(
+    index: number
+  ) {
+    setAttributeFilters(
+      (current) => {
+        if (current.length === 1) {
+          return [
+            {
+              attribute: "",
+              min: "",
+              max: "",
+            },
+          ];
+        }
+
+        return current.filter(
+          (_, filterIndex) =>
+            filterIndex !== index
+        );
+      }
+    );
+  }
+
+  /*
     LIMPAR
   */
 
@@ -1029,11 +1104,13 @@ export default function PlayersPage() {
 
     setMaxValue("");
 
-    setSelectedAttribute("");
-
-    setMinAttribute("");
-
-    setMaxAttribute("");
+    setAttributeFilters([
+      {
+        attribute: "",
+        min: "",
+        max: "",
+      },
+    ]);
 
     setNationality("");
 
@@ -1418,80 +1495,157 @@ export default function PlayersPage() {
           </div>
 
           <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-            <div className="mb-2 text-xs font-black uppercase tracking-wider text-indigo-300">
-              Filtro por atributo
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs font-black uppercase tracking-wider text-indigo-300">
+                  Filtros por atributos
+                </div>
+
+                <div className="mt-1 text-xs text-zinc-500">
+                  Combine até 6 atributos. Todos os filtros serão aplicados juntos.
+                </div>
+              </div>
+
+              <div className="text-xs font-bold text-zinc-400">
+                {attributeFilters.length}/{MAX_ATTRIBUTE_FILTERS}
+              </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <select
-                value={selectedAttribute}
-                onChange={(event) => {
-                  setSelectedAttribute(
-                    event.target.value
-                  );
-
-                  if (!event.target.value) {
-                    setMinAttribute("");
-                    setMaxAttribute("");
-                  }
-                }}
-                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-              >
-                <option value="">
-                  Escolha um atributo
-                </option>
-
-                {ATTRIBUTE_OPTIONS.map(
-                  (attribute) => (
-                    <option
-                      key={attribute}
-                      value={attribute}
+            <div className="space-y-3">
+              {attributeFilters.map(
+                (filter, index) => (
+                  <div
+                    key={index}
+                    className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 sm:grid-cols-[minmax(0,1fr)_160px_160px_auto]"
+                  >
+                    <select
+                      value={
+                        filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "attribute",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
                     >
-                      {attribute}
-                    </option>
-                  )
-                )}
-              </select>
+                      <option value="">
+                        Atributo {index + 1}
+                      </option>
 
-              <input
-                type="number"
-                min="1"
-                max="20"
-                placeholder="Atributo mínimo (1-20)"
-                value={minAttribute}
-                disabled={!selectedAttribute}
-                onChange={(event) =>
-                  setMinAttribute(
-                    event.target.value
-                  )
-                }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
-              />
+                      {ATTRIBUTE_OPTIONS.map(
+                        (attribute) => (
+                          <option
+                            key={
+                              attribute
+                            }
+                            value={
+                              attribute
+                            }
+                            disabled={attributeFilters.some(
+                              (
+                                currentFilter,
+                                currentIndex
+                              ) =>
+                                currentIndex !==
+                                  index &&
+                                currentFilter.attribute ===
+                                  attribute
+                            )}
+                          >
+                            {attribute}
+                          </option>
+                        )
+                      )}
+                    </select>
 
-              <input
-                type="number"
-                min="1"
-                max="20"
-                placeholder="Atributo máximo (1-20)"
-                value={maxAttribute}
-                disabled={!selectedAttribute}
-                onChange={(event) =>
-                  setMaxAttribute(
-                    event.target.value
-                  )
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      placeholder="Mínimo (1-20)"
+                      value={filter.min}
+                      disabled={
+                        !filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "min",
+                          event.target.value
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key ===
+                          "Enter"
+                        ) {
+                          handleSearch();
+                        }
+                      }}
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    />
+
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      placeholder="Máximo (1-20)"
+                      value={filter.max}
+                      disabled={
+                        !filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "max",
+                          event.target.value
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key ===
+                          "Enter"
+                        ) {
+                          handleSearch();
+                        }
+                      }}
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeAttributeFilter(
+                          index
+                        )
+                      }
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-black text-red-300 transition hover:bg-red-500/20"
+                      title="Remover atributo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              )}
+            </div>
+
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={
+                  addAttributeFilter
                 }
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    handleSearch();
-                  }
-                }}
-                className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
-              />
+                disabled={
+                  attributeFilters.length >=
+                  MAX_ATTRIBUTE_FILTERS
+                }
+                className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-black text-indigo-300 transition hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                + Adicionar atributo
+              </button>
             </div>
           </div>
 
