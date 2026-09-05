@@ -94,7 +94,7 @@ function AuctionTimer({
     function updateTimer() {
       /*
         MERCADO FECHADO
-        = RELÃ“GIO VISUAL PARADO
+        = RELÓGIO VISUAL PARADO
       */
 
       if (!marketOpen) {
@@ -190,7 +190,7 @@ export default function AuctionsPage() {
   ] = useState("");
 
   /*
-    CARREGAR LEILÃ•ES
+    CARREGAR LEILÕES
     + JANELA
   */
 
@@ -315,7 +315,7 @@ export default function AuctionsPage() {
           );
         } else {
           setErrorMessage(
-            "Erro ao carregar leilÃµes."
+            "Erro ao carregar leilões."
           );
         }
       } finally {
@@ -324,11 +324,11 @@ export default function AuctionsPage() {
     }, []);
 
   /*
-    ENCERRAR LEILÃ•ES
+    ENCERRAR LEILÕES
     EXPIRADOS
 
     SOMENTE QUANDO
-    O MERCADO ESTÃ ABERTO
+    O MERCADO ESTÁ ABERTO
   */
 
   const closeExpiredAuctions =
@@ -338,7 +338,7 @@ export default function AuctionsPage() {
       ) => {
         /*
           SEM JANELA =
-          NÃƒO ENCERRA AUTOMATICAMENTE
+          NÃO ENCERRA AUTOMATICAMENTE
         */
 
         if (!currentWindow) {
@@ -384,7 +384,7 @@ export default function AuctionsPage() {
 
               if (error) {
                 console.error(
-                  `Erro ao encerrar leilÃ£o ${auction.id}:`,
+                  `Erro ao encerrar leilão ${auction.id}:`,
                   error.message
                 );
               }
@@ -489,7 +489,7 @@ export default function AuctionsPage() {
 
     /*
       MERCADO FECHADO:
-      NÃƒO PROCESSA
+      NÃO PROCESSA
     */
 
     if (!currentWindow) {
@@ -554,7 +554,7 @@ export default function AuctionsPage() {
     return (
       <main className="min-h-screen bg-zinc-950 p-10 text-white">
         <p className="text-zinc-300">
-          Carregando leilÃµes...
+          Carregando leilões...
         </p>
       </main>
     );
@@ -569,7 +569,7 @@ export default function AuctionsPage() {
       <main className="min-h-screen bg-zinc-950 p-10 text-white">
 
         <h1 className="text-3xl font-black text-red-500">
-          Erro ao carregar leilÃµes
+          Erro ao carregar leilões
         </h1>
 
         <p className="mt-3 text-zinc-300">
@@ -590,7 +590,7 @@ export default function AuctionsPage() {
         </p>
 
         <h1 className="mt-2 text-5xl font-black md:text-6xl">
-          LeilÃµes
+          Leilões
         </h1>
 
         <p className="mt-3 text-lg text-zinc-400 md:text-xl">
@@ -607,7 +607,7 @@ export default function AuctionsPage() {
               <div>
 
                 <p className="font-black text-green-400">
-                  ðŸŸ¢ MERCADO ABERTO
+                  🟢 MERCADO ABERTO
                 </p>
 
                 <p className="mt-1 text-sm text-zinc-300">
@@ -616,7 +616,7 @@ export default function AuctionsPage() {
                     currentWindow
                       ?.window_number
                   }{" "}
-                  estÃ¡ aberta. Os leilÃµes estÃ£o liberados.
+                  está aberta. Os leilões estão liberados.
                 </p>
 
               </div>
@@ -638,7 +638,7 @@ export default function AuctionsPage() {
             <div className="flex items-start gap-4">
 
               <div className="text-3xl">
-                ðŸ”’
+                🔒
               </div>
 
               <div>
@@ -648,7 +648,7 @@ export default function AuctionsPage() {
                 </p>
 
                 <p className="mt-2 text-zinc-300">
-                  A janela de transferÃªncias estÃ¡ fechada. Os leilÃµes estÃ£o pausados e nenhum clube pode enviar novos lances.
+                  A janela de transferências está fechada. Os leilões estão pausados e nenhum clube pode enviar novos lances.
                 </p>
 
               </div>
@@ -665,7 +665,7 @@ export default function AuctionsPage() {
           <div className="flex items-center justify-between">
 
             <h2 className="text-3xl font-black">
-              LeilÃµes ativos
+              Leilões ativos
             </h2>
 
             <span
@@ -688,7 +688,7 @@ export default function AuctionsPage() {
             <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-8">
 
               <p className="text-zinc-300">
-                Nenhum leilÃ£o ativo no momento.
+                Nenhum leilão ativo no momento.
               </p>
 
             </div>
@@ -745,14 +745,14 @@ export default function AuctionsPage() {
                       <h3 className="mt-4 text-2xl font-black">
                         {auction.players
                           ?.name ||
-                          `LeilÃ£o #${auction.id}`}
+                          `Leilão #${auction.id}`}
                       </h3>
 
                       <p className="mt-2 text-zinc-400">
                         {auction.players
                           ?.position ||
                           "-"}{" "}
-                        â€¢{" "}
+                        •{" "}
                         {auction.players
                           ?.age ||
                           "-"}{" "}
@@ -810,8 +810,8 @@ export default function AuctionsPage() {
                         }`}
                       >
                         {marketOpen
-                          ? "Abrir leilÃ£o"
-                          : "Ver leilÃ£o pausado"}
+                          ? "Abrir leilão"
+                          : "Ver leilão pausado"}
                       </Link>
 
                     </article>
@@ -831,7 +831,7 @@ export default function AuctionsPage() {
           <section className="mt-16">
 
             <h2 className="text-3xl font-black">
-              LeilÃµes encerrados
+              Leilões encerrados
             </h2>
 
             <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -857,7 +857,7 @@ export default function AuctionsPage() {
                     <h3 className="mt-3 text-xl font-black">
                       {auction.players
                         ?.name ||
-                        `LeilÃ£o #${auction.id}`}
+                        `Leilão #${auction.id}`}
                     </h3>
 
                     <p className="mt-4 font-black text-green-400">
