@@ -837,35 +837,82 @@ export default function PlayersPage() {
 
         /*
           ATRIBUTOS JSONB:
-          permite combinar até 6 atributos do Football Manager.
-          Todos os filtros preenchidos são aplicados juntos (AND).
+          Quando há filtros de atributos, usamos uma RPC no PostgreSQL
+          para comparar os valores como números (1-20).
         */
-        for (
-          const filter of attributeFilters
+        const activeAttributeFilters =
+          attributeFilters.filter(
+            (filter) =>
+              filter.attribute &&
+              (filter.min || filter.max)
+          );
+
+        if (
+          activeAttributeFilters.length >
+          0
         ) {
-          if (!filter.attribute) {
-            continue;
+          const {
+            data: matchingRows,
+            error: attributeError,
+          } =
+            await supabase.rpc(
+              "filter_player_ids_by_attributes",
+              {
+                p_filters:
+                  activeAttributeFilters.map(
+                    (filter) => ({
+                      attribute:
+                        filter.attribute,
+                      min:
+                        filter.min
+                          ? Number(
+                              filter.min
+                            )
+                          : null,
+                      max:
+                        filter.max
+                          ? Number(
+                              filter.max
+                            )
+                          : null,
+                    })
+                  ),
+              }
+            );
+
+          if (attributeError) {
+            console.error(
+              "Erro ao filtrar atributos:",
+              attributeError
+            );
+
+            setPlayers([]);
+            setTotal(0);
+            setLoading(false);
+            return;
           }
 
-          if (filter.min) {
-            query =
-              query.gte(
-                `attributes->${filter.attribute}`,
-                Number(
-                  filter.min
-                )
-              );
+          const matchingIds = (
+            matchingRows || []
+          ).map(
+            (row: any) =>
+              Number(row.player_id)
+          );
+
+          if (
+            matchingIds.length === 0
+          ) {
+            setPlayers([]);
+            setTotal(0);
+            setLoading(false);
+            return;
           }
 
-          if (filter.max) {
-            query =
-              query.lte(
-                `attributes->${filter.attribute}`,
-                Number(
-                  filter.max
-                )
-              );
-          }
+          query =
+            query.in(
+              "id",
+              matchingIds
+            );
         }
 
         query =
