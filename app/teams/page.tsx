@@ -8,39 +8,62 @@ export default async function TeamsPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white p-10">
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
         <h1 className="text-3xl font-bold text-red-400">
           Erro ao carregar times
         </h1>
+
         <p>{error.message}</p>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-8">
-      <h1 className="text-4xl font-bold mb-8">Times FM2026</h1>
+    <main className="min-h-screen bg-slate-950 p-8 text-white">
+      <h1 className="mb-8 text-4xl font-bold">
+        Times FM2026
+      </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:grid-cols-4">
         {teams?.map((team) => (
           <div
             key={team.id}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-lg"
+            className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg"
           >
-            <h2 className="text-2xl font-bold">{team.name}</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+                {team.logo_url ? (
+                  <img
+                    src={team.logo_url}
+                    alt={`Escudo do ${team.name}`}
+                    className="h-full w-full object-contain p-1.5"
+                  />
+                ) : (
+                  <span className="text-xl">
+                    ⚽
+                  </span>
+                )}
+              </div>
 
-            <p className="mt-4 text-green-400 font-semibold">
+              <h2 className="text-2xl font-bold">
+                {team.name}
+              </h2>
+            </div>
+
+            <p className="mt-4 font-semibold text-green-400">
               Saldo: R${" "}
-              {Number(team.budget).toLocaleString("pt-BR")}
+              {Number(team.budget).toLocaleString(
+                "pt-BR"
+              )}
             </p>
 
-            <p className="text-slate-400 mt-2">
+            <p className="mt-2 text-slate-400">
               País: {team.country || "Brasil"}
             </p>
 
             <a
               href={`/teams/${team.id}`}
-              className="inline-block mt-5 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold"
+              className="mt-5 inline-block rounded-lg bg-blue-600 px-4 py-2 font-semibold transition hover:bg-blue-700"
             >
               Ver elenco
             </a>
