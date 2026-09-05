@@ -519,6 +519,16 @@ export default function AdminPage() {
             />
 
             <AdminCard
+              href="/admin/rivalries"
+              eyebrow="Liga"
+              title="Rivalidades"
+              icon="⚔️"
+              description="Veja os 3 rivais definidos por cada clube e acompanhe quais equipes ainda não concluíram suas escolhas."
+              action="VER RIVALIDADES →"
+              color="red"
+            />
+
+            <AdminCard
               href="/admin/users"
               eyebrow="Acessos"
               title="Aprovação de Usuários"
