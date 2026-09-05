@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import RivalsPanel from "@/app/components/RivalsPanel";
 
 type Team = {
   id: number;
@@ -18,6 +19,15 @@ type Team = {
   logo_url: string | null;
   city: string | null;
   stadium: string | null;
+  rival_1_id: number | null;
+  rival_2_id: number | null;
+  rival_3_id: number | null;
+};
+
+type RivalTeam = {
+  id: number;
+  name: string;
+  logo_url: string | null;
 };
 
 type FeaturedPlayer = {
@@ -55,6 +65,9 @@ export default function DashboardPage() {
 
   const [team, setTeam] =
     useState<Team | null>(null);
+
+  const [allTeams, setAllTeams] =
+    useState<RivalTeam[]>([]);
 
   const [
     playerCount,
@@ -171,7 +184,10 @@ export default function DashboardPage() {
               manager_name,
               logo_url,
               city,
-              stadium
+              stadium,
+              rival_1_id,
+              rival_2_id,
+              rival_3_id
             `)
             .eq(
               "manager_id",
@@ -189,6 +205,7 @@ export default function DashboardPage() {
 
         if (!teamData) {
           setTeam(null);
+          setAllTeams([]);
 
           setPlayerCount(0);
 
@@ -245,6 +262,7 @@ export default function DashboardPage() {
           negotiationsResult,
           installmentsPayResult,
           installmentsReceiveResult,
+          teamsResult,
         ] =
           await Promise.all([
             /*
@@ -415,6 +433,29 @@ export default function DashboardPage() {
                 "status",
                 "pending"
               ),
+
+            /*
+              CLUBES PARA
+              SELEÇÃO DE RIVAIS
+            */
+
+            supabase
+              .from("teams")
+              .select(`
+                id,
+                name,
+                logo_url
+              `)
+              .neq(
+                "id",
+                loadedTeam.id
+              )
+              .order(
+                "name",
+                {
+                  ascending: true,
+                }
+              ),
           ]);
 
         /*
@@ -462,6 +503,20 @@ export default function DashboardPage() {
         ) {
           throw installmentsReceiveResult.error;
         }
+
+        if (
+          teamsResult.error
+        ) {
+          throw teamsResult.error;
+        }
+
+        /*
+          CLUBES / RIVAIS
+        */
+
+        setAllTeams(
+          (teamsResult.data || []) as RivalTeam[]
+        );
 
         /*
           CONTADORES
@@ -897,7 +952,9 @@ export default function DashboardPage() {
 
         <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
 
-          <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
+          <div className="grid gap-6 p-8 xl:grid-cols-[minmax(0,1fr)_minmax(430px,1.25fr)_auto] xl:items-center">
+
+            {/* CLUBE / MANAGER */}
 
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
 
@@ -907,9 +964,7 @@ export default function DashboardPage() {
 
                 {team.logo_url ? (
                   <img
-                    src={
-                      team.logo_url
-                    }
+                    src={team.logo_url}
                     alt={`Escudo do ${team.name}`}
                     className="h-full w-full object-contain p-2"
                   />
@@ -923,19 +978,18 @@ export default function DashboardPage() {
 
               {/* DADOS */}
 
-              <div>
+              <div className="min-w-0">
 
                 <p className="font-bold uppercase tracking-widest text-green-400">
                   Dashboard do Manager
                 </p>
 
-                <h1 className="mt-2 text-4xl font-black md:text-5xl">
+                <h1 className="mt-2 truncate text-4xl font-black md:text-5xl">
                   {team.name}
                 </h1>
 
                 <p className="mt-2 text-zinc-400">
                   Manager:{" "}
-
                   <span className="font-semibold text-white">
                     {team.manager_name ||
                       "Não informado"}
@@ -949,12 +1003,8 @@ export default function DashboardPage() {
                       team.city,
                       team.stadium,
                     ]
-                      .filter(
-                        Boolean
-                      )
-                      .join(
-                        " • "
-                      )}
+                      .filter(Boolean)
+                      .join(" • ")}
                   </p>
                 )}
 
@@ -962,12 +1012,26 @@ export default function DashboardPage() {
 
             </div>
 
-            <Link
-              href={`/teams/${team.id}`}
-              className="rounded-xl border border-zinc-700 bg-zinc-950 px-6 py-3 text-center font-bold transition hover:border-green-500 hover:text-green-400"
-            >
-              Ver perfil do clube
-            </Link>
+            {/* RIVAIS DA FRIENDZONE */}
+
+            <RivalsPanel
+              team={team}
+              teams={allTeams}
+              onSaved={loadDashboard}
+            />
+
+            {/* PERFIL DO CLUBE */}
+
+            <div className="xl:justify-self-end">
+
+              <Link
+                href={`/teams/${team.id}`}
+                className="block whitespace-nowrap rounded-xl border border-zinc-700 bg-zinc-950 px-6 py-3 text-center font-bold transition hover:border-green-500 hover:text-green-400"
+              >
+                Ver perfil do clube
+              </Link>
+
+            </div>
 
           </div>
 
