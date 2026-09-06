@@ -6,9 +6,16 @@ import { supabase } from "@/lib/supabase";
 
 type Coach = {
   id: number;
+  unique_id: string | null;
   name: string;
+  age: number | null;
   nationality: string | null;
   role: string | null;
+  ca: number | null;
+  cp: number | null;
+  preferred_formation: string | null;
+  value: number | null;
+  assistant_value: number | null;
   team_id: number | null;
 };
 
@@ -17,7 +24,7 @@ type Team = {
   name: string;
 };
 
-const PAGE_SIZE = 48;
+const PAGE_SIZE = 50;
 
 const STAFF_ROLES = [
   "Treinador",
@@ -36,9 +43,29 @@ function cleanSearch(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function formatMoney(value: number | null) {
+  if (value === null || value === undefined) return "R$ 0,00";
+
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function getCAColor(ca: number | null) {
+  if (!ca) return "text-zinc-300";
+  if (ca >= 170) return "text-emerald-400";
+  if (ca >= 150) return "text-lime-400";
+  if (ca >= 130) return "text-yellow-300";
+  return "text-zinc-200";
+}
+
 export default function CoachesPage() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
+
   const [cartIds, setCartIds] = useState<Set<number>>(new Set());
   const [cartLoadingId, setCartLoadingId] = useState<number | null>(null);
 
@@ -49,6 +76,12 @@ export default function CoachesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+
+  const [minCA, setMinCA] = useState("");
+  const [maxCA, setMaxCA] = useState("");
+  const [minCP, setMinCP] = useState("");
+  const [maxCP, setMaxCP] = useState("");
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -98,7 +131,7 @@ export default function CoachesPage() {
     }
 
     setCartIds(
-      new Set((data || []).map((row) => Number(row.coach_id)))
+      new Set((data || []).map((row: any) => Number(row.coach_id)))
     );
   }, []);
 
@@ -111,9 +144,25 @@ export default function CoachesPage() {
 
     let query = supabase
       .from("coaches")
-      .select("id, name, nationality, role, team_id", {
-        count: "exact",
-      })
+      .select(
+        `
+        id,
+        unique_id,
+        name,
+        age,
+        nationality,
+        role,
+        ca,
+        cp,
+        preferred_formation,
+        value,
+        assistant_value,
+        team_id
+        `,
+        {
+          count: "exact",
+        }
+      )
       .is("team_id", null);
 
     if (roleFilter !== "all") {
@@ -122,12 +171,38 @@ export default function CoachesPage() {
 
     if (debouncedSearch) {
       query = query.or(
-        `name.ilike.%${debouncedSearch}%,nationality.ilike.%${debouncedSearch}%,role.ilike.%${debouncedSearch}%`
+        `name.ilike.%${debouncedSearch}%,nationality.ilike.%${debouncedSearch}%,role.ilike.%${debouncedSearch}%,preferred_formation.ilike.%${debouncedSearch}%`
       );
     }
 
+    if (minCA) {
+      query = query.gte("ca", Number(minCA));
+    }
+
+    if (maxCA) {
+      query = query.lte("ca", Number(maxCA));
+    }
+
+    if (minCP) {
+      query = query.gte("cp", Number(minCP));
+    }
+
+    if (maxCP) {
+      query = query.lte("cp", Number(maxCP));
+    }
+
     const { data, error, count } = await query
-      .order("name", { ascending: true })
+      .order("ca", {
+        ascending: false,
+        nullsFirst: false,
+      })
+      .order("cp", {
+        ascending: false,
+        nullsFirst: false,
+      })
+      .order("name", {
+        ascending: true,
+      })
       .range(from, to);
 
     if (error) {
@@ -141,7 +216,15 @@ export default function CoachesPage() {
     }
 
     setLoading(false);
-  }, [debouncedSearch, page, roleFilter]);
+  }, [
+    page,
+    roleFilter,
+    debouncedSearch,
+    minCA,
+    maxCA,
+    minCP,
+    maxCP,
+  ]);
 
   useEffect(() => {
     loadCoaches();
@@ -150,6 +233,25 @@ export default function CoachesPage() {
   useEffect(() => {
     loadCart();
   }, [loadCart]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("coaches-market")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "coaches",
+        },
+        () => loadCoaches()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadCoaches]);
 
   useEffect(() => {
     if (!myTeam) return;
@@ -192,7 +294,7 @@ export default function CoachesPage() {
         .eq("coach_id", coach.id);
 
       if (error) {
-        setCartMessage("Não foi possível remover o staff.");
+        setCartMessage("Não foi possível remover o treinador da lista.");
         setCartLoadingId(null);
         return;
       }
@@ -203,7 +305,7 @@ export default function CoachesPage() {
         return next;
       });
 
-      setCartMessage(`${coach.name} foi removido do carrinho.`);
+      setCartMessage(`${coach.name} foi removido da sua lista.`);
     } else {
       const { error } = await supabase
         .from("staff_shopping_list")
@@ -215,9 +317,9 @@ export default function CoachesPage() {
       if (error) {
         if (error.code === "23505") {
           await loadCart();
-          setCartMessage(`${coach.name} já está no carrinho.`);
+          setCartMessage(`${coach.name} já está na sua lista.`);
         } else {
-          setCartMessage("Não foi possível adicionar o staff.");
+          setCartMessage("Não foi possível adicionar o treinador à lista.");
         }
 
         setCartLoadingId(null);
@@ -230,19 +332,29 @@ export default function CoachesPage() {
         return next;
       });
 
-      setCartMessage(`${coach.name} foi adicionado ao carrinho.`);
+      setCartMessage(`${coach.name} foi adicionado à sua lista.`);
     }
 
     setCartLoadingId(null);
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  function handleSearch() {
+    setPage(1);
+    loadCoaches();
+  }
 
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
+  function clearFilters() {
+    setSearch("");
+    setDebouncedSearch("");
+    setRoleFilter("all");
+    setMinCA("");
+    setMaxCA("");
+    setMinCP("");
+    setMaxCP("");
+    setPage(1);
+  }
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const pageNumbers = useMemo(() => {
     const first = Math.max(1, page - 2);
@@ -256,183 +368,292 @@ export default function CoachesPage() {
   }, [page, totalPages]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="font-bold uppercase tracking-widest text-green-400">
-              FriendZone League FM
-            </p>
+    <main className="min-h-screen bg-zinc-950 px-3 py-6 text-white sm:px-4 md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1800px]">
+        <div className="mb-6">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-green-400">
+            FriendZone League FM
+          </p>
 
-            <h1 className="mt-2 text-5xl font-black md:text-6xl">
-              Comissão Técnica
-            </h1>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-black sm:text-4xl">
+                Comissão Técnica
+              </h1>
 
-            <p className="mt-3 text-lg text-zinc-400">
-              Consulte os profissionais disponíveis.
-            </p>
+              <p className="mt-2 text-sm text-zinc-400">
+                Treinadores disponíveis organizados pelo maior CA.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-black text-green-400">
+                {total.toLocaleString("pt-BR")} treinadores
+              </div>
+
+              <Link
+                href="/staff-shopping-list"
+                className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-black text-zinc-200 transition hover:border-green-500/40 hover:text-green-300"
+              >
+                🛒 Lista ({cartIds.size})
+              </Link>
+            </div>
           </div>
-
-          <Link
-            href="/staff-shopping-list"
-            className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-4 text-center font-black text-purple-300 transition hover:bg-purple-500/20"
-          >
-            🛒 Carrinho de Staff ({cartIds.size})
-          </Link>
-        </header>
+        </div>
 
         {errorMessage && (
-          <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {errorMessage}
           </div>
         )}
 
         {cartMessage && (
-          <div className="mt-8 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 text-purple-200">
+          <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">
             {cartMessage}
           </div>
         )}
 
-        <section className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-[1fr_300px]">
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Nome, nacionalidade ou função"
-            className="rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-4 outline-none focus:border-green-500"
-          />
+        {/* FILTROS */}
+        <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleSearch();
+              }}
+              placeholder="Nome, nacionalidade ou tática"
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500 sm:col-span-2"
+            />
 
-          <select
-            value={roleFilter}
-            onChange={(event) => {
-              setRoleFilter(event.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-zinc-700 bg-zinc-900 px-5 py-4 outline-none focus:border-green-500"
-          >
-            <option value="all">Todas as funções</option>
+            <select
+              value={roleFilter}
+              onChange={(event) => {
+                setRoleFilter(event.target.value);
+                setPage(1);
+              }}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-green-500"
+            >
+              <option value="all">Todas as funções</option>
 
-            {STAFF_ROLES.map((role) => (
-              <option key={role} value={role}>
-                {role}
-              </option>
-            ))}
-          </select>
-        </section>
+              {STAFF_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
 
-        <section className="mt-12">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-3xl font-black">
-              Profissionais disponíveis
-            </h2>
+            <input
+              type="number"
+              placeholder="CA mínimo"
+              value={minCA}
+              onChange={(event) => setMinCA(event.target.value)}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
+            />
 
-            <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2 font-bold text-green-400">
-              {total.toLocaleString("pt-BR")}
-            </span>
+            <input
+              type="number"
+              placeholder="CA máximo"
+              value={maxCA}
+              onChange={(event) => setMaxCA(event.target.value)}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
+            />
+
+            <input
+              type="number"
+              placeholder="CP mínimo"
+              value={minCP}
+              onChange={(event) => setMinCP(event.target.value)}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
+            />
+
+            <input
+              type="number"
+              placeholder="CP máximo"
+              value={maxCP}
+              onChange={(event) => setMaxCP(event.target.value)}
+              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
+            />
           </div>
 
-          {loading ? (
-            <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
-              Carregando staffs...
-            </div>
-          ) : coaches.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
-              Nenhum profissional encontrado.
-            </div>
-          ) : (
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {coaches.map((coach) => {
-                const isInCart = cartIds.has(coach.id);
-
-                return (
-                  <article
-                    key={coach.id}
-                    className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6"
-                  >
-                    <Link href={`/coaches/${coach.id}`} className="block">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10 text-3xl">
-                        👔
-                      </div>
-
-                      <p className="mt-5 font-bold text-green-400">
-                        {coach.role || "Comissão técnica"}
-                      </p>
-
-                      <h3 className="mt-2 text-2xl font-black">
-                        {coach.name}
-                      </h3>
-
-                      <p className="mt-3 text-zinc-400">
-                        {coach.nationality ||
-                          "Nacionalidade não informada"}
-                      </p>
-                    </Link>
-
-                    <button
-                      type="button"
-                      disabled={cartLoadingId === coach.id || !myTeam}
-                      onClick={() => toggleCart(coach)}
-                      className={`mt-6 w-full rounded-xl px-4 py-3 font-black transition disabled:opacity-50 ${
-                        isInCart
-                          ? "border border-purple-500/40 bg-purple-500/10 text-purple-300"
-                          : "bg-green-600 text-white hover:bg-green-500"
-                      }`}
-                    >
-                      {cartLoadingId === coach.id
-                        ? "SALVANDO..."
-                        : isInCart
-                        ? "✓ REMOVER DO CARRINHO"
-                        : "🛒 ADICIONAR AO CARRINHO"}
-                    </button>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {totalPages > 1 && (
-          <nav className="mt-12 flex flex-wrap justify-center gap-2">
+          <div className="mt-3 flex gap-2">
             <button
               type="button"
-              disabled={page === 1 || loading}
-              onClick={() =>
-                setPage((current) => Math.max(1, current - 1))
-              }
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 font-bold disabled:opacity-40"
+              onClick={handleSearch}
+              className="rounded-lg bg-green-700 px-5 py-2 text-sm font-black text-white hover:bg-green-600"
             >
-              Anterior
+              Buscar
             </button>
 
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-black text-zinc-200 hover:bg-zinc-700"
+            >
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        {/* CARDS */}
+        {loading ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
+            Carregando treinadores...
+          </div>
+        ) : coaches.length === 0 ? (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
+            Nenhum treinador encontrado.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {coaches.map((coach) => {
+              const isInCart = cartIds.has(coach.id);
+
+              return (
+                <div
+                  key={coach.id}
+                  className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
+                >
+                  {/* ID */}
+                  <div className="mb-3 text-[12px] font-bold text-zinc-400">
+                    ID do treinador -{" "}
+                    <span className="font-black text-zinc-200">
+                      {coach.unique_id || coach.id}
+                    </span>
+                  </div>
+
+                  <Link href={`/coaches/${coach.id}`} className="block">
+                    {/* NOME */}
+                    <div className="mt-4 text-[14px] font-black text-white group-hover:text-green-300">
+                      {coach.name} - {coach.age ?? "-"} anos
+                    </div>
+
+                    {/* FUNÇÃO */}
+                    <div className="mt-3 text-[13px] font-black text-green-400">
+                      {coach.role || "Treinador"}
+                    </div>
+
+                    {/* CA */}
+                    <div className="mt-3 text-sm font-black text-zinc-200">
+                      CA -{" "}
+                      <span className={getCAColor(coach.ca)}>
+                        {coach.ca ?? "-"}
+                      </span>
+                    </div>
+
+                    {/* CP */}
+                    <div className="mt-2 text-sm font-black text-zinc-200">
+                      CP -{" "}
+                      <span className="text-sky-400">
+                        {coach.cp ?? "-"}
+                      </span>
+                    </div>
+
+                    {/* TÁTICA PREFERIDA */}
+                    <div className="mt-3 text-[13px] font-semibold text-zinc-200">
+                      Tática preferida
+                    </div>
+
+                    <div className="mt-1 min-h-[38px] text-[13px] font-medium text-zinc-400">
+                      {coach.preferred_formation || "-"}
+                    </div>
+
+                    {/* NACIONALIDADE */}
+                    <div className="mt-3 text-[13px] font-semibold text-zinc-200">
+                      Nacionalidade
+                    </div>
+
+                    <div className="mt-1 text-[13px] font-medium text-zinc-400">
+                      {coach.nationality || "-"}
+                    </div>
+                  </Link>
+
+                  {/* LISTA */}
+                  <button
+                    type="button"
+                    disabled={cartLoadingId === coach.id || !myTeam}
+                    onClick={() => toggleCart(coach)}
+                    className={`mt-4 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      isInCart
+                        ? "border border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
+                        : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-green-500/40 hover:text-green-300"
+                    }`}
+                  >
+                    {cartLoadingId === coach.id
+                      ? "SALVANDO..."
+                      : isInCart
+                      ? "✓ NA LISTA — REMOVER"
+                      : "🛒 ADICIONAR À LISTA"}
+                  </button>
+
+                  {/* VALORES */}
+                  <div className="mt-4 border-t border-zinc-800 pt-3">
+                    <div className="text-[11px] font-black uppercase text-red-400">
+                      Valor Treinador
+                    </div>
+
+                    <div className="mt-1 text-[13px] font-medium text-red-300">
+                      {formatMoney(coach.value)}
+                    </div>
+
+                    <div className="mt-3 text-[11px] font-black uppercase text-purple-400">
+                      Valor Adjunto
+                    </div>
+
+                    <div className="mt-1 text-[13px] font-medium text-purple-300">
+                      {formatMoney(coach.assistant_value)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* PAGINAÇÃO */}
+        <div className="mt-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 p-3 shadow-lg">
+          <button
+            type="button"
+            disabled={page === 1 || loading}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            Anterior
+          </button>
+
+          <div className="hidden items-center gap-2 md:flex">
             {pageNumbers.map((pageNumber) => (
               <button
                 key={pageNumber}
                 type="button"
                 onClick={() => setPage(pageNumber)}
-                className={`min-w-12 rounded-xl border px-4 py-3 font-black ${
+                className={`min-w-10 rounded-lg px-3 py-2 text-sm font-black ${
                   pageNumber === page
-                    ? "border-green-500 bg-green-600"
-                    : "border-zinc-700 bg-zinc-900"
+                    ? "bg-green-600 text-white"
+                    : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                 }`}
               >
                 {pageNumber}
               </button>
             ))}
+          </div>
 
-            <button
-              type="button"
-              disabled={page === totalPages || loading}
-              onClick={() =>
-                setPage((current) =>
-                  Math.min(totalPages, current + 1)
-                )
-              }
-              className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 font-bold disabled:opacity-40"
-            >
-              Próxima
-            </button>
-          </nav>
-        )}
+          <div className="text-sm font-semibold text-zinc-400 md:hidden">
+            Página{" "}
+            <span className="font-black text-white">{page}</span> de{" "}
+            <span className="font-black text-white">{totalPages}</span>
+          </div>
+
+          <button
+            type="button"
+            disabled={page >= totalPages || loading}
+            onClick={() => setPage((current) => current + 1)}
+            className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
+          >
+            Próxima
+          </button>
+        </div>
       </div>
     </main>
   );
