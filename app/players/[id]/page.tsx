@@ -579,11 +579,18 @@ export default function PlayerPage() {
       <div
         style={{
           width: "100%",
-          maxWidth: "1180px",
-          margin: "0 auto",
-          padding: "12px",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}
       >
+        <div
+          style={{
+            width: isGoalkeeper ? "1450px" : "1180px",
+            minWidth: isGoalkeeper ? "1450px" : "1180px",
+            margin: "0 auto",
+            padding: "12px",
+          }}
+        >
         <button
           type="button"
           onClick={() => router.push("/players")}
@@ -784,6 +791,7 @@ export default function PlayerPage() {
           />
 
           <PhysicalCard player={player} />
+        </div>
         </div>
       </div>
     </main>
