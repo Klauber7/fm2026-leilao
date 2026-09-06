@@ -746,11 +746,22 @@ export default function PlayerPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateColumns: isGoalkeeper
+              ? "repeat(5, minmax(0, 1fr))"
+              : "repeat(4, minmax(0, 1fr))",
             gap: "7px",
             alignItems: "stretch",
           }}
         >
+          {isGoalkeeper && (
+            <AttributeCard
+              icon="🧤"
+              title="ATRIBUTOS DE GOLEIRO"
+              attributes={goalkeeperAttributes}
+              player={player}
+            />
+          )}
+
           <AttributeCard
             icon="🥾"
             title="ATRIBUTOS TÉCNICOS"
@@ -765,26 +776,15 @@ export default function PlayerPage() {
             player={player}
           />
 
-          <PhysicalCard player={player} />
-
           <AttributeCard
             icon="⚙️"
             title="OUTROS ATRIBUTOS"
             attributes={otherAttributes}
             player={player}
           />
-        </div>
 
-        {isGoalkeeper && (
-          <div style={{ marginTop: "7px" }}>
-            <AttributeCard
-              icon="🧤"
-              title="ATRIBUTOS DE GOLEIRO"
-              attributes={goalkeeperAttributes}
-              player={player}
-            />
-          </div>
-        )}
+          <PhysicalCard player={player} />
+        </div>
       </div>
     </main>
   );
