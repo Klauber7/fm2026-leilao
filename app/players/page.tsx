@@ -47,55 +47,70 @@ type AttributeFilter = {
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
 
-const ATTRIBUTE_OPTIONS = [
-  "(Tendência) para Saídas da Baliza",
-  "Aceleração",
-  "Agilidade",
-  "Agressividade",
-  "Alcance Aéreo",
-  "Antecipação",
-  "Aptidão Física",
-  "Bravura",
-  "Cabeceamento",
-  "Cantos",
-  "Comando de Área",
-  "Compostura",
-  "Comunicação",
-  "Concentração",
-  "Cruzamentos",
-  "Decisões",
-  "Desarme",
-  "Determinação",
-  "Equilíbrio",
-  "Excentricidade",
-  "Finalização",
-  "Finta",
-  "Força",
-  "Imprevisibilidade",
-  "Impulsão",
-  "Índice de Trabalho",
-  "Jogo de Mãos",
-  "Lançamentos",
-  "Lançamentos Longos",
-  "Liderança",
-  "Livres",
-  "Marcação",
-  "Marcação de Penáltis",
-  "Passe",
-  "Pontapé",
-  "Posicionamento",
-  "Primeiro Toque",
-  "Reflexos",
-  "Remates de Longe",
-  "Resistência",
-  "Saídas a Punhos",
-  "Sem Bola",
-  "Técnica",
-  "Trabalho de Equipa",
-  "Um Para Um",
-  "Velocidade",
-  "Visão de Jogo",
-] as const;
+const ATTRIBUTE_COLUMN_MAP = {
+  "Ambição": "ambition",
+  "Pressão": "pressure",
+  "Adaptabilidade": "adaptability",
+  "Versatilidade": "versatility",
+  "Temperamento": "temperament",
+  "Lealdade": "loyalty",
+  "Jogo Sujo": "dirtiness",
+  "Jogos Importantes": "important_matches",
+  "Consistência": "consistency",
+  "Profissionalismo": "professionalism",
+  "Propensão a Lesões": "injury_proneness",
+  "(Tendência) para Saídas da Baliza": "rushing_out",
+  "Saídas a Punhos": "punching",
+  "Alcance Aéreo": "aerial_reach",
+  "Comando de Área": "command_of_area",
+  "Comunicação": "communication",
+  "Excentricidade": "eccentricity",
+  "Jogo de Mãos": "handling",
+  "Lançamentos": "throwing",
+  "Pontapé": "kicking",
+  "Reflexos": "reflexes",
+  "Um Para Um": "one_on_ones",
+  "Cabeceamento": "heading",
+  "Cantos": "corners",
+  "Cruzamentos": "crossing",
+  "Desarme": "tackling",
+  "Finalização": "finishing",
+  "Finta": "dribbling",
+  "Lançamentos Longos": "long_throws",
+  "Livres": "free_kicks",
+  "Marcação": "marking",
+  "Marcação de Penáltis": "penalties",
+  "Passe": "passing",
+  "Primeiro Toque": "first_touch",
+  "Remates de Longe": "long_shots",
+  "Técnica": "technique",
+  "Agressividade": "aggression",
+  "Antecipação": "anticipation",
+  "Bravura": "bravery",
+  "Compostura": "composure",
+  "Concentração": "concentration",
+  "Decisões": "decisions",
+  "Determinação": "determination",
+  "Imprevisibilidade": "flair",
+  "Índice de Trabalho": "work_rate",
+  "Liderança": "leadership",
+  "Posicionamento": "positioning",
+  "Sem Bola": "off_the_ball",
+  "Trabalho de Equipa": "teamwork",
+  "Visão de Jogo": "vision",
+  "Aceleração": "acceleration",
+  "Agilidade": "agility",
+  "Aptidão Física": "natural_fitness",
+  "Equilíbrio": "balance",
+  "Força": "strength",
+  "Impulsão": "jumping_reach",
+  "Resistência": "stamina",
+  "Velocidade": "pace",
+} as const;
+
+const ATTRIBUTE_OPTIONS = Object.keys(ATTRIBUTE_COLUMN_MAP) as Array<
+  keyof typeof ATTRIBUTE_COLUMN_MAP
+>;
 
 
 const categories = [
@@ -722,17 +737,44 @@ export default function PlayersPage() {
             null
           );
 
-        if (
-          selectedCategory !==
-          "Todos"
-        ) {
-          query =
-            query.contains(
-              "category",
-              [
-                selectedCategory,
-              ]
-            );
+        if (selectedCategory !== "Todos") {
+          switch (selectedCategory) {
+            case "Goleiro":
+              query = query.eq("position", "GR");
+              break;
+
+            case "Zagueiro":
+              query = query.or(
+                "position.ilike.%D (C)%,position.ilike.%D (DC)%,position.ilike.%D (EC)%"
+              );
+              break;
+
+            case "Lateral":
+              query = query.or(
+                "position.ilike.%D/DA%,position.ilike.%DA (D)%,position.ilike.%DA (E)%,position.ilike.%DA (DE)%"
+              );
+              break;
+
+            case "Volante":
+              query = query.ilike("position", "%MD%");
+              break;
+
+            case "Meia Armador":
+              query = query.or(
+                "position.ilike.%M (C)%,position.ilike.%MO (C)%,position.ilike.%M/MO (C)%"
+              );
+              break;
+
+            case "Ponta":
+              query = query.or(
+                "position.ilike.%MO (D)%,position.ilike.%MO (E)%,position.ilike.%MO (DE)%,position.ilike.%MO (DC)%,position.ilike.%MO (EC)%,position.ilike.%M/MO (D)%,position.ilike.%M/MO (E)%,position.ilike.%M/MO (DE)%"
+              );
+              break;
+
+            case "Atacante":
+              query = query.ilike("position", "%PL (C)%");
+              break;
+          }
         }
 
         if (
@@ -836,9 +878,9 @@ export default function PlayersPage() {
         }
 
         /*
-          ATRIBUTOS JSONB:
-          Quando há filtros de atributos, usamos uma RPC no PostgreSQL
-          para comparar os valores como números (1-20).
+          ATRIBUTOS:
+          A nova base salva cada atributo em uma coluna própria.
+          Aplicamos até 6 filtros diretamente no PostgreSQL.
         */
         const activeAttributeFilters =
           attributeFilters.filter(
@@ -847,72 +889,29 @@ export default function PlayersPage() {
               (filter.min || filter.max)
           );
 
-        if (
-          activeAttributeFilters.length >
-          0
-        ) {
-          const {
-            data: matchingRows,
-            error: attributeError,
-          } =
-            await supabase.rpc(
-              "filter_player_ids_by_attributes",
-              {
-                p_filters:
-                  activeAttributeFilters.map(
-                    (filter) => ({
-                      attribute:
-                        filter.attribute,
-                      min:
-                        filter.min
-                          ? Number(
-                              filter.min
-                            )
-                          : null,
-                      max:
-                        filter.max
-                          ? Number(
-                              filter.max
-                            )
-                          : null,
-                    })
-                  ),
-              }
-            );
+        for (const filter of activeAttributeFilters) {
+          const column =
+            ATTRIBUTE_COLUMN_MAP[
+              filter.attribute as keyof typeof ATTRIBUTE_COLUMN_MAP
+            ];
 
-          if (attributeError) {
-            console.error(
-              "Erro ao filtrar atributos:",
-              attributeError
-            );
-
-            setPlayers([]);
-            setTotal(0);
-            setLoading(false);
-            return;
+          if (!column) {
+            continue;
           }
 
-          const matchingIds = (
-            matchingRows || []
-          ).map(
-            (row: any) =>
-              Number(row.player_id)
-          );
-
-          if (
-            matchingIds.length === 0
-          ) {
-            setPlayers([]);
-            setTotal(0);
-            setLoading(false);
-            return;
+          if (filter.min) {
+            query = query.gte(
+              column,
+              Number(filter.min)
+            );
           }
 
-          query =
-            query.in(
-              "id",
-              matchingIds
+          if (filter.max) {
+            query = query.lte(
+              column,
+              Number(filter.max)
             );
+          }
         }
 
         query =
