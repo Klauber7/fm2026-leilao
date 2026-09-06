@@ -46,6 +46,7 @@ type AttributeOption = {
 
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
+const PLAYERS_SEARCH_STATE_KEY = "friendzone_players_search_state";
 
 const CATEGORIES = [
   "Todos",
@@ -176,6 +177,7 @@ export default function PlayersPage() {
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [searchStateReady, setSearchStateReady] = useState(false);
 
   const [myTeam, setMyTeam] = useState<Team | null>(null);
   const [shoppingListIds, setShoppingListIds] = useState<Set<number>>(new Set());
@@ -357,14 +359,178 @@ export default function PlayersPage() {
     attributeFilters,
   ]);
 
+  /*
+    RESTAURA A PESQUISA QUANDO O USUÁRIO
+    VOLTA DA PÁGINA DE UM JOGADOR
+  */
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(
+        PLAYERS_SEARCH_STATE_KEY
+      );
+
+      if (saved) {
+        const state = JSON.parse(saved);
+
+        setSearch(
+          typeof state.search === "string"
+            ? state.search
+            : ""
+        );
+
+        setSelectedCategory(
+          typeof state.selectedCategory === "string"
+            ? state.selectedCategory
+            : "Todos"
+        );
+
+        setMinCA(
+          typeof state.minCA === "string"
+            ? state.minCA
+            : ""
+        );
+
+        setMaxCA(
+          typeof state.maxCA === "string"
+            ? state.maxCA
+            : ""
+        );
+
+        setMinCP(
+          typeof state.minCP === "string"
+            ? state.minCP
+            : ""
+        );
+
+        setMaxCP(
+          typeof state.maxCP === "string"
+            ? state.maxCP
+            : ""
+        );
+
+        setMinAge(
+          typeof state.minAge === "string"
+            ? state.minAge
+            : ""
+        );
+
+        setMaxAge(
+          typeof state.maxAge === "string"
+            ? state.maxAge
+            : ""
+        );
+
+        setMinValue(
+          typeof state.minValue === "string"
+            ? state.minValue
+            : ""
+        );
+
+        setMaxValue(
+          typeof state.maxValue === "string"
+            ? state.maxValue
+            : ""
+        );
+
+        setNationality(
+          typeof state.nationality === "string"
+            ? state.nationality
+            : ""
+        );
+
+        if (
+          Array.isArray(state.attributeFilters) &&
+          state.attributeFilters.length > 0
+        ) {
+          setAttributeFilters(
+            state.attributeFilters.slice(
+              0,
+              MAX_ATTRIBUTE_FILTERS
+            )
+          );
+        }
+
+        const savedPage = Number(state.page);
+
+        if (
+          Number.isInteger(savedPage) &&
+          savedPage >= 1
+        ) {
+          setPage(savedPage);
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao restaurar pesquisa de jogadores:",
+        error
+      );
+    } finally {
+      setSearchStateReady(true);
+    }
+  }, []);
+
+  /*
+    SALVA AUTOMATICAMENTE FILTROS + PÁGINA
+  */
+  useEffect(() => {
+    if (!searchStateReady) {
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(
+        PLAYERS_SEARCH_STATE_KEY,
+        JSON.stringify({
+          search,
+          selectedCategory,
+          minCA,
+          maxCA,
+          minCP,
+          maxCP,
+          minAge,
+          maxAge,
+          minValue,
+          maxValue,
+          nationality,
+          attributeFilters,
+          page,
+        })
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao salvar pesquisa de jogadores:",
+        error
+      );
+    }
+  }, [
+    searchStateReady,
+    search,
+    selectedCategory,
+    minCA,
+    maxCA,
+    minCP,
+    maxCP,
+    minAge,
+    maxAge,
+    minValue,
+    maxValue,
+    nationality,
+    attributeFilters,
+    page,
+  ]);
+
   useEffect(() => {
     loadTransferWindow();
     loadShoppingList();
   }, [loadTransferWindow, loadShoppingList]);
 
   useEffect(() => {
+    if (!searchStateReady) {
+      return;
+    }
+
     loadPlayers();
-  }, [loadPlayers]);
+  }, [loadPlayers, searchStateReady]);
 
   useEffect(() => {
     const channel = supabase
@@ -530,6 +696,12 @@ export default function PlayersPage() {
     setAttributeFilters([{ attribute: "", min: "", max: "" }]);
     setSelectedCategory("Todos");
     setPage(1);
+
+    try {
+      sessionStorage.removeItem(
+        PLAYERS_SEARCH_STATE_KEY
+      );
+    } catch {}
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
