@@ -190,6 +190,7 @@ export default function CoachesPage() {
         cp,
         preferred_formation,
         value,
+        value,
         team_id
         `,
         {
@@ -664,6 +665,17 @@ export default function CoachesPage() {
                       ? "✓ NA LISTA — REMOVER"
                       : "🛒 ADICIONAR À LISTA"}
                   </button>
+
+                  {/* VALOR */}
+                  <div className="mt-4 border-t border-zinc-800 pt-3">
+                    <div className="text-[12px] font-black uppercase text-red-400">
+                      VALOR
+                    </div>
+
+                    <div className="mt-1 text-[13px] font-medium text-red-300">
+                      {formatMoney(coach.value)}
+                    </div>
+                  </div>
                 </div>
               );
             })}
