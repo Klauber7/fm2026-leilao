@@ -1,5 +1,8 @@
 import { supabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function TeamsPage() {
   const { data: teams, error } = await supabase
     .from("teams")
@@ -39,9 +42,7 @@ export default async function TeamsPage() {
                     className="h-full w-full object-contain p-1.5"
                   />
                 ) : (
-                  <span className="text-xl">
-                    ⚽
-                  </span>
+                  <span className="text-xl">⚽</span>
                 )}
               </div>
 
@@ -52,9 +53,7 @@ export default async function TeamsPage() {
 
             <p className="mt-4 font-semibold text-green-400">
               Saldo: R${" "}
-              {Number(team.budget).toLocaleString(
-                "pt-BR"
-              )}
+              {Number(team.budget).toLocaleString("pt-BR")}
             </p>
 
             <p className="mt-2 text-slate-400">
