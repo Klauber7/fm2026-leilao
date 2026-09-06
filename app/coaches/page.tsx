@@ -31,15 +31,16 @@ type TransferWindow = {
 };
 
 const PAGE_SIZE = 50;
+const COACHES_SEARCH_STATE_KEY = "friendzone_coaches_search_state";
 
 const STAFF_ROLES = [
-  "Treinador",
-  "Adjunto",
-  "Preparador",
-  "Preparador físico",
-  "Treinador de goleiros",
-  "Fisioterapeuta",
-  "Analista",
+  { label: "Treinador", value: "Treinador" },
+  { label: "Adjunto", value: "Treinador Adjunto Principal" },
+  { label: "Preparador", value: "Preparador" },
+  { label: "Preparador físico", value: "Preparador físico" },
+  { label: "Treinador de goleiros", value: "Treinador de goleiros" },
+  { label: "Fisioterapeuta", value: "Fisioterapeuta" },
+  { label: "Analista", value: "Analista" },
 ];
 
 function cleanSearch(value: string) {
@@ -89,8 +90,111 @@ export default function CoachesPage() {
   const [maxCP, setMaxCP] = useState("");
 
   const [page, setPage] = useState(1);
+  const [searchStateReady, setSearchStateReady] = useState(false);
   const [total, setTotal] = useState(0);
   const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
+
+  /*
+    RESTAURA FILTROS + PAGINA
+    AO VOLTAR DA PAGINA DE UM TREINADOR
+  */
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem(
+        COACHES_SEARCH_STATE_KEY
+      );
+
+      if (saved) {
+        const state = JSON.parse(saved);
+
+        setSearch(
+          typeof state.search === "string"
+            ? state.search
+            : ""
+        );
+
+        setRoleFilter(
+          typeof state.roleFilter === "string"
+            ? state.roleFilter
+            : "all"
+        );
+
+        setMinCA(
+          typeof state.minCA === "string"
+            ? state.minCA
+            : ""
+        );
+
+        setMaxCA(
+          typeof state.maxCA === "string"
+            ? state.maxCA
+            : ""
+        );
+
+        setMinCP(
+          typeof state.minCP === "string"
+            ? state.minCP
+            : ""
+        );
+
+        setMaxCP(
+          typeof state.maxCP === "string"
+            ? state.maxCP
+            : ""
+        );
+
+        const savedPage = Number(state.page);
+        if (Number.isInteger(savedPage) && savedPage >= 1) {
+          setPage(savedPage);
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao restaurar pesquisa de treinadores:",
+        error
+      );
+    } finally {
+      setSearchStateReady(true);
+    }
+  }, []);
+
+  /*
+    SALVA AUTOMATICAMENTE FILTROS + PAGINA
+  */
+  useEffect(() => {
+    if (!searchStateReady) {
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(
+        COACHES_SEARCH_STATE_KEY,
+        JSON.stringify({
+          search,
+          roleFilter,
+          minCA,
+          maxCA,
+          minCP,
+          maxCP,
+          page
+        })
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao salvar pesquisa de treinadores:",
+        error
+      );
+    }
+  }, [
+    searchStateReady,
+    search,
+    roleFilter,
+    minCA,
+    maxCA,
+    minCP,
+    maxCP,
+    page
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -203,7 +307,6 @@ export default function CoachesPage() {
         cp,
         preferred_formation,
         value,
-        value,
         team_id
         `,
         {
@@ -274,107 +377,12 @@ export default function CoachesPage() {
   ]);
 
   useEffect(() => {
-    loadTransferWindow();
-    loadCoaches();
-  }, [loadTransferWindow, loadCoaches]);
-
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("coaches-market")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "coaches",
-        },
-        () => loadCoaches()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadCoaches]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("coaches-transfer-window")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "transfer_windows",
-        },
-        () => loadTransferWindow()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadTransferWindow]);
-
-  useEffect(() => {
-    if (!myTeam) return;
-
-    const channel = supabase
-      .channel(`staff-cart-${myTeam.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "staff_shopping_list",
-          filter: `team_id=eq.${myTeam.id}`,
-        },
-        loadCart
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [myTeam, loadCart]);
-
-  async function toggleCart(coach: Coach) {
-    const team = myTeam ?? (await resolveMyTeam());
-
-    if (!team) {
-      setCartMessage(
-        "Não foi possível identificar seu clube. Atualize a página ou confirme se sua conta está vinculada a um time."
-      );
+    if (!searchStateReady) {
       return;
     }
 
-    setCartLoadingId(coach.id);
-    setCartMessage("");
-
-    const isInCart = cartIds.has(coach.id);
-
-    if (isInCart) {
-      const { error } = await supabase
-        .from("staff_shopping_list")
-        .delete()
-        .eq("team_id", team.id)
-        .eq("coach_id", coach.id);
-
-      if (error) {
-        setCartMessage("Não foi possível remover o treinador da lista.");
-        setCartLoadingId(null);
-        return;
-      }
-
-      setCartIds((current) => {
-        const next = new Set(current);
-        next.delete(coach.id);
-        return next;
-      });
+    loadCoaches();
+  }, [myTeam, loadCart, searchStateReady]);
 
       setCartMessage(`${coach.name} foi removido da sua lista.`);
     } else {
@@ -423,6 +431,12 @@ export default function CoachesPage() {
     setMinCP("");
     setMaxCP("");
     setPage(1);
+    try {
+      sessionStorage.removeItem(
+        COACHES_SEARCH_STATE_KEY
+      );
+    } catch {}
+
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -513,8 +527,8 @@ export default function CoachesPage() {
               <option value="all">Todas as funções</option>
 
               {STAFF_ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {role}
+                <option key={role.value} value={role.value}>
+                  {role.label}
                 </option>
               ))}
             </select>
