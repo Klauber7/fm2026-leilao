@@ -23,6 +23,13 @@ type Team = {
   name: string;
 };
 
+type TransferWindow = {
+  id: number;
+  window_number: number;
+  name: string;
+  status: string;
+};
+
 const PAGE_SIZE = 50;
 
 const STAFF_ROLES = [
@@ -83,6 +90,7 @@ export default function CoachesPage() {
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -131,6 +139,33 @@ export default function CoachesPage() {
 
     setCartIds(
       new Set((data || []).map((row: any) => Number(row.coach_id)))
+    );
+  }, []);
+
+  const loadTransferWindow = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("transfer_windows")
+      .select(`
+        id,
+        window_number,
+        name,
+        status
+      `)
+      .eq("status", "open")
+      .order("window_number", {
+        ascending: false,
+      })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Erro ao carregar janela:", error);
+      setCurrentWindow(null);
+      return;
+    }
+
+    setCurrentWindow(
+      data ? (data as TransferWindow) : null
     );
   }, []);
 
@@ -225,8 +260,9 @@ export default function CoachesPage() {
   ]);
 
   useEffect(() => {
+    loadTransferWindow();
     loadCoaches();
-  }, [loadCoaches]);
+  }, [loadTransferWindow, loadCoaches]);
 
   useEffect(() => {
     loadCart();
@@ -250,6 +286,25 @@ export default function CoachesPage() {
       supabase.removeChannel(channel);
     };
   }, [loadCoaches]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("coaches-transfer-window")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transfer_windows",
+        },
+        () => loadTransferWindow()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadTransferWindow]);
 
   useEffect(() => {
     if (!myTeam) return;
@@ -353,6 +408,10 @@ export default function CoachesPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const marketOpen =
+    Boolean(
+      currentWindow
+    );
 
   const pageNumbers = useMemo(() => {
     const first = Math.max(1, page - 2);
@@ -554,7 +613,7 @@ export default function CoachesPage() {
                     </div>
 
                     <div className="mt-1 min-h-[38px] text-[13px] font-medium text-zinc-400">
-                      {coach.preferred_formation || "-"}
+                      {coach.preferred_formation?.trim() || "Não informada"}
                     </div>
 
                     {/* NACIONALIDADE */}
@@ -567,13 +626,26 @@ export default function CoachesPage() {
                     </div>
                   </Link>
 
-                  {/* BARRA DE OFERTA / LANCE */}
-                  <Link
-                    href={`/coaches/${coach.id}`}
-                    className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
-                  >
-                    DAR LANCE — {formatMoney(coach.value)}
-                  </Link>
+                  {/* BOTÃO DE LANCE */}
+                  {marketOpen ? (
+                    <Link
+                      href={`/coaches/${coach.id}`}
+                      className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
+                    >
+                      DAR LANCE —{" "}
+                      {formatMoney(
+                        coach.value
+                      )}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="mt-4 w-full cursor-not-allowed rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-black text-red-400"
+                    >
+                      🔒 MERCADO FECHADO
+                    </button>
+                  )}
 
                   {/* LISTA */}
                   <button
@@ -592,17 +664,6 @@ export default function CoachesPage() {
                       ? "✓ NA LISTA — REMOVER"
                       : "🛒 ADICIONAR À LISTA"}
                   </button>
-
-                  {/* VALOR TREINADOR */}
-                  <div className="mt-4 border-t border-zinc-800 pt-3">
-                    <div className="text-[12px] font-black uppercase text-red-400">
-                      Valor
-                    </div>
-
-                    <div className="mt-1 text-[13px] font-medium text-red-300">
-                      {formatMoney(coach.value)}
-                    </div>
-                  </div>
                 </div>
               );
             })}
