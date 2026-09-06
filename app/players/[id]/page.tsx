@@ -746,7 +746,7 @@ export default function PlayerPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
             gap: "7px",
             alignItems: "stretch",
           }}
@@ -766,34 +766,25 @@ export default function PlayerPage() {
           />
 
           <PhysicalCard player={player} />
-        </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isGoalkeeper
-              ? "1fr 1fr"
-              : "1fr",
-            gap: "7px",
-            marginTop: "7px",
-          }}
-        >
           <AttributeCard
             icon="⚙️"
             title="OUTROS ATRIBUTOS"
             attributes={otherAttributes}
             player={player}
           />
+        </div>
 
-          {isGoalkeeper && (
+        {isGoalkeeper && (
+          <div style={{ marginTop: "7px" }}>
             <AttributeCard
               icon="🧤"
               title="ATRIBUTOS DE GOLEIRO"
               attributes={goalkeeperAttributes}
               player={player}
             />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );
