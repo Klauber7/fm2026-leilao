@@ -15,7 +15,6 @@ type Coach = {
   cp: number | null;
   preferred_formation: string | null;
   value: number | null;
-  assistant_value: number | null;
   team_id: number | null;
 };
 
@@ -156,7 +155,6 @@ export default function CoachesPage() {
         cp,
         preferred_formation,
         value,
-        assistant_value,
         team_id
         `,
         {
@@ -569,12 +567,20 @@ export default function CoachesPage() {
                     </div>
                   </Link>
 
+                  {/* BARRA DE OFERTA / LANCE */}
+                  <Link
+                    href={`/coaches/${coach.id}`}
+                    className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
+                  >
+                    DAR LANCE — {formatMoney(coach.value)}
+                  </Link>
+
                   {/* LISTA */}
                   <button
                     type="button"
                     disabled={cartLoadingId === coach.id || !myTeam}
                     onClick={() => toggleCart(coach)}
-                    className={`mt-4 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`mt-2 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       isInCart
                         ? "border border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
                         : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-green-500/40 hover:text-green-300"
@@ -587,22 +593,14 @@ export default function CoachesPage() {
                       : "🛒 ADICIONAR À LISTA"}
                   </button>
 
-                  {/* VALORES */}
+                  {/* VALOR TREINADOR */}
                   <div className="mt-4 border-t border-zinc-800 pt-3">
-                    <div className="text-[11px] font-black uppercase text-red-400">
-                      Valor Treinador
+                    <div className="text-[12px] font-black uppercase text-red-400">
+                      Valor
                     </div>
 
                     <div className="mt-1 text-[13px] font-medium text-red-300">
                       {formatMoney(coach.value)}
-                    </div>
-
-                    <div className="mt-3 text-[11px] font-black uppercase text-purple-400">
-                      Valor Adjunto
-                    </div>
-
-                    <div className="mt-1 text-[13px] font-medium text-purple-300">
-                      {formatMoney(coach.assistant_value)}
                     </div>
                   </div>
                 </div>
