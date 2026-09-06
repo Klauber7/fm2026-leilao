@@ -101,38 +101,51 @@ export default function CoachesPage() {
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const loadCart = useCallback(async () => {
+  const resolveMyTeam = useCallback(async (): Promise<Team | null> => {
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      setMyTeam(null);
-      setCartIds(new Set());
-      return;
+    if (userError || !user) {
+      return null;
     }
 
     const { data: teamData, error: teamError } = await supabase
       .from("teams")
       .select("id, name")
       .eq("manager_id", user.id)
+      .limit(1)
       .maybeSingle();
 
     if (teamError || !teamData) {
+      if (teamError) {
+        console.error("Erro ao identificar clube:", teamError);
+      }
+      return null;
+    }
+
+    const team = teamData as Team;
+    setMyTeam(team);
+    return team;
+  }, []);
+
+  const loadCart = useCallback(async () => {
+    const team = await resolveMyTeam();
+
+    if (!team) {
       setMyTeam(null);
       setCartIds(new Set());
       return;
     }
 
-    setMyTeam(teamData as Team);
-
     const { data, error } = await supabase
       .from("staff_shopping_list")
       .select("coach_id")
-      .eq("team_id", teamData.id);
+      .eq("team_id", team.id);
 
     if (error) {
-      console.error("Erro ao carregar carrinho:", error);
+      console.error("Erro ao carregar lista de staff:", error);
       setCartIds(new Set());
       return;
     }
@@ -140,7 +153,7 @@ export default function CoachesPage() {
     setCartIds(
       new Set((data || []).map((row: any) => Number(row.coach_id)))
     );
-  }, []);
+  }, [resolveMyTeam]);
 
   const loadTransferWindow = useCallback(async () => {
     const { data, error } = await supabase
@@ -330,8 +343,12 @@ export default function CoachesPage() {
   }, [myTeam, loadCart]);
 
   async function toggleCart(coach: Coach) {
-    if (!myTeam) {
-      setCartMessage("Não foi possível identificar o seu clube.");
+    const team = myTeam ?? (await resolveMyTeam());
+
+    if (!team) {
+      setCartMessage(
+        "Não foi possível identificar seu clube. Atualize a página ou confirme se sua conta está vinculada a um time."
+      );
       return;
     }
 
@@ -344,7 +361,7 @@ export default function CoachesPage() {
       const { error } = await supabase
         .from("staff_shopping_list")
         .delete()
-        .eq("team_id", myTeam.id)
+        .eq("team_id", team.id)
         .eq("coach_id", coach.id);
 
       if (error) {
@@ -364,7 +381,7 @@ export default function CoachesPage() {
       const { error } = await supabase
         .from("staff_shopping_list")
         .insert({
-          team_id: myTeam.id,
+          team_id: team.id,
           coach_id: coach.id,
         });
 
@@ -651,7 +668,7 @@ export default function CoachesPage() {
                   {/* LISTA */}
                   <button
                     type="button"
-                    disabled={cartLoadingId === coach.id || !myTeam}
+                    disabled={cartLoadingId === coach.id}
                     onClick={() => toggleCart(coach)}
                     className={`mt-2 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       isInCart
