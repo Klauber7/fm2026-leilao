@@ -6,12 +6,12 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 import { supabase } from "@/lib/supabase";
 
+type DraftMode = "players" | "staff";
+type TransferType = "free" | "paid";
 
 type Player = {
   id: number;
@@ -25,6 +25,18 @@ type Player = {
   team_id: number | null;
 };
 
+type Coach = {
+  id: number;
+  name: string;
+  age: number | null;
+  role: string | null;
+  nationality: string | null;
+  ca: number | null;
+  pa: number | null;
+  value: number | null;
+  team_id: number | null;
+  hired_at: string | null;
+};
 
 type Team = {
   id: number;
@@ -33,263 +45,204 @@ type Team = {
   manager_name: string | null;
 };
 
-
-function money(
-  value: number | null | undefined
-) {
-  return Number(value || 0).toLocaleString(
-    "pt-BR",
-    {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-    }
-  );
+function money(value: number | null | undefined) {
+  return Number(value || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
 }
-
 
 export default function AdminDraftPage() {
   const router = useRouter();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingPage, setLoadingPage] = useState(true);
 
-  const [isAdmin, setIsAdmin] =
-    useState(false);
+  const [mode, setMode] = useState<DraftMode>("players");
+  const [teams, setTeams] = useState<Team[]>([]);
 
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [staff, setStaff] = useState<Coach[]>([]);
 
-  const [loadingPage, setLoadingPage] =
-    useState(true);
-
-
-  const [teams, setTeams] =
-    useState<Team[]>([]);
-
-
-  const [players, setPlayers] =
-    useState<Player[]>([]);
-
-
-  const [
-    selectedPlayer,
-    setSelectedPlayer,
-  ] =
+  const [selectedPlayer, setSelectedPlayer] =
     useState<Player | null>(null);
-
+  const [selectedCoach, setSelectedCoach] =
+    useState<Coach | null>(null);
 
   const [selectedTeamId, setSelectedTeamId] =
     useState("");
-
-
-  const [search, setSearch] =
-    useState("");
-
-
-  const [amount, setAmount] =
-    useState("");
-
-
+  const [search, setSearch] = useState("");
+  const [amount, setAmount] = useState("");
   const [transferType, setTransferType] =
-    useState<"free" | "paid">("free");
+    useState<TransferType>("free");
 
-
-  const [searching, setSearching] =
-    useState(false);
-
-
-  const [saving, setSaving] =
-    useState(false);
-
+  const [searching, setSearching] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [freePlayersCount, setFreePlayersCount] =
     useState(0);
+  const [freeStaffCount, setFreeStaffCount] =
+    useState(0);
 
+  const selectedItem =
+    mode === "players" ? selectedPlayer : selectedCoach;
 
   const currentTeam = useMemo(() => {
-    if (!selectedPlayer?.team_id) {
-      return null;
-    }
+    const teamId =
+      mode === "players"
+        ? selectedPlayer?.team_id
+        : selectedCoach?.team_id;
+
+    if (!teamId) return null;
 
     return (
-      teams.find(
-        (team) =>
-          team.id === selectedPlayer.team_id
-      ) || null
+      teams.find((team) => team.id === teamId) || null
     );
-  }, [
-    selectedPlayer,
-    teams,
-  ]);
-
+  }, [mode, selectedPlayer, selectedCoach, teams]);
 
   const destinationTeam = useMemo(() => {
     const id = Number(selectedTeamId);
 
-    if (!id) {
-      return null;
+    if (!id) return null;
+
+    return teams.find((team) => team.id === id) || null;
+  }, [selectedTeamId, teams]);
+
+  const resetSelection = useCallback(() => {
+    setPlayers([]);
+    setStaff([]);
+    setSelectedPlayer(null);
+    setSelectedCoach(null);
+    setSelectedTeamId("");
+    setSearch("");
+    setAmount("");
+    setTransferType("free");
+  }, []);
+
+  const changeMode = (nextMode: DraftMode) => {
+    if (saving) return;
+    setMode(nextMode);
+    resetSelection();
+  };
+
+  const loadPage = useCallback(async () => {
+    setLoadingPage(true);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      router.replace("/login");
+      return;
     }
 
-    return (
-      teams.find(
-        (team) => team.id === id
-      ) || null
-    );
-  }, [
-    selectedTeamId,
-    teams,
-  ]);
+    const {
+      data: adminData,
+      error: adminError,
+    } = await supabase
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
+    if (adminError) {
+      console.error("Erro ao verificar ADM:", adminError);
+      alert("Não foi possível verificar sua permissão.");
+      router.replace("/dashboard");
+      return;
+    }
 
-  const loadPage =
-    useCallback(async () => {
-      setLoadingPage(true);
+    if (!adminData) {
+      alert("Você não possui acesso administrativo.");
+      router.replace("/dashboard");
+      return;
+    }
 
+    setIsAdmin(true);
 
-      const {
-        data: { user },
-        error: userError,
-      } =
-        await supabase.auth.getUser();
+    const [
+      teamsResponse,
+      freePlayersResponse,
+      freeStaffResponse,
+    ] = await Promise.all([
+      supabase
+        .from("teams")
+        .select(`
+          id,
+          name,
+          budget,
+          manager_name
+        `)
+        .order("name", { ascending: true }),
 
+      supabase
+        .from("players")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .is("team_id", null),
 
-      if (userError || !user) {
-        router.replace("/login");
-        return;
-      }
+      supabase
+        .from("coaches")
+        .select("id", {
+          count: "exact",
+          head: true,
+        })
+        .is("team_id", null),
+    ]);
 
-
-      const {
-        data: adminData,
-        error: adminError,
-      } =
-        await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-
-      if (adminError) {
-        console.error(
-          "Erro ao verificar ADM:",
-          adminError
-        );
-
-        alert(
-          "Não foi possível verificar sua permissão."
-        );
-
-        router.replace("/dashboard");
-
-        return;
-      }
-
-
-      if (!adminData) {
-        alert(
-          "Você não possui acesso administrativo."
-        );
-
-        router.replace("/dashboard");
-
-        return;
-      }
-
-
-      setIsAdmin(true);
-
-
-      const [
-        teamsResponse,
-        freePlayersResponse,
-      ] =
-        await Promise.all([
-          supabase
-            .from("teams")
-            .select(
-              `
-              id,
-              name,
-              budget,
-              manager_name
-              `
-            )
-            .order("name", {
-              ascending: true,
-            }),
-
-          supabase
-            .from("players")
-            .select(
-              "id",
-              {
-                count: "exact",
-                head: true,
-              }
-            )
-            .is("team_id", null),
-        ]);
-
-
-      if (teamsResponse.error) {
-        console.error(
-          "Erro ao carregar clubes:",
-          teamsResponse.error
-        );
-
-        alert(
-          "Não foi possível carregar os clubes."
-        );
-
-        setLoadingPage(false);
-
-        return;
-      }
-
-
-      setTeams(
-        (teamsResponse.data || []) as Team[]
+    if (teamsResponse.error) {
+      console.error(
+        "Erro ao carregar clubes:",
+        teamsResponse.error
       );
-
-      setFreePlayersCount(
-        freePlayersResponse.count || 0
-      );
-
-
+      alert("Não foi possível carregar os clubes.");
       setLoadingPage(false);
-    }, [router]);
+      return;
+    }
 
+    if (freePlayersResponse.error) {
+      console.error(
+        "Erro ao contar jogadores:",
+        freePlayersResponse.error
+      );
+    }
+
+    if (freeStaffResponse.error) {
+      console.error(
+        "Erro ao contar staff:",
+        freeStaffResponse.error
+      );
+    }
+
+    setTeams((teamsResponse.data || []) as Team[]);
+    setFreePlayersCount(freePlayersResponse.count || 0);
+    setFreeStaffCount(freeStaffResponse.count || 0);
+    setLoadingPage(false);
+  }, [router]);
 
   useEffect(() => {
     loadPage();
   }, [loadPage]);
 
+  async function searchItems() {
+    const cleanSearch = search.trim();
 
-  async function searchPlayers() {
-    const cleanSearch =
-      search.trim();
-
-
-    if (
-      cleanSearch.length < 2
-    ) {
-      alert(
-        "Digite pelo menos 2 caracteres."
-      );
-
+    if (cleanSearch.length < 2) {
+      alert("Digite pelo menos 2 caracteres.");
       return;
     }
 
-
     setSearching(true);
 
-
-    const {
-      data,
-      error,
-    } =
-      await supabase
+    if (mode === "players") {
+      const { data, error } = await supabase
         .from("players")
-        .select(
-          `
+        .select(`
           id,
           unique_id,
           name,
@@ -299,314 +252,265 @@ export default function AdminDraftPage() {
           ca,
           club,
           team_id
-          `
-        )
-        .ilike(
-          "name",
-          `%${cleanSearch}%`
-        )
+        `)
+        .ilike("name", `%${cleanSearch}%`)
         .order("ca", {
           ascending: false,
           nullsFirst: false,
         })
         .limit(50);
 
+      setSearching(false);
+
+      if (error) {
+        console.error("Erro na busca:", error);
+        alert("Erro ao buscar jogadores.");
+        return;
+      }
+
+      setPlayers((data || []) as Player[]);
+      setStaff([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("coaches")
+      .select(`
+        id,
+        name,
+        age,
+        role,
+        nationality,
+        ca,
+        pa,
+        value,
+        team_id,
+        hired_at
+      `)
+      .ilike("name", `%${cleanSearch}%`)
+      .order("ca", {
+        ascending: false,
+        nullsFirst: false,
+      })
+      .order("name", {
+        ascending: true,
+      })
+      .limit(50);
 
     setSearching(false);
 
-
     if (error) {
-      console.error(
-        "Erro na busca:",
-        error
-      );
-
-      alert(
-        "Erro ao buscar jogadores."
-      );
-
+      console.error("Erro na busca de staff:", error);
+      alert("Erro ao buscar membros do staff.");
       return;
     }
 
-
-    setPlayers(
-      (data || []) as Player[]
-    );
+    setStaff((data || []) as Coach[]);
+    setPlayers([]);
   }
 
-
-  function selectPlayer(
-    player: Player
-  ) {
+  function selectPlayer(player: Player) {
     setSelectedPlayer(player);
-
+    setSelectedCoach(null);
     setPlayers([]);
-
+    setStaff([]);
     setSearch(player.name);
   }
 
+  function selectCoach(coach: Coach) {
+    setSelectedCoach(coach);
+    setSelectedPlayer(null);
+    setPlayers([]);
+    setStaff([]);
+    setSearch(coach.name);
+  }
 
-  async function transferPlayer() {
-    if (!selectedPlayer) {
+  async function transferSelected() {
+    if (!selectedItem) {
       alert(
-        "Escolha um jogador."
+        mode === "players"
+          ? "Escolha um jogador."
+          : "Escolha um membro do staff."
       );
-
       return;
     }
 
+    const teamId = Number(selectedTeamId);
 
-    const teamId =
-      Number(selectedTeamId);
-
+    if (!Number.isInteger(teamId) || teamId <= 0) {
+      alert("Escolha o clube de destino.");
+      return;
+    }
 
     if (
-      !Number.isInteger(teamId) ||
-      teamId <= 0
+      selectedItem.team_id !== null &&
+      selectedItem.team_id === teamId
     ) {
       alert(
-        "Escolha o clube de destino."
+        mode === "players"
+          ? "Esse jogador já pertence ao clube selecionado."
+          : "Esse membro do staff já pertence ao clube selecionado."
       );
-
       return;
     }
-
-
-    if (
-      selectedPlayer.team_id !== null &&
-      selectedPlayer.team_id === teamId
-    ) {
-      alert(
-        "Esse jogador já pertence ao clube selecionado."
-      );
-
-      return;
-    }
-
 
     let finalAmount = 0;
 
-
-    if (
-      transferType === "paid"
-    ) {
-      finalAmount =
-        Number(amount);
-
+    if (transferType === "paid") {
+      finalAmount = Number(amount);
 
       if (
-        !Number.isFinite(
-          finalAmount
-        ) ||
+        !Number.isFinite(finalAmount) ||
         finalAmount <= 0
       ) {
-        alert(
-          "Digite um valor válido."
-        );
-
+        alert("Digite um valor válido.");
         return;
       }
     }
 
-
     if (
       destinationTeam &&
-      finalAmount >
-        Number(
-          destinationTeam.budget ||
-          0
-        )
+      finalAmount > Number(destinationTeam.budget || 0)
     ) {
       alert(
         `O ${destinationTeam.name} possui apenas ${money(
           destinationTeam.budget
         )} disponíveis.`
       );
-
       return;
     }
 
+    const label =
+      mode === "players" ? "jogador" : "staff";
 
-    const confirmed =
-      window.confirm(
-        transferType === "free"
-          ? `Transferir ${selectedPlayer.name} para ${destinationTeam?.name} sem custo?`
-          : `Transferir ${selectedPlayer.name} para ${destinationTeam?.name} por ${money(
-              finalAmount
-            )}?`
-      );
+    const confirmed = window.confirm(
+      transferType === "free"
+        ? `Transferir ${selectedItem.name} para ${destinationTeam?.name} sem custo?`
+        : `Transferir ${selectedItem.name} para ${destinationTeam?.name} por ${money(
+            finalAmount
+          )}?`
+    );
 
-
-    if (!confirmed) {
-      return;
-    }
-
+    if (!confirmed) return;
 
     setSaving(true);
 
+    const rpcName =
+      mode === "players"
+        ? "admin_draft_transfer"
+        : "admin_draft_staff_transfer";
 
-    const {
-      data,
-      error,
-    } =
-      await supabase.rpc(
-        "admin_draft_transfer",
-        {
-          p_player_id:
-            selectedPlayer.id,
+    const rpcParams =
+      mode === "players"
+        ? {
+            p_player_id: selectedPlayer!.id,
+            p_team_id: teamId,
+            p_amount: finalAmount,
+          }
+        : {
+            p_coach_id: selectedCoach!.id,
+            p_team_id: teamId,
+            p_amount: finalAmount,
+          };
 
-          p_team_id:
-            teamId,
-
-          p_amount:
-            finalAmount,
-        }
-      );
-
+    const { data, error } = await supabase.rpc(
+      rpcName,
+      rpcParams
+    );
 
     setSaving(false);
 
-
     if (error) {
       console.error(
-        "Erro na transferência:",
+        `Erro na transferência de ${label}:`,
         error
       );
 
+      const message = error.message || "";
 
-      if (
-        error.message.includes(
-          "NOT_ADMIN"
-        )
-      ) {
-        alert(
-          "Você não possui permissão de ADM."
-        );
-
+      if (message.includes("NOT_ADMIN")) {
+        alert("Você não possui permissão de ADM.");
         return;
       }
 
-
-      if (
-        error.message.includes(
-          "PLAYER_NOT_FOUND"
-        )
-      ) {
-        alert(
-          "Jogador não encontrado."
-        );
-
+      if (message.includes("PLAYER_NOT_FOUND")) {
+        alert("Jogador não encontrado.");
         return;
       }
 
-
-      if (
-        error.message.includes(
-          "TEAM_NOT_FOUND"
-        )
-      ) {
-        alert(
-          "Clube não encontrado."
-        );
-
+      if (message.includes("COACH_NOT_FOUND")) {
+        alert("Membro do staff não encontrado.");
         return;
       }
 
+      if (message.includes("TEAM_NOT_FOUND")) {
+        alert("Clube não encontrado.");
+        return;
+      }
 
-      if (
-        error.message.includes(
-          "PLAYER_ALREADY_IN_TEAM"
-        )
-      ) {
+      if (message.includes("PLAYER_ALREADY_IN_TEAM")) {
         alert(
           "Esse jogador já pertence ao clube selecionado."
         );
-
         return;
       }
 
+      if (message.includes("COACH_ALREADY_IN_TEAM")) {
+        alert(
+          "Esse membro do staff já pertence ao clube selecionado."
+        );
+        return;
+      }
 
-      if (
-        error.message.includes(
-          "INSUFFICIENT_BUDGET"
-        )
-      ) {
+      if (message.includes("INSUFFICIENT_BUDGET")) {
         alert(
           "O clube não possui orçamento suficiente."
         );
-
         return;
       }
 
-
-      alert(
-        error.message
-      );
-
+      alert(message);
       return;
     }
 
-
-    console.log(
-      "Transferência:",
-      data
-    );
-
+    console.log("Transferência:", data);
 
     alert(
-      `${selectedPlayer.name} transferido para ${destinationTeam?.name} com sucesso!`
+      `${selectedItem.name} transferido para ${destinationTeam?.name} com sucesso!`
     );
 
-
-    setSelectedPlayer(null);
-
-    setSearch("");
-
-    setPlayers([]);
-
-    setSelectedTeamId("");
-
-    setAmount("");
-
-    setTransferType("free");
-
-
+    resetSelection();
     await loadPage();
   }
 
-
   if (loadingPage) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
-        <p className="text-zinc-400 font-bold">
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+        <p className="font-bold text-zinc-400">
           Verificando acesso administrativo...
         </p>
       </main>
     );
   }
 
-
-  if (!isAdmin) {
-    return null;
-  }
-
+  if (!isAdmin) return null;
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white md:px-10">
+    <main className="min-h-screen bg-zinc-950 px-4 py-8 text-white sm:px-6 md:px-10">
       <div className="mx-auto max-w-7xl">
-
         <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <header>
             <p className="font-bold uppercase tracking-widest text-orange-400">
               Área administrativa
             </p>
 
-            <h1 className="mt-2 text-5xl font-black">
+            <h1 className="mt-2 text-4xl font-black sm:text-5xl">
               🎯 Admin Draft
             </h1>
 
             <p className="mt-3 max-w-3xl text-zinc-400">
-              Ferramenta administrativa para colocar jogadores nos clubes durante o draft ou fazer correções manuais.
+              Controle o Draft de Jogadores e o Draft de
+              Staff na mesma área.
             </p>
           </header>
 
@@ -627,13 +531,57 @@ export default function AdminDraftPage() {
           </div>
         </div>
 
+        {/* ABAS */}
+        <section className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => changeMode("players")}
+            className={`rounded-2xl border p-5 text-left transition ${
+              mode === "players"
+                ? "border-orange-500 bg-orange-500/10"
+                : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
+            }`}
+          >
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+              Draft
+            </p>
+            <p className="mt-2 text-2xl font-black">
+              ⚽ Jogadores
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Escolha jogadores e envie diretamente para os
+              clubes.
+            </p>
+          </button>
 
-        <section className="grid gap-4 md:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => changeMode("staff")}
+            className={`rounded-2xl border p-5 text-left transition ${
+              mode === "staff"
+                ? "border-purple-500 bg-purple-500/10"
+                : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
+            }`}
+          >
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+              Draft
+            </p>
+            <p className="mt-2 text-2xl font-black">
+              👔 Staff
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">
+              Treinadores, adjuntos, preparadores,
+              fisioterapeutas e demais profissionais.
+            </p>
+          </button>
+        </section>
+
+        {/* RESUMO */}
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
             <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
               Clubes
             </p>
-
             <p className="mt-2 text-3xl font-black text-orange-400">
               {teams.length}
             </p>
@@ -641,173 +589,198 @@ export default function AdminDraftPage() {
 
           <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-5">
             <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-              Jogadores sem clube
+              Jogadores livres
             </p>
-
             <p className="mt-2 text-3xl font-black text-green-400">
               {freePlayersCount.toLocaleString("pt-BR")}
             </p>
           </div>
 
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/5 p-5">
+            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+              Staff livre
+            </p>
+            <p className="mt-2 text-3xl font-black text-purple-400">
+              {freeStaffCount.toLocaleString("pt-BR")}
+            </p>
+          </div>
+
           <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
             <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-              Função
+              Modo atual
             </p>
-
             <p className="mt-2 text-xl font-black text-blue-400">
-              Draft / Correção
+              {mode === "players"
+                ? "Draft de Jogadores"
+                : "Draft de Staff"}
             </p>
           </div>
         </section>
-
 
         <section className="mt-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5">
           <p className="font-black text-yellow-400">
             ⚠️ Ferramenta administrativa
           </p>
-
           <p className="mt-2 text-sm leading-6 text-zinc-300">
-            Esta página transfere o jogador diretamente. Use somente para escolhas oficiais do draft ou correções do administrador.
+            A transferência é feita diretamente para o clube.
+            Use somente para escolhas oficiais do draft ou
+            correções administrativas.
           </p>
         </section>
 
-
-        {/* BUSCAR JOGADOR */}
-
-        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-
+        {/* BUSCA */}
+        <section className="mt-10 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
           <h2 className="text-2xl font-black">
-            1. Escolher jogador
+            1.{" "}
+            {mode === "players"
+              ? "Escolher jogador"
+              : "Escolher membro do staff"}
           </h2>
 
-
           <div className="mt-5 flex flex-col gap-3 md:flex-row">
-
             <input
               type="text"
               value={search}
               onChange={(event) => {
-                setSearch(
-                  event.target.value
-                );
-
-                setSelectedPlayer(
-                  null
-                );
+                setSearch(event.target.value);
+                setSelectedPlayer(null);
+                setSelectedCoach(null);
               }}
               onKeyDown={(event) => {
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
-                  searchPlayers();
+                if (event.key === "Enter") {
+                  searchItems();
                 }
               }}
-              placeholder="Buscar jogador..."
+              placeholder={
+                mode === "players"
+                  ? "Buscar jogador..."
+                  : "Buscar staff..."
+              }
               className="flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none focus:border-green-500"
             />
 
-
             <button
               type="button"
-              onClick={
-                searchPlayers
-              }
-              disabled={
-                searching
-              }
-              className="rounded-xl bg-green-600 px-8 py-3 font-black hover:bg-green-500 disabled:opacity-50"
+              onClick={searchItems}
+              disabled={searching}
+              className={`rounded-xl px-8 py-3 font-black disabled:opacity-50 ${
+                mode === "players"
+                  ? "bg-green-600 hover:bg-green-500"
+                  : "bg-purple-600 hover:bg-purple-500"
+              }`}
             >
-              {searching
-                ? "Buscando..."
-                : "Buscar"}
+              {searching ? "Buscando..." : "Buscar"}
             </button>
-
           </div>
 
-
-          {players.length > 0 && (
+          {mode === "players" && players.length > 0 && (
             <div className="mt-5 max-h-96 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950">
+              {players.map((player) => (
+                <button
+                  key={player.id}
+                  type="button"
+                  onClick={() => selectPlayer(player)}
+                  className="flex w-full items-center justify-between gap-5 border-b border-zinc-800 px-5 py-4 text-left transition last:border-b-0 hover:bg-zinc-900"
+                >
+                  <div>
+                    <p className="font-black">
+                      {player.name}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {player.position || "-"} •{" "}
+                      {player.nationality || "-"} •{" "}
+                      {player.age ?? "-"} anos
+                    </p>
+                  </div>
 
-              {players.map(
-                (player) => (
-                  <button
-                    key={
-                      player.id
-                    }
-                    type="button"
-                    onClick={() =>
-                      selectPlayer(
-                        player
-                      )
-                    }
-                    className="flex w-full items-center justify-between gap-5 border-b border-zinc-800 px-5 py-4 text-left transition last:border-b-0 hover:bg-zinc-900"
-                  >
-                    <div>
-                      <p className="font-black">
-                        {player.name}
-                      </p>
-
-                      <p className="mt-1 text-sm text-zinc-500">
-                        {player.position ||
-                          "-"}{" "}
-                        •{" "}
-                        {player.nationality ||
-                          "-"}{" "}
-                        •{" "}
-                        {player.age ??
-                          "-"}{" "}
-                        anos
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-black text-green-400">
-                        CA{" "}
-                        {player.ca ??
-                          "-"}
-                      </p>
-
-                      <p className="mt-1 text-xs text-zinc-500">
-                        ID{" "}
-                        {player.unique_id ||
-                          player.id}
-                      </p>
-                    </div>
-                  </button>
-                )
-              )}
-
+                  <div className="text-right">
+                    <p className="font-black text-green-400">
+                      CA {player.ca ?? "-"}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      ID {player.unique_id || player.id}
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
 
+          {mode === "staff" && staff.length > 0 && (
+            <div className="mt-5 max-h-96 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-950">
+              {staff.map((coach) => (
+                <button
+                  key={coach.id}
+                  type="button"
+                  onClick={() => selectCoach(coach)}
+                  className="flex w-full items-center justify-between gap-5 border-b border-zinc-800 px-5 py-4 text-left transition last:border-b-0 hover:bg-zinc-900"
+                >
+                  <div>
+                    <p className="font-black">
+                      {coach.name}
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-500">
+                      {coach.role || "Função não informada"} •{" "}
+                      {coach.nationality || "-"} •{" "}
+                      {coach.age ?? "-"} anos
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-black text-purple-400">
+                      CA {coach.ca ?? "-"}
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      PA {coach.pa ?? "-"} • ID {coach.id}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
-
-        {/* JOGADOR SELECIONADO */}
-
-        {selectedPlayer && (
-          <section className="mt-6 rounded-2xl border border-green-500/30 bg-green-500/5 p-6">
-
-            <p className="text-sm font-black uppercase tracking-widest text-green-400">
-              Jogador selecionado
+        {/* SELECIONADO */}
+        {selectedItem && (
+          <section
+            className={`mt-6 rounded-2xl border p-6 ${
+              mode === "players"
+                ? "border-green-500/30 bg-green-500/5"
+                : "border-purple-500/30 bg-purple-500/5"
+            }`}
+          >
+            <p
+              className={`text-sm font-black uppercase tracking-widest ${
+                mode === "players"
+                  ? "text-green-400"
+                  : "text-purple-400"
+              }`}
+            >
+              {mode === "players"
+                ? "Jogador selecionado"
+                : "Staff selecionado"}
             </p>
 
             <h2 className="mt-2 text-3xl font-black">
-              {selectedPlayer.name}
+              {selectedItem.name}
             </h2>
 
-            <p className="mt-3 text-zinc-400">
-              {selectedPlayer.position ||
-                "-"}{" "}
-              • CA{" "}
-              {selectedPlayer.ca ??
-                "-"}{" "}
-              •{" "}
-              {selectedPlayer.age ??
-                "-"}{" "}
-              anos
-            </p>
+            {mode === "players" && selectedPlayer && (
+              <p className="mt-3 text-zinc-400">
+                {selectedPlayer.position || "-"} • CA{" "}
+                {selectedPlayer.ca ?? "-"} •{" "}
+                {selectedPlayer.age ?? "-"} anos
+              </p>
+            )}
+
+            {mode === "staff" && selectedCoach && (
+              <p className="mt-3 text-zinc-400">
+                {selectedCoach.role || "-"} • CA{" "}
+                {selectedCoach.ca ?? "-"} • PA{" "}
+                {selectedCoach.pa ?? "-"} •{" "}
+                {selectedCoach.age ?? "-"} anos
+              </p>
+            )}
 
             <p className="mt-2 text-zinc-400">
               Clube atual:{" "}
@@ -817,129 +790,78 @@ export default function AdminDraftPage() {
                   : "Sem clube"}
               </span>
             </p>
-
           </section>
         )}
 
-
         {/* DESTINO */}
-
-        <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-
+        <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
           <h2 className="text-2xl font-black">
             2. Clube de destino
           </h2>
 
-
           <select
-            value={
-              selectedTeamId
-            }
+            value={selectedTeamId}
             onChange={(event) =>
-              setSelectedTeamId(
-                event.target
-                  .value
-              )
+              setSelectedTeamId(event.target.value)
             }
             className="mt-5 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-4 outline-none focus:border-green-500"
           >
+            <option value="">Escolha um clube</option>
 
-            <option value="">
-              Escolha um clube
-            </option>
-
-            {teams.map(
-              (team) => (
-                <option
-                  key={team.id}
-                  value={team.id}
-                >
-                  {team.name} —{" "}
-                  {money(
-                    team.budget
-                  )}
-                </option>
-              )
-            )}
-
+            {teams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {team.name} — {money(team.budget)}
+              </option>
+            ))}
           </select>
-
 
           {destinationTeam && (
             <div className="mt-4 rounded-xl bg-zinc-950 p-4">
-
               <p className="font-black">
-                {
-                  destinationTeam.name
-                }
+                {destinationTeam.name}
               </p>
-
               <p className="mt-1 text-green-400">
-                Orçamento:{" "}
-                {money(
-                  destinationTeam.budget
-                )}
+                Orçamento: {money(destinationTeam.budget)}
               </p>
-
               <p className="mt-1 text-sm text-zinc-500">
                 Presidente:{" "}
                 {destinationTeam.manager_name ||
                   "Não definido"}
               </p>
-
             </div>
           )}
-
         </section>
 
-
         {/* CUSTO */}
-
-        <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-
+        <section className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-6">
           <h2 className="text-2xl font-black">
             3. Tipo da transferência
           </h2>
 
-
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-
             <button
               type="button"
               onClick={() => {
-                setTransferType(
-                  "free"
-                );
-
+                setTransferType("free");
                 setAmount("");
               }}
               className={`rounded-xl border p-5 text-left ${
-                transferType ===
-                "free"
+                transferType === "free"
                   ? "border-green-500 bg-green-500/10"
                   : "border-zinc-700 bg-zinc-950"
               }`}
             >
-              <p className="text-xl font-black">
-                Grátis
-              </p>
-
+              <p className="text-xl font-black">Grátis</p>
               <p className="mt-2 text-sm text-zinc-400">
                 Não altera o orçamento do clube.
               </p>
             </button>
 
-
             <button
               type="button"
-              onClick={() =>
-                setTransferType(
-                  "paid"
-                )
-              }
+              onClick={() => setTransferType("paid")}
               className={`rounded-xl border p-5 text-left ${
-                transferType ===
-                "paid"
+                transferType === "paid"
                   ? "border-yellow-500 bg-yellow-500/10"
                   : "border-zinc-700 bg-zinc-950"
               }`}
@@ -947,69 +869,49 @@ export default function AdminDraftPage() {
               <p className="text-xl font-black">
                 Com custo
               </p>
-
               <p className="mt-2 text-sm text-zinc-400">
                 O valor será descontado do orçamento.
               </p>
             </button>
-
           </div>
 
-
-          {transferType ===
-            "paid" && (
+          {transferType === "paid" && (
             <div className="mt-5">
-
               <label className="mb-2 block font-bold text-zinc-400">
                 Valor da transferência
               </label>
-
               <input
                 type="number"
                 min="1"
                 value={amount}
-                onChange={(
-                  event
-                ) =>
-                  setAmount(
-                    event.target
-                      .value
-                  )
+                onChange={(event) =>
+                  setAmount(event.target.value)
                 }
                 placeholder="Ex: 5000000"
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-4 outline-none focus:border-yellow-500"
               />
-
             </div>
           )}
-
         </section>
 
-
-        {/* CONFIRMAR */}
-
-        <section className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
-
+        {/* CONFIRMAÇÃO */}
+        <section className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/5 p-5 sm:p-6">
           <h2 className="text-2xl font-black">
             4. Confirmar
           </h2>
 
-
           <div className="mt-5 space-y-2 text-zinc-300">
-
             <p>
-              Jogador:{" "}
+              {mode === "players" ? "Jogador" : "Staff"}:{" "}
               <strong>
-                {selectedPlayer?.name ||
-                  "Não selecionado"}
+                {selectedItem?.name || "Não selecionado"}
               </strong>
             </p>
 
             <p>
               Origem:{" "}
               <strong>
-                {currentTeam?.name ||
-                  "Sem clube"}
+                {currentTeam?.name || "Sem clube"}
               </strong>
             </p>
 
@@ -1024,38 +926,33 @@ export default function AdminDraftPage() {
             <p>
               Custo:{" "}
               <strong className="text-green-400">
-                {transferType ===
-                "free"
+                {transferType === "free"
                   ? "Grátis"
-                  : money(
-                      Number(
-                        amount ||
-                          0
-                      )
-                    )}
+                  : money(Number(amount || 0))}
               </strong>
             </p>
-
           </div>
-
 
           <button
             type="button"
-            onClick={
-              transferPlayer
-            }
+            onClick={transferSelected}
             disabled={
               saving ||
-              !selectedPlayer ||
+              !selectedItem ||
               !destinationTeam
             }
-            className="mt-6 w-full rounded-xl bg-orange-600 px-6 py-4 text-lg font-black transition hover:bg-orange-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            className={`mt-6 w-full rounded-xl px-6 py-4 text-lg font-black transition disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 ${
+              mode === "players"
+                ? "bg-orange-600 hover:bg-orange-500"
+                : "bg-purple-600 hover:bg-purple-500"
+            }`}
           >
             {saving
               ? "Transferindo..."
-              : "TRANSFERIR JOGADOR"}
+              : mode === "players"
+              ? "TRANSFERIR JOGADOR"
+              : "TRANSFERIR STAFF"}
           </button>
-
         </section>
 
         <section className="mt-10 grid gap-3 md:grid-cols-3">
@@ -1067,10 +964,10 @@ export default function AdminDraftPage() {
           </Link>
 
           <Link
-            href="/admin/transfers"
+            href="/staff"
             className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 font-black transition hover:border-zinc-600"
           >
-            🔄 Auditoria de transferências
+            👔 Comissão técnica
           </Link>
 
           <Link
@@ -1080,7 +977,6 @@ export default function AdminDraftPage() {
             📢 BID
           </Link>
         </section>
-
       </div>
     </main>
   );
