@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+
 import { supabase } from "@/lib/supabase";
 
 type Player = {
@@ -15,7 +21,6 @@ type Player = {
   ca: number | null;
   cp: number | null;
   value: number | null;
-  image_url: string | null;
   category: string[] | null;
   team_id: number | null;
 };
@@ -39,16 +44,71 @@ type AttributeFilter = {
   max: string;
 };
 
-type AttributeOption = {
-  label: string;
-  column: string;
-};
-
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
-const PLAYERS_SEARCH_STATE_KEY = "friendzone_players_search_state";
 
-const CATEGORIES = [
+function normalizeSearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s'-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const ATTRIBUTE_OPTIONS = [
+  "(Tendência) para Saídas da Baliza",
+  "Aceleração",
+  "Agilidade",
+  "Agressividade",
+  "Alcance Aéreo",
+  "Antecipação",
+  "Aptidão Física",
+  "Bravura",
+  "Cabeceamento",
+  "Cantos",
+  "Comando de Área",
+  "Compostura",
+  "Comunicação",
+  "Concentração",
+  "Cruzamentos",
+  "Decisões",
+  "Desarme",
+  "Determinação",
+  "Equilíbrio",
+  "Excentricidade",
+  "Finalização",
+  "Finta",
+  "Força",
+  "Imprevisibilidade",
+  "Impulsão",
+  "Índice de Trabalho",
+  "Jogo de Mãos",
+  "Lançamentos",
+  "Lançamentos Longos",
+  "Liderança",
+  "Livres",
+  "Marcação",
+  "Marcação de Penáltis",
+  "Passe",
+  "Pontapé",
+  "Posicionamento",
+  "Primeiro Toque",
+  "Reflexos",
+  "Remates de Longe",
+  "Resistência",
+  "Saídas a Punhos",
+  "Sem Bola",
+  "Técnica",
+  "Trabalho de Equipa",
+  "Um Para Um",
+  "Velocidade",
+  "Visão de Jogo",
+] as const;
+
+
+const categories = [
   "Todos",
   "Goleiro",
   "Zagueiro",
@@ -57,555 +117,429 @@ const CATEGORIES = [
   "Meia Armador",
   "Ponta",
   "Atacante",
-] as const;
-
-const ATTRIBUTE_OPTIONS: AttributeOption[] = [
-  { label: "Aceleração", column: "acceleration" },
-  { label: "Agilidade", column: "agility" },
-  { label: "Agressividade", column: "aggression" },
-  { label: "Alcance Aéreo", column: "aerial_reach" },
-  { label: "Ambição", column: "ambition" },
-  { label: "Antecipação", column: "anticipation" },
-  { label: "Aptidão Física", column: "natural_fitness" },
-  { label: "Adaptabilidade", column: "adaptability" },
-  { label: "Bravura", column: "bravery" },
-  { label: "Cabeceamento", column: "heading" },
-  { label: "Cantos", column: "corners" },
-  { label: "Comando de Área", column: "command_of_area" },
-  { label: "Compostura", column: "composure" },
-  { label: "Comunicação", column: "communication" },
-  { label: "Concentração", column: "concentration" },
-  { label: "Consistência", column: "consistency" },
-  { label: "Cruzamentos", column: "crossing" },
-  { label: "Decisões", column: "decisions" },
-  { label: "Desarme", column: "tackling" },
-  { label: "Determinação", column: "determination" },
-  { label: "Equilíbrio", column: "balance" },
-  { label: "Excentricidade", column: "eccentricity" },
-  { label: "Finalização", column: "finishing" },
-  { label: "Finta", column: "dribbling" },
-  { label: "Força", column: "strength" },
-  { label: "Imprevisibilidade", column: "flair" },
-  { label: "Impulsão", column: "jumping_reach" },
-  { label: "Índice de Trabalho", column: "work_rate" },
-  { label: "Jogo de Mãos", column: "handling" },
-  { label: "Jogo Sujo", column: "dirtiness" },
-  { label: "Jogos Importantes", column: "important_matches" },
-  { label: "Lançamentos", column: "throwing" },
-  { label: "Lançamentos Longos", column: "long_throws" },
-  { label: "Lealdade", column: "loyalty" },
-  { label: "Liderança", column: "leadership" },
-  { label: "Livres", column: "free_kicks" },
-  { label: "Marcação", column: "marking" },
-  { label: "Marcação de Penáltis", column: "penalties" },
-  { label: "Passe", column: "passing" },
-  { label: "Pontapé", column: "kicking" },
-  { label: "Posicionamento", column: "positioning" },
-  { label: "Pressão", column: "pressure" },
-  { label: "Primeiro Toque", column: "first_touch" },
-  { label: "Profissionalismo", column: "professionalism" },
-  { label: "Propensão a Lesões", column: "injury_proneness" },
-  { label: "Reflexos", column: "reflexes" },
-  { label: "Remates de Longe", column: "long_shots" },
-  { label: "Resistência", column: "stamina" },
-  { label: "Saídas a Punhos", column: "punching" },
-  { label: "Saídas da Baliza", column: "rushing_out" },
-  { label: "Sem Bola", column: "off_the_ball" },
-  { label: "Técnica", column: "technique" },
-  { label: "Temperamento", column: "temperament" },
-  { label: "Trabalho de Equipa", column: "teamwork" },
-  { label: "Um Para Um", column: "one_on_ones" },
-  { label: "Velocidade", column: "pace" },
-  { label: "Versatilidade", column: "versatility" },
-  { label: "Visão de Jogo", column: "vision" },
 ];
 
-function formatMoney(value: number | null) {
-  if (value === null || value === undefined) return "R$ 0,00";
+function formatMoney(
+  value: number | null
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "R$ 0,00";
+  }
 
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return new Intl.NumberFormat(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+  ).format(value);
 }
 
-function getCategoryLabel(category: string) {
-  const labels: Record<string, string> = {
-    Todos: "Todos",
-    Goleiro: "Goleiros",
-    Zagueiro: "Zagueiros",
-    Lateral: "Laterais",
-    Volante: "Volantes",
-    "Meia Armador": "Meias",
-    Ponta: "Pontas",
-    Atacante: "Atacantes",
-  };
+function getCategoryLabel(
+  category: string
+) {
+  switch (category) {
+    case "Todos":
+      return "Todos";
 
-  return labels[category] ?? category;
+    case "Goleiro":
+      return "Goleiros";
+
+    case "Zagueiro":
+      return "Zagueiros";
+
+    case "Lateral":
+      return "Laterais";
+
+    case "Volante":
+      return "Volantes";
+
+    case "Meia Armador":
+      return "Meias";
+
+    case "Ponta":
+      return "Pontas";
+
+    case "Atacante":
+      return "Atacantes";
+
+    default:
+      return category;
+  }
 }
 
-function getCAColor(ca: number | null) {
-  if (!ca) return "text-zinc-300";
-  if (ca >= 170) return "text-emerald-400";
-  if (ca >= 150) return "text-lime-400";
-  if (ca >= 130) return "text-yellow-300";
+function getCAColor(
+  ca: number | null
+) {
+  if (!ca) {
+    return "text-zinc-300";
+  }
+
+  if (ca >= 170) {
+    return "text-emerald-400";
+  }
+
+  if (ca >= 150) {
+    return "text-lime-400";
+  }
+
+  if (ca >= 130) {
+    return "text-yellow-300";
+  }
+
   return "text-zinc-200";
 }
 
 export default function PlayersPage() {
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
+  const [
+    players,
+    setPlayers,
+  ] =
+    useState<Player[]>([]);
 
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("Todos");
-  const [minCA, setMinCA] = useState("");
-  const [maxCA, setMaxCA] = useState("");
-  const [minCP, setMinCP] = useState("");
-  const [maxCP, setMaxCP] = useState("");
-  const [minAge, setMinAge] = useState("");
-  const [maxAge, setMaxAge] = useState("");
-  const [minValue, setMinValue] = useState("");
-  const [maxValue, setMaxValue] = useState("");
-  const [nationality, setNationality] = useState("");
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
 
-  const [attributeFilters, setAttributeFilters] = useState<AttributeFilter[]>([
-    { attribute: "", min: "", max: "" },
-  ]);
-
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [searchStateReady, setSearchStateReady] = useState(false);
-
-  const [myTeam, setMyTeam] = useState<Team | null>(null);
-  const [shoppingListIds, setShoppingListIds] = useState<Set<number>>(new Set());
-  const [shoppingLoadingId, setShoppingLoadingId] = useState<number | null>(null);
-  const [shoppingMessage, setShoppingMessage] = useState("");
-
-  const resolveMyTeam = useCallback(async (): Promise<Team | null> => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return null;
-    }
-
-    const { data: teamData, error: teamError } = await supabase
-      .from("teams")
-      .select(`
-        id,
-        name,
-        manager_id
-      `)
-      .eq("manager_id", user.id)
-      .limit(1)
-      .maybeSingle();
-
-    if (teamError || !teamData) {
-      if (teamError) {
-        console.error("Erro ao identificar clube:", teamError);
-      }
-      return null;
-    }
-
-    const team = teamData as Team;
-    setMyTeam(team);
-    return team;
-  }, []);
-
-  const loadShoppingList = useCallback(async () => {
-    const team = await resolveMyTeam();
-
-    if (!team) {
-      setMyTeam(null);
-      setShoppingListIds(new Set());
-      return;
-    }
-
-    const { data: listData, error: listError } = await supabase
-      .from("player_shopping_list")
-      .select("player_id")
-      .eq("team_id", team.id);
-
-    if (listError) {
-      console.error("Erro ao carregar lista de compras:", listError);
-      setShoppingListIds(new Set());
-      return;
-    }
-
-    setShoppingListIds(
-      new Set(
-        (listData || []).map((row: any) => Number(row.player_id))
-      )
+  const [
+    currentWindow,
+    setCurrentWindow,
+  ] =
+    useState<TransferWindow | null>(
+      null
     );
-  }, [resolveMyTeam]);
 
-  const loadTransferWindow = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("transfer_windows")
-      .select("id,window_number,name,status")
-      .eq("status", "open")
-      .order("window_number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error("Erro ao carregar janela:", error);
-      setCurrentWindow(null);
-      return;
-    }
-
-    setCurrentWindow(data ? (data as TransferWindow) : null);
-  }, []);
-
-  const loadPlayers = useCallback(async () => {
-    setLoading(true);
-
-    const from = (page - 1) * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-
-    let query = supabase
-      .from("players")
-      .select(
-        `
-          id,
-          unique_id,
-          name,
-          age,
-          position,
-          nationality,
-          club,
-          ca,
-          cp,
-          value,
-          image_url,
-          category,
-          team_id
-        `,
-        { count: "exact" }
-      )
-      .is("team_id", null)
-      .order("ca", { ascending: false, nullsFirst: false })
-      .order("cp", { ascending: false, nullsFirst: false })
-      .order("name", { ascending: true });
-
-    // POSIÇÕES: usa a coluna category já preenchida no Supabase.
-    // Isso funciona para TODAS as categorias, inclusive Zagueiro e Meia Armador.
-    if (selectedCategory !== "Todos") {
-      query = query.contains("category", [selectedCategory]);
-    }
-
-    if (search.trim()) {
-      query = query.ilike("name", `%${search.trim()}%`);
-    }
-
-    if (nationality.trim()) {
-      query = query.ilike("nationality", `%${nationality.trim()}%`);
-    }
-
-    if (minCA) query = query.gte("ca", Number(minCA));
-    if (maxCA) query = query.lte("ca", Number(maxCA));
-    if (minCP) query = query.gte("cp", Number(minCP));
-    if (maxCP) query = query.lte("cp", Number(maxCP));
-    if (minAge) query = query.gte("age", Number(minAge));
-    if (maxAge) query = query.lte("age", Number(maxAge));
-    if (minValue) query = query.gte("value", Number(minValue));
-    if (maxValue) query = query.lte("value", Number(maxValue));
-
-    // ATRIBUTOS: agora são colunas reais, não JSONB/RPC.
-    for (const filter of attributeFilters) {
-      if (!filter.attribute) continue;
-
-      if (filter.min) {
-        query = query.gte(filter.attribute, Number(filter.min));
-      }
-
-      if (filter.max) {
-        query = query.lte(filter.attribute, Number(filter.max));
-      }
-    }
-
-    query = query.range(from, to);
-
-    const { data, error, count } = await query;
-
-    if (error) {
-      console.error("Erro ao carregar jogadores:", error);
-      setPlayers([]);
-      setTotal(0);
-    } else {
-      setPlayers((data as Player[]) || []);
-      setTotal(count || 0);
-    }
-
-    setLoading(false);
-  }, [
-    page,
-    selectedCategory,
+  const [
     search,
-    nationality,
+    setSearch,
+  ] =
+    useState("");
+
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] =
+    useState("Todos");
+
+  const [
     minCA,
+    setMinCA,
+  ] =
+    useState("");
+
+  const [
     maxCA,
+    setMaxCA,
+  ] =
+    useState("");
+
+  const [
     minCP,
+    setMinCP,
+  ] =
+    useState("");
+
+  const [
     maxCP,
+    setMaxCP,
+  ] =
+    useState("");
+
+  const [
     minAge,
+    setMinAge,
+  ] =
+    useState("");
+
+  const [
     maxAge,
+    setMaxAge,
+  ] =
+    useState("");
+
+  const [
     minValue,
+    setMinValue,
+  ] =
+    useState("");
+
+  const [
     maxValue,
+    setMaxValue,
+  ] =
+    useState("");
+
+  const [
     attributeFilters,
-  ]);
+    setAttributeFilters,
+  ] =
+    useState<AttributeFilter[]>([
+      {
+        attribute: "",
+        min: "",
+        max: "",
+      },
+    ]);
+
+  const [
+    nationality,
+    setNationality,
+  ] =
+    useState("");
+
+  const [
+    page,
+    setPage,
+  ] =
+    useState(1);
+
+  const [
+    total,
+    setTotal,
+  ] =
+    useState(0);
+
+  const [
+    myTeam,
+    setMyTeam,
+  ] =
+    useState<Team | null>(null);
+
+  const [
+    shoppingListIds,
+    setShoppingListIds,
+  ] =
+    useState<Set<number>>(
+      new Set()
+    );
+
+  const [
+    shoppingLoadingId,
+    setShoppingLoadingId,
+  ] =
+    useState<number | null>(
+      null
+    );
+
+  const [
+    shoppingMessage,
+    setShoppingMessage,
+  ] =
+    useState("");
 
   /*
-    RESTAURA A PESQUISA QUANDO O USUÁRIO
-    VOLTA DA PÁGINA DE UM JOGADOR
+    CARREGA CLUBE DO PRESIDENTE
+    E LISTA DE COMPRAS
   */
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem(
-        PLAYERS_SEARCH_STATE_KEY
-      );
 
-      if (saved) {
-        const state = JSON.parse(saved);
+  const loadShoppingList =
+    useCallback(async () => {
+      const {
+        data: { user },
+        error: authError,
+      } =
+        await supabase.auth.getUser();
 
-        setSearch(
-          typeof state.search === "string"
-            ? state.search
-            : ""
+      if (
+        authError ||
+        !user
+      ) {
+        setMyTeam(null);
+        setShoppingListIds(
+          new Set()
         );
-
-        setSelectedCategory(
-          typeof state.selectedCategory === "string"
-            ? state.selectedCategory
-            : "Todos"
-        );
-
-        setMinCA(
-          typeof state.minCA === "string"
-            ? state.minCA
-            : ""
-        );
-
-        setMaxCA(
-          typeof state.maxCA === "string"
-            ? state.maxCA
-            : ""
-        );
-
-        setMinCP(
-          typeof state.minCP === "string"
-            ? state.minCP
-            : ""
-        );
-
-        setMaxCP(
-          typeof state.maxCP === "string"
-            ? state.maxCP
-            : ""
-        );
-
-        setMinAge(
-          typeof state.minAge === "string"
-            ? state.minAge
-            : ""
-        );
-
-        setMaxAge(
-          typeof state.maxAge === "string"
-            ? state.maxAge
-            : ""
-        );
-
-        setMinValue(
-          typeof state.minValue === "string"
-            ? state.minValue
-            : ""
-        );
-
-        setMaxValue(
-          typeof state.maxValue === "string"
-            ? state.maxValue
-            : ""
-        );
-
-        setNationality(
-          typeof state.nationality === "string"
-            ? state.nationality
-            : ""
-        );
-
-        if (
-          Array.isArray(state.attributeFilters) &&
-          state.attributeFilters.length > 0
-        ) {
-          setAttributeFilters(
-            state.attributeFilters.slice(
-              0,
-              MAX_ATTRIBUTE_FILTERS
-            )
-          );
-        }
-
-        const savedPage = Number(state.page);
-
-        if (
-          Number.isInteger(savedPage) &&
-          savedPage >= 1
-        ) {
-          setPage(savedPage);
-        }
-      }
-    } catch (error) {
-      console.error(
-        "Erro ao restaurar pesquisa de jogadores:",
-        error
-      );
-    } finally {
-      setSearchStateReady(true);
-    }
-  }, []);
-
-  /*
-    SALVA AUTOMATICAMENTE FILTROS + PÁGINA
-  */
-  useEffect(() => {
-    if (!searchStateReady) {
-      return;
-    }
-
-    try {
-      sessionStorage.setItem(
-        PLAYERS_SEARCH_STATE_KEY,
-        JSON.stringify({
-          search,
-          selectedCategory,
-          minCA,
-          maxCA,
-          minCP,
-          maxCP,
-          minAge,
-          maxAge,
-          minValue,
-          maxValue,
-          nationality,
-          attributeFilters,
-          page,
-        })
-      );
-    } catch (error) {
-      console.error(
-        "Erro ao salvar pesquisa de jogadores:",
-        error
-      );
-    }
-  }, [
-    searchStateReady,
-    search,
-    selectedCategory,
-    minCA,
-    maxCA,
-    minCP,
-    maxCP,
-    minAge,
-    maxAge,
-    minValue,
-    maxValue,
-    nationality,
-    attributeFilters,
-    page,
-  ]);
-
-  useEffect(() => {
-    loadTransferWindow();
-    loadShoppingList();
-  }, [loadTransferWindow, loadShoppingList]);
-
-  useEffect(() => {
-    if (!searchStateReady) {
-      return;
-    }
-
-    loadPlayers();
-  }, [loadPlayers, searchStateReady]);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("players-transfer-window")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "transfer_windows",
-        },
-        () => loadTransferWindow()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [loadTransferWindow]);
-
-  async function toggleShoppingList(player: Player) {
-    const team = myTeam ?? (await resolveMyTeam());
-
-    if (!team) {
-      setShoppingMessage(
-        "Não foi possível identificar seu clube. Atualize a página ou confirme se sua conta está vinculada a um time."
-      );
-      return;
-    }
-
-    setShoppingLoadingId(player.id);
-    setShoppingMessage("");
-
-    const isSaved = shoppingListIds.has(player.id);
-
-    if (isSaved) {
-      const { error } = await supabase
-        .from("player_shopping_list")
-        .delete()
-        .eq("team_id", team.id)
-        .eq("player_id", player.id);
-
-      if (error) {
-        console.error("Erro ao remover da lista:", error);
-        setShoppingMessage("Não foi possível remover o jogador da lista.");
-        setShoppingLoadingId(null);
         return;
       }
 
-      setShoppingListIds((current) => {
-        const next = new Set(current);
-        next.delete(player.id);
-        return next;
-      });
+      const {
+        data: teamData,
+        error: teamError,
+      } =
+        await supabase
+          .from("teams")
+          .select(`
+            id,
+            name,
+            manager_id
+          `)
+          .eq(
+            "manager_id",
+            user.id
+          )
+          .maybeSingle();
+
+      if (
+        teamError ||
+        !teamData
+      ) {
+        if (teamError) {
+          console.error(
+            "Erro ao identificar clube:",
+            teamError
+          );
+        }
+
+        setMyTeam(null);
+        setShoppingListIds(
+          new Set()
+        );
+        return;
+      }
+
+      setMyTeam(
+        teamData as Team
+      );
+
+      const {
+        data: listData,
+        error: listError,
+      } =
+        await supabase
+          .from(
+            "player_shopping_list"
+          )
+          .select(
+            "player_id"
+          )
+          .eq(
+            "team_id",
+            teamData.id
+          );
+
+      if (listError) {
+        console.error(
+          "Erro ao carregar lista de compras:",
+          listError
+        );
+
+        setShoppingListIds(
+          new Set()
+        );
+        return;
+      }
+
+      setShoppingListIds(
+        new Set(
+          (listData || []).map(
+            (row: any) =>
+              Number(
+                row.player_id
+              )
+          )
+        )
+      );
+    }, []);
+
+  async function toggleShoppingList(
+    player: Player
+  ) {
+    if (!myTeam) {
+      setShoppingMessage(
+        "Não foi possível identificar o seu clube."
+      );
+      return;
+    }
+
+    setShoppingLoadingId(
+      player.id
+    );
+    setShoppingMessage("");
+
+    const isSaved =
+      shoppingListIds.has(
+        player.id
+      );
+
+    if (isSaved) {
+      const {
+        error,
+      } =
+        await supabase
+          .from(
+            "player_shopping_list"
+          )
+          .delete()
+          .eq(
+            "team_id",
+            myTeam.id
+          )
+          .eq(
+            "player_id",
+            player.id
+          );
+
+      if (error) {
+        console.error(
+          "Erro ao remover da lista:",
+          error
+        );
+
+        setShoppingMessage(
+          "Não foi possível remover o jogador da lista."
+        );
+
+        setShoppingLoadingId(
+          null
+        );
+        return;
+      }
+
+      setShoppingListIds(
+        (current) => {
+          const next =
+            new Set(current);
+
+          next.delete(
+            player.id
+          );
+
+          return next;
+        }
+      );
 
       setShoppingMessage(
         `${player.name} foi removido da sua lista de compras.`
       );
     } else {
-      const { error } = await supabase
-        .from("player_shopping_list")
-        .insert({
-          team_id: team.id,
-          player_id: player.id,
-        });
+      const {
+        error,
+      } =
+        await supabase
+          .from(
+            "player_shopping_list"
+          )
+          .insert({
+            team_id:
+              myTeam.id,
+
+            player_id:
+              player.id,
+          });
 
       if (error) {
-        console.error("Erro ao adicionar à lista:", error);
+        console.error(
+          "Erro ao adicionar à lista:",
+          error
+        );
 
         if (
-          String(error.message || "")
+          String(
+            error.message || ""
+          )
             .toLowerCase()
-            .includes("duplicate")
+            .includes(
+              "duplicate"
+            )
         ) {
           await loadShoppingList();
+
           setShoppingMessage(
             `${player.name} já está na sua lista de compras.`
           );
@@ -615,108 +549,687 @@ export default function PlayersPage() {
           );
         }
 
-        setShoppingLoadingId(null);
+        setShoppingLoadingId(
+          null
+        );
         return;
       }
 
-      setShoppingListIds((current) => {
-        const next = new Set(current);
-        next.add(player.id);
-        return next;
-      });
+      setShoppingListIds(
+        (current) => {
+          const next =
+            new Set(current);
+
+          next.add(
+            player.id
+          );
+
+          return next;
+        }
+      );
 
       setShoppingMessage(
         `${player.name} foi adicionado à sua lista de compras.`
       );
     }
 
-    setShoppingLoadingId(null);
+    setShoppingLoadingId(
+      null
+    );
   }
 
-  function handleCategory(category: string) {
-    setSelectedCategory(category);
-    setPage(1);
-  }
+  /*
+    CARREGA STATUS
+    DA JANELA
+  */
 
-  function handleSearch() {
-    if (page !== 1) {
+  const loadTransferWindow =
+    useCallback(async () => {
+      const {
+        data,
+        error,
+      } =
+        await supabase
+          .from(
+            "transfer_windows"
+          )
+          .select(`
+            id,
+            window_number,
+            name,
+            status
+          `)
+          .eq(
+            "status",
+            "open"
+          )
+          .order(
+            "window_number",
+            {
+              ascending: false,
+            }
+          )
+          .limit(1)
+          .maybeSingle();
+
+      if (error) {
+        console.error(
+          "Erro ao carregar janela:",
+          error
+        );
+
+        setCurrentWindow(
+          null
+        );
+
+        return;
+      }
+
+      setCurrentWindow(
+        data
+          ? (data as TransferWindow)
+          : null
+      );
+    }, []);
+
+  /*
+    CARREGA JOGADORES
+  */
+
+  const loadPlayers =
+    useCallback(
+      async (
+        resetPage = false
+      ) => {
+        setLoading(true);
+
+        const currentPage =
+          resetPage
+            ? 1
+            : page;
+
+        if (
+          resetPage &&
+          page !== 1
+        ) {
+          setPage(1);
+
+          setLoading(false);
+
+          return;
+        }
+
+        const from =
+          (currentPage - 1) *
+          PAGE_SIZE;
+
+        const to =
+          from +
+          PAGE_SIZE -
+          1;
+
+        let query =
+          supabase
+            .from(
+              "players"
+            )
+            .select(
+              `
+              id,
+              unique_id,
+              name,
+              age,
+              position,
+              nationality,
+              club,
+              ca,
+              cp,
+              value,
+              image_url,
+              category,
+              team_id
+              `,
+              {
+                count:
+                  "exact",
+              }
+            )
+            .order(
+              "ca",
+              {
+                ascending:
+                  false,
+                nullsFirst:
+                  false,
+              }
+            )
+            .order(
+              "cp",
+              {
+                ascending:
+                  false,
+                nullsFirst:
+                  false,
+              }
+            )
+            .order(
+              "name",
+              {
+                ascending:
+                  true,
+              }
+            );
+
+        /*
+          MERCADO:
+          SÓ JOGADORES
+          SEM TEAM_ID
+        */
+
+        query =
+          query.is(
+            "team_id",
+            null
+          );
+
+        if (
+          selectedCategory !==
+          "Todos"
+        ) {
+          query =
+            query.contains(
+              "category",
+              [
+                selectedCategory,
+              ]
+            );
+        }
+
+        const normalizedSearch =
+          normalizeSearch(search);
+
+        if (normalizedSearch) {
+          const searchTerms =
+            normalizedSearch.split(" ").filter(Boolean);
+
+          for (const term of searchTerms) {
+            query = query.ilike(
+              "search_name",
+              `%${term}%`
+            );
+          }
+        }
+
+        if (
+          nationality.trim()
+        ) {
+          query =
+            query.ilike(
+              "nationality",
+              `%${nationality.trim()}%`
+            );
+        }
+
+        if (minCA) {
+          query =
+            query.gte(
+              "ca",
+              Number(
+                minCA
+              )
+            );
+        }
+
+        if (maxCA) {
+          query =
+            query.lte(
+              "ca",
+              Number(
+                maxCA
+              )
+            );
+        }
+
+        if (minCP) {
+          query =
+            query.gte(
+              "cp",
+              Number(
+                minCP
+              )
+            );
+        }
+
+        if (maxCP) {
+          query =
+            query.lte(
+              "cp",
+              Number(
+                maxCP
+              )
+            );
+        }
+
+        if (minAge) {
+          query =
+            query.gte(
+              "age",
+              Number(
+                minAge
+              )
+            );
+        }
+
+        if (maxAge) {
+          query =
+            query.lte(
+              "age",
+              Number(
+                maxAge
+              )
+            );
+        }
+
+        if (minValue) {
+          query =
+            query.gte(
+              "value",
+              Number(
+                minValue
+              )
+            );
+        }
+
+        if (maxValue) {
+          query =
+            query.lte(
+              "value",
+              Number(
+                maxValue
+              )
+            );
+        }
+
+        /*
+          ATRIBUTOS JSONB:
+          Quando há filtros de atributos, usamos uma RPC no PostgreSQL
+          para comparar os valores como números (1-20).
+        */
+        const activeAttributeFilters =
+          attributeFilters.filter(
+            (filter) =>
+              filter.attribute &&
+              (filter.min || filter.max)
+          );
+
+        if (
+          activeAttributeFilters.length >
+          0
+        ) {
+          const {
+            data: matchingRows,
+            error: attributeError,
+          } =
+            await supabase.rpc(
+              "filter_player_ids_by_attributes",
+              {
+                p_filters:
+                  activeAttributeFilters.map(
+                    (filter) => ({
+                      attribute:
+                        filter.attribute,
+                      min:
+                        filter.min
+                          ? Number(
+                              filter.min
+                            )
+                          : null,
+                      max:
+                        filter.max
+                          ? Number(
+                              filter.max
+                            )
+                          : null,
+                    })
+                  ),
+              }
+            );
+
+          if (attributeError) {
+            console.error(
+              "Erro ao filtrar atributos:",
+              attributeError
+            );
+
+            setPlayers([]);
+            setTotal(0);
+            setLoading(false);
+            return;
+          }
+
+          const matchingIds = (
+            matchingRows || []
+          ).map(
+            (row: any) =>
+              Number(row.player_id)
+          );
+
+          if (
+            matchingIds.length === 0
+          ) {
+            setPlayers([]);
+            setTotal(0);
+            setLoading(false);
+            return;
+          }
+
+          query =
+            query.in(
+              "id",
+              matchingIds
+            );
+        }
+
+        query =
+          query.range(
+            from,
+            to
+          );
+
+        const {
+          data,
+          error,
+          count,
+        } =
+          await query;
+
+        if (error) {
+          console.error(
+            "Erro ao carregar jogadores:",
+            error
+          );
+
+          setPlayers([]);
+
+          setTotal(0);
+        } else {
+          setPlayers(
+            (data as Player[]) ||
+              []
+          );
+
+          setTotal(
+            count ||
+              0
+          );
+        }
+
+        setLoading(false);
+      },
+      [
+        page,
+        selectedCategory,
+        search,
+        nationality,
+        minCA,
+        maxCA,
+        minCP,
+        maxCP,
+        minAge,
+        maxAge,
+        minValue,
+        maxValue,
+        attributeFilters,
+      ]
+    );
+
+  /*
+    LOAD INICIAL
+  */
+
+  useEffect(() => {
+    loadTransferWindow();
+
+    loadPlayers();
+
+    loadShoppingList();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    page,
+    selectedCategory,
+  ]);
+
+  /*
+    REALTIME DA JANELA
+  */
+
+  useEffect(() => {
+    const channel =
+      supabase
+        .channel(
+          "players-transfer-window"
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema:
+              "public",
+            table:
+              "transfer_windows",
+          },
+          () => {
+            loadTransferWindow();
+          }
+        )
+        .subscribe();
+
+    return () => {
+      supabase.removeChannel(
+        channel
+      );
+    };
+  }, [
+    loadTransferWindow,
+  ]);
+
+  /*
+    CATEGORIA
+  */
+
+  function handleCategory(
+    category: string
+  ) {
+    setSelectedCategory(
+      category
+    );
+
+    if (
+      page !== 1
+    ) {
       setPage(1);
+    }
+  }
+
+  /*
+    BUSCAR
+  */
+
+  async function handleSearch() {
+    if (
+      page !== 1
+    ) {
+      setPage(1);
+
       return;
     }
 
-    loadPlayers();
+    await loadPlayers();
   }
+
+  /*
+    FILTROS DE ATRIBUTOS
+  */
 
   function updateAttributeFilter(
     index: number,
     field: keyof AttributeFilter,
     value: string
   ) {
-    setAttributeFilters((current) =>
-      current.map((filter, filterIndex) =>
-        filterIndex === index
-          ? {
-              ...filter,
-              [field]: value,
-              ...(field === "attribute" && !value ? { min: "", max: "" } : {}),
-            }
-          : filter
-      )
+    setAttributeFilters(
+      (current) =>
+        current.map(
+          (filter, filterIndex) =>
+            filterIndex === index
+              ? {
+                  ...filter,
+                  [field]: value,
+                  ...(field === "attribute" &&
+                  !value
+                    ? {
+                        min: "",
+                        max: "",
+                      }
+                    : {}),
+                }
+              : filter
+        )
     );
   }
 
   function addAttributeFilter() {
-    setAttributeFilters((current) => {
-      if (current.length >= MAX_ATTRIBUTE_FILTERS) return current;
-      return [...current, { attribute: "", min: "", max: "" }];
-    });
-  }
+    setAttributeFilters(
+      (current) => {
+        if (
+          current.length >=
+          MAX_ATTRIBUTE_FILTERS
+        ) {
+          return current;
+        }
 
-  function removeAttributeFilter(index: number) {
-    setAttributeFilters((current) => {
-      if (current.length === 1) {
-        return [{ attribute: "", min: "", max: "" }];
+        return [
+          ...current,
+          {
+            attribute: "",
+            min: "",
+            max: "",
+          },
+        ];
       }
-
-      return current.filter((_, filterIndex) => filterIndex !== index);
-    });
+    );
   }
+
+  function removeAttributeFilter(
+    index: number
+  ) {
+    setAttributeFilters(
+      (current) => {
+        if (current.length === 1) {
+          return [
+            {
+              attribute: "",
+              min: "",
+              max: "",
+            },
+          ];
+        }
+
+        return current.filter(
+          (_, filterIndex) =>
+            filterIndex !== index
+        );
+      }
+    );
+  }
+
+  /*
+    LIMPAR
+  */
 
   function clearFilters() {
     setSearch("");
+
     setMinCA("");
+
     setMaxCA("");
+
     setMinCP("");
+
     setMaxCP("");
+
     setMinAge("");
+
     setMaxAge("");
+
     setMinValue("");
+
     setMaxValue("");
+
+    setAttributeFilters([
+      {
+        attribute: "",
+        min: "",
+        max: "",
+      },
+    ]);
+
     setNationality("");
-    setAttributeFilters([{ attribute: "", min: "", max: "" }]);
-    setSelectedCategory("Todos");
+
+    setSelectedCategory(
+      "Todos"
+    );
+
     setPage(1);
 
-    try {
-      sessionStorage.removeItem(
-        PLAYERS_SEARCH_STATE_KEY
-      );
-    } catch {}
+    setTimeout(
+      () => {
+        loadPlayers(
+          true
+        );
+      },
+      100
+    );
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const marketOpen = Boolean(currentWindow);
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        total /
+          PAGE_SIZE
+      )
+    );
+
+  const marketOpen =
+    Boolean(
+      currentWindow
+    );
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
+
       <div className="mx-auto max-w-[1550px] px-4 py-5">
+
+        {/* CABEÇALHO */}
+
         <div className="mb-5">
+
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+
             <div>
-              <h1 className="text-4xl font-black text-white">Jogadores</h1>
+
+              <h1 className="text-4xl font-black text-white">
+                Jogadores
+              </h1>
+
               <p className="mt-1 text-sm text-zinc-400">
-                {total.toLocaleString("pt-BR")} jogadores encontrados
+                {total.toLocaleString(
+                  "pt-BR"
+                )}{" "}
+                jogadores encontrados
               </p>
+
             </div>
 
             <Link
@@ -725,35 +1238,64 @@ export default function PlayersPage() {
             >
               🛒 Minha Lista ({shoppingListIds.size})
             </Link>
+
           </div>
+
         </div>
+
+        {/* STATUS DO MERCADO */}
 
         {marketOpen ? (
           <div className="mb-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4">
+
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
               <div>
-                <p className="font-black text-green-400">🟢 LEILÕES DE JOGADORES ABERTOS</p>
+
+                <p className="font-black text-green-400">
+                  🟢 LEILÕES DE JOGADORES ABERTOS
+                </p>
+
                 <p className="mt-1 text-xs text-zinc-300">
                   Jogadores disponíveis no Mercado podem receber o primeiro lance.
                 </p>
+
               </div>
 
               <span className="rounded-lg border border-green-500/30 px-3 py-1 text-xs font-black text-green-400">
-                JANELA {currentWindow?.window_number}
+                JANELA{" "}
+                {
+                  currentWindow
+                    ?.window_number
+                }
               </span>
+
             </div>
+
           </div>
         ) : (
           <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
+
             <div className="flex items-start gap-3">
-              <span className="text-2xl">🔒</span>
+
+              <span className="text-2xl">
+                🔒
+              </span>
+
               <div>
-                <p className="font-black text-red-400">MERCADO FECHADO</p>
+
+                <p className="font-black text-red-400">
+                  MERCADO FECHADO
+                </p>
+
                 <p className="mt-1 text-xs text-zinc-300">
                   A janela de transferências está fechada. Nenhum jogador pode receber lance neste momento.
                 </p>
+
               </div>
+
             </div>
+
           </div>
         )}
 
@@ -763,112 +1305,255 @@ export default function PlayersPage() {
           </div>
         )}
 
-        <div className="mb-4 overflow-x-auto">
-          <div className="flex min-w-max gap-2">
-            {CATEGORIES.map((category) => {
-              const active = selectedCategory === category;
+        {/* CATEGORIAS */}
 
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => handleCategory(category)}
-                  className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
-                    active
-                      ? "bg-indigo-700 text-white"
-                      : "border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
-                  }`}
-                >
-                  {getCategoryLabel(category)}
-                </button>
-              );
-            })}
+        <div className="mb-4 overflow-x-auto">
+
+          <div className="flex min-w-max gap-2">
+
+            {categories.map(
+              (
+                category
+              ) => {
+                const active =
+                  selectedCategory ===
+                  category;
+
+                return (
+                  <button
+                    key={
+                      category
+                    }
+                    type="button"
+                    onClick={() =>
+                      handleCategory(
+                        category
+                      )
+                    }
+                    className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                      active
+                        ? "bg-indigo-700 text-white"
+                        : "border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800"
+                    }`}
+                  >
+                    {getCategoryLabel(
+                      category
+                    )}
+                  </button>
+                );
+              }
+            )}
+
           </div>
+
         </div>
 
+        {/* FILTROS */}
+
         <div className="mb-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg">
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+
             <input
               type="text"
               placeholder="Buscar jogador..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+              value={
+                search
+              }
+              onChange={(
+                event
+              ) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="text"
               placeholder="Nacionalidade"
-              value={nationality}
-              onChange={(event) => setNationality(event.target.value)}
-              onKeyDown={(event) => event.key === "Enter" && handleSearch()}
+              value={
+                nationality
+              }
+              onChange={(
+                event
+              ) =>
+                setNationality(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="Preço mínimo"
-              value={minValue}
-              onChange={(event) => setMinValue(event.target.value)}
+              value={
+                minValue
+              }
+              onChange={(
+                event
+              ) =>
+                setMinValue(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="Preço máximo"
-              value={maxValue}
-              onChange={(event) => setMaxValue(event.target.value)}
+              value={
+                maxValue
+              }
+              onChange={(
+                event
+              ) =>
+                setMaxValue(
+                  event.target.value
+                )
+              }
+              onKeyDown={(
+                event
+              ) => {
+                if (
+                  event.key ===
+                  "Enter"
+                ) {
+                  handleSearch();
+                }
+              }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="CA mínimo"
-              value={minCA}
-              onChange={(event) => setMinCA(event.target.value)}
+              value={
+                minCA
+              }
+              onChange={(
+                event
+              ) =>
+                setMinCA(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="CA máximo"
-              value={maxCA}
-              onChange={(event) => setMaxCA(event.target.value)}
+              value={
+                maxCA
+              }
+              onChange={(
+                event
+              ) =>
+                setMaxCA(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="CP mínimo"
-              value={minCP}
-              onChange={(event) => setMinCP(event.target.value)}
+              value={
+                minCP
+              }
+              onChange={(
+                event
+              ) =>
+                setMinCP(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="CP máximo"
-              value={maxCP}
-              onChange={(event) => setMaxCP(event.target.value)}
+              value={
+                maxCP
+              }
+              onChange={(
+                event
+              ) =>
+                setMaxCP(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="Idade mínima"
-              value={minAge}
-              onChange={(event) => setMinAge(event.target.value)}
+              value={
+                minAge
+              }
+              onChange={(
+                event
+              ) =>
+                setMinAge(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
 
             <input
               type="number"
               placeholder="Idade máxima"
-              value={maxAge}
-              onChange={(event) => setMaxAge(event.target.value)}
+              value={
+                maxAge
+              }
+              onChange={(
+                event
+              ) =>
+                setMaxAge(
+                  event.target.value
+                )
+              }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
+
           </div>
 
           <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
@@ -877,6 +1562,7 @@ export default function PlayersPage() {
                 <div className="text-xs font-black uppercase tracking-wider text-indigo-300">
                   Filtros por atributos
                 </div>
+
                 <div className="mt-1 text-xs text-zinc-500">
                   Combine até 6 atributos. Todos os filtros serão aplicados juntos.
                 </div>
@@ -888,76 +1574,136 @@ export default function PlayersPage() {
             </div>
 
             <div className="space-y-3">
-              {attributeFilters.map((filter, index) => (
-                <div
-                  key={index}
-                  className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 sm:grid-cols-[minmax(0,1fr)_160px_160px_auto]"
-                >
-                  <select
-                    value={filter.attribute}
-                    onChange={(event) =>
-                      updateAttributeFilter(index, "attribute", event.target.value)
-                    }
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+              {attributeFilters.map(
+                (filter, index) => (
+                  <div
+                    key={index}
+                    className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-900/60 p-3 sm:grid-cols-[minmax(0,1fr)_160px_160px_auto]"
                   >
-                    <option value="">Atributo {index + 1}</option>
-
-                    {ATTRIBUTE_OPTIONS.map((attribute) => (
-                      <option
-                        key={attribute.column}
-                        value={attribute.column}
-                        disabled={attributeFilters.some(
-                          (currentFilter, currentIndex) =>
-                            currentIndex !== index &&
-                            currentFilter.attribute === attribute.column
-                        )}
-                      >
-                        {attribute.label}
+                    <select
+                      value={
+                        filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "attribute",
+                          event.target.value
+                        )
+                      }
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
+                    >
+                      <option value="">
+                        Atributo {index + 1}
                       </option>
-                    ))}
-                  </select>
 
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    placeholder="Mínimo (1-20)"
-                    value={filter.min}
-                    disabled={!filter.attribute}
-                    onChange={(event) => updateAttributeFilter(index, "min", event.target.value)}
-                    onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  />
+                      {ATTRIBUTE_OPTIONS.map(
+                        (attribute) => (
+                          <option
+                            key={
+                              attribute
+                            }
+                            value={
+                              attribute
+                            }
+                            disabled={attributeFilters.some(
+                              (
+                                currentFilter,
+                                currentIndex
+                              ) =>
+                                currentIndex !==
+                                  index &&
+                                currentFilter.attribute ===
+                                  attribute
+                            )}
+                          >
+                            {attribute}
+                          </option>
+                        )
+                      )}
+                    </select>
 
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    placeholder="Máximo (1-20)"
-                    value={filter.max}
-                    disabled={!filter.attribute}
-                    onChange={(event) => updateAttributeFilter(index, "max", event.target.value)}
-                    onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                    className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  />
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      placeholder="Mínimo (1-20)"
+                      value={filter.min}
+                      disabled={
+                        !filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "min",
+                          event.target.value
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key ===
+                          "Enter"
+                        ) {
+                          handleSearch();
+                        }
+                      }}
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    />
 
-                  <button
-                    type="button"
-                    onClick={() => removeAttributeFilter(index)}
-                    className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-black text-red-300 transition hover:bg-red-500/20"
-                    title="Remover atributo"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      placeholder="Máximo (1-20)"
+                      value={filter.max}
+                      disabled={
+                        !filter.attribute
+                      }
+                      onChange={(event) =>
+                        updateAttributeFilter(
+                          index,
+                          "max",
+                          event.target.value
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (
+                          event.key ===
+                          "Enter"
+                        ) {
+                          handleSearch();
+                        }
+                      }}
+                      className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeAttributeFilter(
+                          index
+                        )
+                      }
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-black text-red-300 transition hover:bg-red-500/20"
+                      title="Remover atributo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )
+              )}
             </div>
 
             <div className="mt-3">
               <button
                 type="button"
-                onClick={addAttributeFilter}
-                disabled={attributeFilters.length >= MAX_ATTRIBUTE_FILTERS}
+                onClick={
+                  addAttributeFilter
+                }
+                disabled={
+                  attributeFilters.length >=
+                  MAX_ATTRIBUTE_FILTERS
+                }
                 className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-2 text-sm font-black text-indigo-300 transition hover:bg-indigo-500/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 + Adicionar atributo
@@ -966,9 +1712,12 @@ export default function PlayersPage() {
           </div>
 
           <div className="mt-3 flex gap-2">
+
             <button
               type="button"
-              onClick={handleSearch}
+              onClick={
+                handleSearch
+              }
               className="rounded-lg bg-indigo-700 px-5 py-2 text-sm font-bold text-white hover:bg-indigo-600"
             >
               Buscar
@@ -976,130 +1725,288 @@ export default function PlayersPage() {
 
             <button
               type="button"
-              onClick={clearFilters}
+              onClick={
+                clearFilters
+              }
               className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700"
             >
               Limpar
             </button>
+
           </div>
+
         </div>
+
+        {/* CARDS */}
 
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400 shadow-lg">
             Carregando jogadores...
           </div>
-        ) : players.length === 0 ? (
+        ) : players.length ===
+          0 ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400 shadow-lg">
             Nenhum jogador encontrado.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {players.map((player) => (
-              <div
-                key={player.id}
-                className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
-              >
-                <div className="mb-3 text-[12px] font-bold text-zinc-400">
-                  ID do jogador -{" "}
-                  <span className="font-black text-zinc-200">{player.unique_id}</span>
-                </div>
 
-                <Link href={`/players/${player.id}`} className="block">
-                  <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
-                    {player.name} - {player.age ?? "-"} anos
+            {players.map(
+              (
+                player
+              ) => (
+                <div
+                  key={
+                    player.id
+                  }
+                  className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
+                >
+
+                  {/* ID */}
+
+                  <div className="mb-3 text-[12px] font-bold text-zinc-400">
+
+                    ID do jogador -{" "}
+
+                    <span className="font-black text-zinc-200">
+                      {
+                        player.unique_id
+                      }
+                    </span>
+
                   </div>
 
-                  <div className="mt-3 text-sm font-medium text-zinc-300">
-                    {player.nationality || "-"}
-                  </div>
-
-                  <div className="mt-3 text-sm font-black text-zinc-200">
-                    CA - <span className={getCAColor(player.ca)}>{player.ca ?? "-"}</span>
-                  </div>
-
-                  <div className="mt-2 text-sm font-black text-zinc-200">
-                    CP - <span className="text-sky-400">{player.cp ?? "-"}</span>
-                  </div>
-
-                  <div className="mt-3 truncate text-[14px] font-semibold text-zinc-200">
-                    {player.club || "-"}
-                  </div>
-
-                  <div className="mt-2 truncate text-[13px] font-medium text-zinc-400">
-                    {player.position || "-"}
-                  </div>
-                </Link>
-
-                {marketOpen ? (
                   <Link
                     href={`/players/${player.id}`}
-                    className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
+                    className="block"
                   >
-                    DAR LANCE — {formatMoney(player.value)}
+
+                    {/* NOME */}
+
+                    <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
+
+                      {
+                        player.name
+                      }{" "}
+                      -{" "}
+                      {
+                        player.age ??
+                        "-"
+                      }{" "}
+                      anos
+
+                    </div>
+
+                    {/* NACIONALIDADE */}
+
+                    <div className="mt-3 text-sm font-medium text-zinc-300">
+                      {
+                        player.nationality ||
+                        "-"
+                      }
+                    </div>
+
+                    {/* CA */}
+
+                    <div className="mt-3 text-sm font-black text-zinc-200">
+
+                      CA -{" "}
+
+                      <span
+                        className={getCAColor(
+                          player.ca
+                        )}
+                      >
+                        {
+                          player.ca ??
+                          "-"
+                        }
+                      </span>
+
+                    </div>
+
+                    {/* CP */}
+
+                    <div className="mt-2 text-sm font-black text-zinc-200">
+
+                      CP -{" "}
+
+                      <span className="text-sky-400">
+                        {
+                          player.cp ??
+                          "-"
+                        }
+                      </span>
+
+                    </div>
+
+                    {/* CLUBE */}
+
+                    <div className="mt-3 truncate text-[14px] font-semibold text-zinc-200">
+                      {
+                        player.club ||
+                        "-"
+                      }
+                    </div>
+
+                    {/* POSIÇÃO */}
+
+                    <div className="mt-2 truncate text-[13px] font-medium text-zinc-400">
+                      {
+                        player.position ||
+                        "-"
+                      }
+                    </div>
+
                   </Link>
-                ) : (
+
+                  {/* BOTÃO DE LANCE */}
+
+                  {marketOpen ? (
+                    <Link
+                      href={`/players/${player.id}`}
+                      className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
+                    >
+                      DAR LANCE —{" "}
+                      {formatMoney(
+                        player.value
+                      )}
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="mt-4 w-full cursor-not-allowed rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-black text-red-400"
+                    >
+                      🔒 MERCADO FECHADO
+                    </button>
+                  )}
+
+                  {/* LISTA DE COMPRAS */}
+
                   <button
                     type="button"
-                    disabled
-                    className="mt-4 w-full cursor-not-allowed rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px] font-black text-red-400"
+                    disabled={
+                      shoppingLoadingId ===
+                        player.id ||
+                      !myTeam
+                    }
+                    onClick={() =>
+                      toggleShoppingList(
+                        player
+                      )
+                    }
+                    className={`mt-2 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                      shoppingListIds.has(
+                        player.id
+                      )
+                        ? "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"
+                        : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-indigo-500/40 hover:text-indigo-300"
+                    }`}
                   >
-                    🔒 MERCADO FECHADO
+                    {shoppingLoadingId ===
+                    player.id
+                      ? "SALVANDO..."
+                      : shoppingListIds.has(
+                          player.id
+                        )
+                      ? "✓ NA LISTA — REMOVER"
+                      : "🛒 ADICIONAR À LISTA"}
                   </button>
-                )}
 
-                <button
-                  type="button"
-                  disabled={shoppingLoadingId === player.id}
-                  onClick={() => toggleShoppingList(player)}
-                  className={`mt-2 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                    shoppingListIds.has(player.id)
-                      ? "border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20"
-                      : "border border-zinc-700 bg-zinc-950 text-zinc-200 hover:border-indigo-500/40 hover:text-indigo-300"
-                  }`}
-                >
-                  {shoppingLoadingId === player.id
-                    ? "SALVANDO..."
-                    : shoppingListIds.has(player.id)
-                    ? "✓ NA LISTA — REMOVER"
-                    : "🛒 ADICIONAR À LISTA"}
-                </button>
+                  {/* VALOR */}
 
-                <div className="mt-4 border-t border-zinc-800 pt-3">
-                  <div className="text-[12px] font-black uppercase text-red-400">Valor</div>
-                  <div className="mt-1 text-[13px] font-medium text-red-300">
-                    {formatMoney(player.value)}
+                  <div className="mt-4 border-t border-zinc-800 pt-3">
+
+                    <div className="text-[12px] font-black uppercase text-red-400">
+                      Valor
+                    </div>
+
+                    <div className="mt-1 text-[13px] font-medium text-red-300">
+                      {formatMoney(
+                        player.value
+                      )}
+                    </div>
+
                   </div>
+
                 </div>
-              </div>
-            ))}
+              )
+            )}
+
           </div>
         )}
 
+        {/* PAGINAÇÃO */}
+
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 p-3 shadow-lg">
+
           <button
             type="button"
-            disabled={page === 1 || loading}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={
+              page === 1 ||
+              loading
+            }
+            onClick={() =>
+              setPage(
+                (
+                  current
+                ) =>
+                  Math.max(
+                    1,
+                    current -
+                      1
+                  )
+              )
+            }
             className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
           >
             Anterior
           </button>
 
           <div className="text-sm font-semibold text-zinc-400">
-            Página <span className="font-black text-white">{page}</span> de{" "}
-            <span className="font-black text-white">{totalPages}</span>
+
+            Página{" "}
+
+            <span className="font-black text-white">
+              {page}
+            </span>
+
+            {" "}de{" "}
+
+            <span className="font-black text-white">
+              {
+                totalPages
+              }
+            </span>
+
           </div>
 
           <button
             type="button"
-            disabled={page >= totalPages || loading}
-            onClick={() => setPage((current) => current + 1)}
+            disabled={
+              page >=
+                totalPages ||
+              loading
+            }
+            onClick={() =>
+              setPage(
+                (
+                  current
+                ) =>
+                  current +
+                  1
+              )
+            }
             className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
           >
             Próxima
           </button>
+
         </div>
+
       </div>
+
     </main>
   );
 }
