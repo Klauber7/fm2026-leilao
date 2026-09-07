@@ -46,6 +46,13 @@ const COACHES_SEARCH_STATE_KEY = "friendzone_coaches_search_state";
 const ROLE_OPTIONS = [
   { label: "Treinador", value: "Treinador" },
   { label: "Adjunto", value: "Treinador Adjunto Principal" },
+  { label: "Preparador", value: "Preparador" },
+  { label: "Treinador de Goleiros", value: "Treinador de Goleiros" },
+  { label: "Preparador de Bolas Paradas", value: "Preparador de Bolas Paradas" },
+  { label: "Preparador Físico", value: "Preparador Físico" },
+  { label: "Analista de Desempenho", value: "Analista de Desempenho" },
+  { label: "Fisioterapeuta", value: "Fisioterapeuta" },
+  { label: "Cientista Desportivo", value: "Cientista Desportivo" },
 ];
 
 function cleanSearch(value: string) {
