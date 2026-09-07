@@ -30,49 +30,41 @@ type TransferWindow = {
   status: string;
 };
 
-type SavedSearchState = {
-  search?: string;
-  roleFilter?: string;
-  minCA?: string;
-  maxCA?: string;
-  minCP?: string;
-  maxCP?: string;
-  page?: number;
-};
-
 const PAGE_SIZE = 50;
-const COACHES_SEARCH_STATE_KEY = "friendzone_coaches_search_state";
 
-const ROLE_OPTIONS = [
-  { label: "Treinador", value: "Treinador" },
-  { label: "Adjunto", value: "Treinador Adjunto Principal" },
-  { label: "Preparador", value: "Preparador" },
-  { label: "Treinador de Goleiros", value: "Treinador de Goleiros" },
-  { label: "Preparador de Bolas Paradas", value: "Preparador de Bolas Paradas" },
-  { label: "Preparador Físico", value: "Preparador Físico" },
-  { label: "Analista de Desempenho", value: "Analista de Desempenho" },
-  { label: "Fisioterapeuta", value: "Fisioterapeuta" },
-  { label: "Cientista Desportivo", value: "Cientista Desportivo" },
+const STAFF_ROLES = [
+  "Treinador",
+  "Adjunto",
+  "Preparador",
+  "Preparador físico",
+  "Treinador de goleiros",
+  "Fisioterapeuta",
+  "Analista",
 ];
 
 function cleanSearch(value: string) {
   return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
     .trim()
     .replace(/[,%_()]/g, " ")
     .replace(/\s+/g, " ");
 }
 
 function formatMoney(value: number | null) {
+  if (value === null || value === undefined) return "R$ 0,00";
+
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number(value || 0));
+  }).format(value);
 }
 
 function getCAColor(ca: number | null) {
-  if (ca === null) return "text-zinc-300";
+  if (!ca) return "text-zinc-300";
   if (ca >= 170) return "text-emerald-400";
   if (ca >= 150) return "text-lime-400";
   if (ca >= 130) return "text-yellow-300";
@@ -91,7 +83,9 @@ export default function CoachesPage() {
   const [cartMessage, setCartMessage] = useState("");
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+
   const [minCA, setMinCA] = useState("");
   const [maxCA, setMaxCA] = useState("");
   const [minCP, setMinCP] = useState("");
@@ -99,72 +93,16 @@ export default function CoachesPage() {
 
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
-  const [searchStateReady, setSearchStateReady] = useState(false);
-
-  const [currentWindow, setCurrentWindow] =
-    useState<TransferWindow | null>(null);
+  const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(COACHES_SEARCH_STATE_KEY);
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(cleanSearch(search));
+      setPage(1);
+    }, 350);
 
-      if (raw) {
-        const saved = JSON.parse(raw) as SavedSearchState;
-
-        setSearch(typeof saved.search === "string" ? saved.search : "");
-        setRoleFilter(
-          typeof saved.roleFilter === "string" ? saved.roleFilter : "all"
-        );
-        setMinCA(typeof saved.minCA === "string" ? saved.minCA : "");
-        setMaxCA(typeof saved.maxCA === "string" ? saved.maxCA : "");
-        setMinCP(typeof saved.minCP === "string" ? saved.minCP : "");
-        setMaxCP(typeof saved.maxCP === "string" ? saved.maxCP : "");
-
-        if (
-          Number.isInteger(saved.page) &&
-          Number(saved.page) >= 1
-        ) {
-          setPage(Number(saved.page));
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao restaurar pesquisa:", error);
-    } finally {
-      setSearchStateReady(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!searchStateReady) return;
-
-    const saved: SavedSearchState = {
-      search,
-      roleFilter,
-      minCA,
-      maxCA,
-      minCP,
-      maxCP,
-      page,
-    };
-
-    try {
-      sessionStorage.setItem(
-        COACHES_SEARCH_STATE_KEY,
-        JSON.stringify(saved)
-      );
-    } catch (error) {
-      console.error("Erro ao salvar pesquisa:", error);
-    }
-  }, [
-    searchStateReady,
-    search,
-    roleFilter,
-    minCA,
-    maxCA,
-    minCP,
-    maxCP,
-    page,
-  ]);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const resolveMyTeam = useCallback(async (): Promise<Team | null> => {
     const {
@@ -176,21 +114,21 @@ export default function CoachesPage() {
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data: teamData, error: teamError } = await supabase
       .from("teams")
       .select("id, name")
       .eq("manager_id", user.id)
       .limit(1)
       .maybeSingle();
 
-    if (error || !data) {
-      if (error) {
-        console.error("Erro ao identificar clube:", error);
+    if (teamError || !teamData) {
+      if (teamError) {
+        console.error("Erro ao identificar clube:", teamError);
       }
       return null;
     }
 
-    const team = data as Team;
+    const team = teamData as Team;
     setMyTeam(team);
     return team;
   }, []);
@@ -210,22 +148,29 @@ export default function CoachesPage() {
       .eq("team_id", team.id);
 
     if (error) {
-      console.error("Erro ao carregar lista:", error);
+      console.error("Erro ao carregar lista de staff:", error);
       setCartIds(new Set());
       return;
     }
 
     setCartIds(
-      new Set((data || []).map((row) => Number(row.coach_id)))
+      new Set((data || []).map((row: any) => Number(row.coach_id)))
     );
   }, [resolveMyTeam]);
 
   const loadTransferWindow = useCallback(async () => {
     const { data, error } = await supabase
       .from("transfer_windows")
-      .select("id, window_number, name, status")
+      .select(`
+        id,
+        window_number,
+        name,
+        status
+      `)
       .eq("status", "open")
-      .order("window_number", { ascending: false })
+      .order("window_number", {
+        ascending: false,
+      })
       .limit(1)
       .maybeSingle();
 
@@ -235,36 +180,38 @@ export default function CoachesPage() {
       return;
     }
 
-    setCurrentWindow(data ? (data as TransferWindow) : null);
+    setCurrentWindow(
+      data ? (data as TransferWindow) : null
+    );
   }, []);
 
   const loadCoaches = useCallback(async () => {
-    if (!searchStateReady) return;
-
     setLoading(true);
     setErrorMessage("");
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const term = cleanSearch(search);
 
     let query = supabase
       .from("coaches")
       .select(
         `
-          id,
-          unique_id,
-          name,
-          age,
-          nationality,
-          role,
-          ca,
-          cp,
-          preferred_formation,
-          value,
-          team_id
+        id,
+        unique_id,
+        name,
+        age,
+        nationality,
+        role,
+        ca,
+        cp,
+        preferred_formation,
+        value,
+        value,
+        team_id
         `,
-        { count: "exact" }
+        {
+          count: "exact",
+        }
       )
       .is("team_id", null);
 
@@ -272,36 +219,45 @@ export default function CoachesPage() {
       query = query.eq("role", roleFilter);
     }
 
-    if (term) {
-      query = query.or(
-        `name.ilike.%${term}%,nationality.ilike.%${term}%,preferred_formation.ilike.%${term}%`
+    if (debouncedSearch) {
+      query = query.ilike(
+        "search_text",
+        `%${debouncedSearch}%`
       );
     }
 
-    if (minCA !== "") {
+    if (minCA) {
       query = query.gte("ca", Number(minCA));
     }
 
-    if (maxCA !== "") {
+    if (maxCA) {
       query = query.lte("ca", Number(maxCA));
     }
 
-    if (minCP !== "") {
+    if (minCP) {
       query = query.gte("cp", Number(minCP));
     }
 
-    if (maxCP !== "") {
+    if (maxCP) {
       query = query.lte("cp", Number(maxCP));
     }
 
     const { data, error, count } = await query
-      .order("ca", { ascending: false, nullsFirst: false })
-      .order("cp", { ascending: false, nullsFirst: false })
-      .order("name", { ascending: true })
+      .order("ca", {
+        ascending: false,
+        nullsFirst: false,
+      })
+      .order("cp", {
+        ascending: false,
+        nullsFirst: false,
+      })
+      .order("name", {
+        ascending: true,
+      })
       .range(from, to);
 
     if (error) {
-      console.error("Erro ao carregar treinadores:", error);
+      console.error("Erro ao carregar staffs:", error);
       setErrorMessage(error.message);
       setCoaches([]);
       setTotal(0);
@@ -312,10 +268,9 @@ export default function CoachesPage() {
 
     setLoading(false);
   }, [
-    searchStateReady,
     page,
-    search,
     roleFilter,
+    debouncedSearch,
     minCA,
     maxCA,
     minCP,
@@ -323,24 +278,80 @@ export default function CoachesPage() {
   ]);
 
   useEffect(() => {
-    if (!searchStateReady) return;
-
-    void loadTransferWindow();
-    void loadCart();
-  }, [searchStateReady, loadTransferWindow, loadCart]);
+    loadTransferWindow();
+    loadCoaches();
+  }, [loadTransferWindow, loadCoaches]);
 
   useEffect(() => {
-    if (!searchStateReady) return;
+    loadCart();
+  }, [loadCart]);
 
-    void loadCoaches();
-  }, [searchStateReady, loadCoaches]);
+  useEffect(() => {
+    const channel = supabase
+      .channel("coaches-market")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "coaches",
+        },
+        () => loadCoaches()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadCoaches]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("coaches-transfer-window")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transfer_windows",
+        },
+        () => loadTransferWindow()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadTransferWindow]);
+
+  useEffect(() => {
+    if (!myTeam) return;
+
+    const channel = supabase
+      .channel(`staff-cart-${myTeam.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "staff_shopping_list",
+          filter: `team_id=eq.${myTeam.id}`,
+        },
+        loadCart
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [myTeam, loadCart]);
 
   async function toggleCart(coach: Coach) {
     const team = myTeam ?? (await resolveMyTeam());
 
     if (!team) {
       setCartMessage(
-        "Não foi possível identificar seu clube. Confirme se sua conta está vinculada a um time."
+        "Não foi possível identificar seu clube. Atualize a página ou confirme se sua conta está vinculada a um time."
       );
       return;
     }
@@ -348,9 +359,9 @@ export default function CoachesPage() {
     setCartLoadingId(coach.id);
     setCartMessage("");
 
-    const isSaved = cartIds.has(coach.id);
+    const isInCart = cartIds.has(coach.id);
 
-    if (isSaved) {
+    if (isInCart) {
       const { error } = await supabase
         .from("staff_shopping_list")
         .delete()
@@ -358,8 +369,7 @@ export default function CoachesPage() {
         .eq("coach_id", coach.id);
 
       if (error) {
-        console.error("Erro ao remover da lista:", error);
-        setCartMessage("Não foi possível remover da lista.");
+        setCartMessage("Não foi possível remover o treinador da lista.");
         setCartLoadingId(null);
         return;
       }
@@ -380,13 +390,11 @@ export default function CoachesPage() {
         });
 
       if (error) {
-        console.error("Erro ao adicionar à lista:", error);
-
         if (error.code === "23505") {
           await loadCart();
           setCartMessage(`${coach.name} já está na sua lista.`);
         } else {
-          setCartMessage("Não foi possível adicionar à lista.");
+          setCartMessage("Não foi possível adicionar o treinador à lista.");
         }
 
         setCartLoadingId(null);
@@ -407,24 +415,25 @@ export default function CoachesPage() {
 
   function handleSearch() {
     setPage(1);
+    loadCoaches();
   }
 
   function clearFilters() {
     setSearch("");
+    setDebouncedSearch("");
     setRoleFilter("all");
     setMinCA("");
     setMaxCA("");
     setMinCP("");
     setMaxCP("");
     setPage(1);
-
-    try {
-      sessionStorage.removeItem(COACHES_SEARCH_STATE_KEY);
-    } catch {}
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const marketOpen = Boolean(currentWindow);
+  const marketOpen =
+    Boolean(
+      currentWindow
+    );
 
   const pageNumbers = useMemo(() => {
     const first = Math.max(1, page - 2);
@@ -483,15 +492,13 @@ export default function CoachesPage() {
           </div>
         )}
 
+        {/* FILTROS */}
         <div className="mb-6 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             <input
               type="search"
               value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setSearch(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") handleSearch();
               }}
@@ -509,9 +516,9 @@ export default function CoachesPage() {
             >
               <option value="all">Todas as funções</option>
 
-              {ROLE_OPTIONS.map((role) => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
+              {STAFF_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
                 </option>
               ))}
             </select>
@@ -520,10 +527,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CA mínimo"
               value={minCA}
-              onChange={(event) => {
-                setMinCA(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setMinCA(event.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -531,10 +535,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CA máximo"
               value={maxCA}
-              onChange={(event) => {
-                setMaxCA(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setMaxCA(event.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -542,10 +543,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CP mínimo"
               value={minCP}
-              onChange={(event) => {
-                setMinCP(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setMinCP(event.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -553,10 +551,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CP máximo"
               value={maxCP}
-              onChange={(event) => {
-                setMaxCP(event.target.value);
-                setPage(1);
-              }}
+              onChange={(event) => setMaxCP(event.target.value)}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
           </div>
@@ -580,6 +575,7 @@ export default function CoachesPage() {
           </div>
         </div>
 
+        {/* CARDS */}
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
             Carregando treinadores...
@@ -598,6 +594,7 @@ export default function CoachesPage() {
                   key={coach.id}
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
                 >
+                  {/* ID */}
                   <div className="mb-3 text-[12px] font-bold text-zinc-400">
                     ID do treinador -{" "}
                     <span className="font-black text-zinc-200">
@@ -606,14 +603,17 @@ export default function CoachesPage() {
                   </div>
 
                   <Link href={`/coaches/${coach.id}`} className="block">
+                    {/* NOME */}
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-green-300">
                       {coach.name} - {coach.age ?? "-"} anos
                     </div>
 
+                    {/* FUNÇÃO */}
                     <div className="mt-3 text-[13px] font-black text-green-400">
                       {coach.role || "Treinador"}
                     </div>
 
+                    {/* CA */}
                     <div className="mt-3 text-sm font-black text-zinc-200">
                       CA -{" "}
                       <span className={getCAColor(coach.ca)}>
@@ -621,6 +621,7 @@ export default function CoachesPage() {
                       </span>
                     </div>
 
+                    {/* CP */}
                     <div className="mt-2 text-sm font-black text-zinc-200">
                       CP -{" "}
                       <span className="text-sky-400">
@@ -628,6 +629,7 @@ export default function CoachesPage() {
                       </span>
                     </div>
 
+                    {/* TÁTICA PREFERIDA */}
                     <div className="mt-3 text-[13px] font-semibold text-zinc-200">
                       Tática preferida
                     </div>
@@ -636,6 +638,7 @@ export default function CoachesPage() {
                       {coach.preferred_formation?.trim() || "Não informada"}
                     </div>
 
+                    {/* NACIONALIDADE */}
                     <div className="mt-3 text-[13px] font-semibold text-zinc-200">
                       Nacionalidade
                     </div>
@@ -645,12 +648,16 @@ export default function CoachesPage() {
                     </div>
                   </Link>
 
+                  {/* BOTÃO DE LANCE */}
                   {marketOpen ? (
                     <Link
                       href={`/coaches/${coach.id}`}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
-                      DAR LANCE — {formatMoney(coach.value)}
+                      DAR LANCE —{" "}
+                      {formatMoney(
+                        coach.value
+                      )}
                     </Link>
                   ) : (
                     <button
@@ -662,10 +669,11 @@ export default function CoachesPage() {
                     </button>
                   )}
 
+                  {/* LISTA */}
                   <button
                     type="button"
                     disabled={cartLoadingId === coach.id}
-                    onClick={() => void toggleCart(coach)}
+                    onClick={() => toggleCart(coach)}
                     className={`mt-2 w-full rounded-lg px-3 py-2 text-[12px] font-black transition disabled:cursor-not-allowed disabled:opacity-50 ${
                       isInCart
                         ? "border border-green-500/40 bg-green-500/10 text-green-300 hover:bg-green-500/20"
@@ -675,10 +683,11 @@ export default function CoachesPage() {
                     {cartLoadingId === coach.id
                       ? "SALVANDO..."
                       : isInCart
-                        ? "✓ NA LISTA — REMOVER"
-                        : "🛒 ADICIONAR À LISTA"}
+                      ? "✓ NA LISTA — REMOVER"
+                      : "🛒 ADICIONAR À LISTA"}
                   </button>
 
+                  {/* VALOR */}
                   <div className="mt-4 border-t border-zinc-800 pt-3">
                     <div className="text-[12px] font-black uppercase text-red-400">
                       VALOR
@@ -694,13 +703,12 @@ export default function CoachesPage() {
           </div>
         )}
 
+        {/* PAGINAÇÃO */}
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 p-3 shadow-lg">
           <button
             type="button"
             disabled={page === 1 || loading}
-            onClick={() =>
-              setPage((current) => Math.max(1, current - 1))
-            }
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
             className="rounded-lg bg-zinc-800 px-5 py-2 text-sm font-bold text-zinc-200 hover:bg-zinc-700 disabled:opacity-40"
           >
             Anterior

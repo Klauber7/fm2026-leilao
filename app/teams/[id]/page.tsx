@@ -35,12 +35,15 @@ type Player = {
 
 type Coach = {
   id: number;
+  unique_id: string | null;
   name: string;
   age: number | null;
   role: string | null;
   nationality: string | null;
   ca: number | null;
   pa: number | null;
+  cp: number | null;
+  preferred_formation: string | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -338,79 +341,71 @@ function PlayerCard({
 
 function StaffCard({
   member,
+  onRelease,
+  releasing,
+  canRelease,
 }: {
   member: Coach;
+  onRelease: (member: Coach) => void;
+  releasing: boolean;
+  canRelease: boolean;
 }) {
   return (
-    <article className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 transition duration-200 hover:-translate-y-1 hover:border-purple-500/60">
-      <div className="relative h-48 overflow-hidden bg-zinc-800">
-        {member.image_url ? (
-          <img
-            src={member.image_url}
-            alt={member.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center text-zinc-500">
-            <span className="text-6xl">👔</span>
-
-            <span className="mt-3 text-sm">
-              Sem imagem
-            </span>
-          </div>
-        )}
-
-        <div className="absolute right-4 top-4 rounded-xl border border-green-500/30 bg-zinc-950/90 px-3 py-2 text-center backdrop-blur">
-          <p className="text-[10px] font-black uppercase text-zinc-500">
-            CA
-          </p>
-
-          <p className="text-xl font-black leading-none text-green-400">
-            {member.ca ?? "-"}
-          </p>
-        </div>
+    <article className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md">
+      <div className="mb-3 text-[12px] font-bold text-zinc-400">
+        ID do treinador -{" "}
+        <span className="font-black text-zinc-200">
+          {member.unique_id || member.id}
+        </span>
       </div>
 
-      <div className="p-5">
-        <p className="font-bold text-purple-400">
-          {member.role || "Comissão técnica"}
-        </p>
+      <div className="mt-4 text-[14px] font-black text-white">
+        {member.name} - {member.age ?? "-"} anos
+      </div>
 
-        <h3 className="mt-1 text-2xl font-black">
-          {member.name}
-        </h3>
+      <div className="mt-3 text-[13px] font-black text-green-400">
+        {member.role || "Treinador"}
+      </div>
 
-        <p className="mt-3 text-zinc-400">
-          {member.nationality ||
-            "Nacionalidade não informada"}
-        </p>
+      <div className="mt-3 text-sm font-black text-zinc-200">
+        CA - <span className="text-green-400">{member.ca ?? "-"}</span>
+      </div>
 
-        <p className="mt-1 text-sm text-zinc-500">
-          {member.age !== null
-            ? `${member.age} anos`
-            : "Idade não informada"}
-        </p>
+      <div className="mt-2 text-sm font-black text-zinc-200">
+        CP - <span className="text-sky-400">{member.cp ?? member.pa ?? "-"}</span>
+      </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-4 border-t border-zinc-800 pt-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              PA
-            </p>
+      <div className="mt-3 text-[13px] font-semibold text-zinc-200">
+        Tática preferida
+      </div>
+      <div className="mt-1 min-h-[38px] text-[13px] font-medium text-zinc-400">
+        {member.preferred_formation?.trim() || "Não informada"}
+      </div>
 
-            <p className="mt-1 font-black">
-              {member.pa ?? "-"}
-            </p>
-          </div>
+      <div className="mt-3 text-[13px] font-semibold text-zinc-200">
+        Nacionalidade
+      </div>
+      <div className="mt-1 text-[13px] font-medium text-zinc-400">
+        {member.nationality || "-"}
+      </div>
 
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Valor
-            </p>
+      {canRelease && (
+        <button
+          type="button"
+          disabled={releasing}
+          onClick={() => onRelease(member)}
+          className="mt-4 w-full rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {releasing ? "DISPENSANDO..." : "🗑 DISPENSAR — RECEBER 50%"}
+        </button>
+      )}
 
-            <p className="mt-1 font-black text-green-400">
-              {money(member.value)}
-            </p>
-          </div>
+      <div className="mt-4 border-t border-zinc-800 pt-3">
+        <div className="text-[12px] font-black uppercase text-red-400">
+          VALOR
+        </div>
+        <div className="mt-1 text-[13px] font-medium text-red-300">
+          {money(member.value)}
         </div>
       </div>
     </article>
@@ -451,6 +446,15 @@ export default function TeamPage() {
   const [errorMessage, setErrorMessage] =
     useState("");
 
+  const [successMessage, setSuccessMessage] =
+    useState("");
+
+  const [releasingStaffId, setReleasingStaffId] =
+    useState<number | null>(null);
+
+  const [currentUserId, setCurrentUserId] =
+    useState<string | null>(null);
+
   const loadTeam = useCallback(async () => {
     if (
       !Number.isInteger(teamId) ||
@@ -471,6 +475,9 @@ export default function TeamPage() {
     try {
       setLoading(true);
       setErrorMessage("");
+
+      const { data: authData } = await supabase.auth.getUser();
+      setCurrentUserId(authData.user?.id || null);
 
       const {
         data: teamData,
@@ -551,12 +558,15 @@ export default function TeamPage() {
           .from("coaches")
           .select(`
             id,
+            unique_id,
             name,
             age,
             role,
             nationality,
             ca,
             pa,
+            cp,
+            preferred_formation,
             value,
             image_url,
             team_id,
@@ -749,6 +759,57 @@ export default function TeamPage() {
       supabase.removeChannel(channel);
     };
   }, [teamId, loadTeam]);
+
+  async function releaseStaff(member: Coach) {
+    if (releasingStaffId !== null) return;
+
+    const refund = Number(member.value || 0) * 0.5;
+    const confirmed = window.confirm(
+      `Dispensar ${member.name}?\n\n` +
+        `Valor do staff: ${money(member.value)}\n` +
+        `Valor devolvido ao clube (50%): ${money(refund)}\n\n` +
+        "O profissional voltará ao Mercado de Treinadores."
+    );
+
+    if (!confirmed) return;
+
+    setReleasingStaffId(member.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const { data, error } = await supabase.rpc("release_staff", {
+      p_coach_id: member.id,
+    });
+
+    if (error) {
+      const message = String(error.message || "");
+      if (message.includes("STAFF_NOT_OWNED")) {
+        setErrorMessage("Esse profissional não pertence ao seu clube.");
+      } else if (message.includes("TEAM_NOT_FOUND")) {
+        setErrorMessage("Não foi possível localizar seu clube.");
+      } else if (message.includes("STAFF_NOT_FOUND")) {
+        setErrorMessage("Profissional não encontrado.");
+      } else if (message.includes("NOT_AUTHENTICATED")) {
+        setErrorMessage("Sua sessão expirou. Entre novamente.");
+      } else {
+        setErrorMessage("Não foi possível dispensar o profissional.");
+      }
+      setReleasingStaffId(null);
+      return;
+    }
+
+    const returnedRefund =
+      data && typeof data === "object" && "refund" in data
+        ? Number((data as { refund?: number }).refund || 0)
+        : refund;
+
+    setSuccessMessage(
+      `${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orçamento do clube.`
+    );
+
+    await loadTeam();
+    setReleasingStaffId(null);
+  }
 
   const totalSquadValue = useMemo(
     () =>
@@ -1056,6 +1117,12 @@ export default function TeamPage() {
           </div>
         )}
 
+        {successMessage && (
+          <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
+            {successMessage}
+          </div>
+        )}
+
         <section className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
             <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
@@ -1311,11 +1378,14 @@ export default function TeamPage() {
               </Link>
             </div>
           ) : (
-            <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {staff.map((member) => (
                 <StaffCard
                   key={member.id}
                   member={member}
+                  onRelease={releaseStaff}
+                  releasing={releasingStaffId === member.id}
+                  canRelease={Boolean(currentUserId && team.manager_id === currentUserId)}
                 />
               ))}
             </div>
