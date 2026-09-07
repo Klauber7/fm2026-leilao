@@ -11,7 +11,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type DraftMode = "players" | "staff";
-type TransferType = "free" | "paid";
+type TransferType = "free" | "paid" | "staff100" | "staff75" | "staff50" | "staff25";
 
 type Player = {
   id: number;
@@ -51,6 +51,16 @@ function money(value: number | null | undefined) {
     currency: "BRL",
     maximumFractionDigits: 0,
   });
+}
+
+function getStaffPercentage(
+  transferType: TransferType
+): number | null {
+  if (transferType === "staff100") return 1;
+  if (transferType === "staff75") return 0.75;
+  if (transferType === "staff50") return 0.5;
+  if (transferType === "staff25") return 0.25;
+  return null;
 }
 
 export default function AdminDraftPage() {
@@ -124,6 +134,7 @@ export default function AdminDraftPage() {
     if (saving) return;
     setMode(nextMode);
     resetSelection();
+    setTransferType("free");
   };
 
   const loadPage = useCallback(async () => {
@@ -366,6 +377,24 @@ export default function AdminDraftPage() {
         alert("Digite um valor válido.");
         return;
       }
+    }
+
+    const staffPercentage = getStaffPercentage(transferType);
+
+    if (staffPercentage !== null) {
+      if (mode !== "staff" || !selectedCoach) {
+        alert("Essa opção é exclusiva para o Draft de Staff.");
+        return;
+      }
+
+      const staffValue = Number(selectedCoach.value || 0);
+
+      if (!Number.isFinite(staffValue) || staffValue <= 0) {
+        alert("Esse membro do staff não possui valor cadastrado.");
+        return;
+      }
+
+      finalAmount = Math.round(staffValue * staffPercentage);
     }
 
     if (
@@ -838,7 +867,13 @@ export default function AdminDraftPage() {
             3. Tipo da transferência
           </h2>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div
+            className={`mt-5 grid gap-4 ${
+              mode === "staff"
+                ? "md:grid-cols-3 xl:grid-cols-6"
+                : "md:grid-cols-2"
+            }`}
+          >
             <button
               type="button"
               onClick={() => {
@@ -867,12 +902,111 @@ export default function AdminDraftPage() {
               }`}
             >
               <p className="text-xl font-black">
-                Com custo
+                Valor aberto
               </p>
               <p className="mt-2 text-sm text-zinc-400">
-                O valor será descontado do orçamento.
+                Digite manualmente o valor da transferência.
               </p>
             </button>
+
+            {mode === "staff" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferType("staff100");
+                    setAmount("");
+                  }}
+                  className={`rounded-xl border p-5 text-left ${
+                    transferType === "staff100"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-zinc-700 bg-zinc-950"
+                  }`}
+                >
+                  <p className="text-xl font-black">100%</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {selectedCoach
+                      ? money(selectedCoach.value)
+                      : "Valor total do Staff"}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferType("staff75");
+                    setAmount("");
+                  }}
+                  className={`rounded-xl border p-5 text-left ${
+                    transferType === "staff75"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-zinc-700 bg-zinc-950"
+                  }`}
+                >
+                  <p className="text-xl font-black">75%</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {selectedCoach
+                      ? money(
+                          Math.round(
+                            Number(selectedCoach.value || 0) *
+                              0.75
+                          )
+                        )
+                      : "75% do valor do Staff"}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferType("staff50");
+                    setAmount("");
+                  }}
+                  className={`rounded-xl border p-5 text-left ${
+                    transferType === "staff50"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-zinc-700 bg-zinc-950"
+                  }`}
+                >
+                  <p className="text-xl font-black">50%</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {selectedCoach
+                      ? money(
+                          Math.round(
+                            Number(selectedCoach.value || 0) *
+                              0.5
+                          )
+                        )
+                      : "50% do valor do Staff"}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTransferType("staff25");
+                    setAmount("");
+                  }}
+                  className={`rounded-xl border p-5 text-left ${
+                    transferType === "staff25"
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-zinc-700 bg-zinc-950"
+                  }`}
+                >
+                  <p className="text-xl font-black">25%</p>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {selectedCoach
+                      ? money(
+                          Math.round(
+                            Number(selectedCoach.value || 0) *
+                              0.25
+                          )
+                        )
+                      : "25% do valor do Staff"}
+                  </p>
+                </button>
+              </>
+            )}
           </div>
 
           {transferType === "paid" && (
@@ -892,6 +1026,31 @@ export default function AdminDraftPage() {
               />
             </div>
           )}
+
+          {mode === "staff" &&
+            getStaffPercentage(transferType) !== null && (
+              <div className="mt-5 rounded-xl border border-purple-500/20 bg-purple-500/5 p-4">
+                <p className="text-sm font-bold text-zinc-400">
+                  Valor base do Staff
+                </p>
+                <p className="mt-1 text-xl font-black text-white">
+                  {money(selectedCoach?.value)}
+                </p>
+                <p className="mt-3 text-sm font-bold text-zinc-400">
+                  Valor que será descontado
+                </p>
+                <p className="mt-1 text-2xl font-black text-purple-400">
+                  {money(
+                    Math.round(
+                      Number(selectedCoach?.value || 0) *
+                        Number(
+                          getStaffPercentage(transferType) || 0
+                        )
+                    )
+                  )}
+                </p>
+              </div>
+            )}
         </section>
 
         {/* CONFIRMAÇÃO */}
@@ -928,7 +1087,16 @@ export default function AdminDraftPage() {
               <strong className="text-green-400">
                 {transferType === "free"
                   ? "Grátis"
-                  : money(Number(amount || 0))}
+                  : transferType === "paid"
+                  ? money(Number(amount || 0))
+                  : money(
+                      Math.round(
+                        Number(selectedCoach?.value || 0) *
+                          Number(
+                            getStaffPercentage(transferType) || 0
+                          )
+                      )
+                    )}
               </strong>
             </p>
           </div>
