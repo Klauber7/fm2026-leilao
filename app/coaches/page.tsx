@@ -371,7 +371,7 @@ export default function CoachesPage() {
         .eq("coach_id", coach.id);
 
       if (error) {
-        setCartMessage("Não foi possível remover o treinador da lista.");
+        setCartMessage("Não foi possível remover o profissional da lista.");
         setCartLoadingId(null);
         return;
       }
@@ -396,7 +396,7 @@ export default function CoachesPage() {
           await loadCart();
           setCartMessage(`${coach.name} já está na sua lista.`);
         } else {
-          setCartMessage("Não foi possível adicionar o treinador à lista.");
+          setCartMessage("Não foi possível adicionar o profissional à lista.");
         }
 
         setCartLoadingId(null);
@@ -463,13 +463,13 @@ export default function CoachesPage() {
               </h1>
 
               <p className="mt-2 text-sm text-zinc-400">
-                Treinadores disponíveis organizados pelo maior CA.
+                Profissionais disponíveis organizados pelo maior CA.
               </p>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-black text-green-400">
-                {total.toLocaleString("pt-BR")} treinadores
+                {total.toLocaleString("pt-BR")} profissionais
               </div>
 
               <Link
@@ -580,11 +580,11 @@ export default function CoachesPage() {
         {/* CARDS */}
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
-            Carregando treinadores...
+            Carregando profissionais...
           </div>
         ) : coaches.length === 0 ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
-            Nenhum treinador encontrado.
+            Nenhum profissional encontrado.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -598,7 +598,7 @@ export default function CoachesPage() {
                 >
                   {/* ID */}
                   <div className="mb-3 text-[12px] font-bold text-zinc-400">
-                    ID do treinador -{" "}
+                    ID do profissional -{" "}
                     <span className="font-black text-zinc-200">
                       {coach.unique_id || coach.id}
                     </span>
