@@ -34,12 +34,14 @@ const PAGE_SIZE = 50;
 
 const STAFF_ROLES = [
   "Treinador",
-  "Adjunto",
+  "Treinador Adjunto Principal",
   "Preparador",
-  "Preparador físico",
-  "Treinador de goleiros",
+  "Preparador Físico",
+  "Treinador de Goleiros",
   "Fisioterapeuta",
-  "Analista",
+  "Preparador de Bolas Paradas",
+  "Analista de Desempenho",
+  "Cientista Desportivo",
 ];
 
 function cleanSearch(value: string) {
