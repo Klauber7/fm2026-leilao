@@ -56,7 +56,7 @@ const mainMenu: MenuItem[] = [
   },
   {
     href: "/transfers",
-    label: "Contratações",
+    label: "Negócios Internos",
     icon: "📄",
   },
   {
@@ -75,16 +75,10 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [
-    adminRole,
-    setAdminRole,
-  ] =
+  const [adminRole, setAdminRole] =
     useState<AdminRole>(null);
 
-  const [
-    mobileOpen,
-    setMobileOpen,
-  ] =
+  const [mobileOpen, setMobileOpen] =
     useState(false);
 
   useEffect(() => {
@@ -202,15 +196,10 @@ export default function Navbar() {
     if (
       href === "/dashboard"
     ) {
-      return (
-        pathname ===
-        "/dashboard"
-      );
+      return pathname === "/dashboard";
     }
 
-    return pathname.startsWith(
-      href
-    );
+    return pathname.startsWith(href);
   }
 
   function menuLinkClass(
@@ -327,20 +316,15 @@ export default function Navbar() {
               ? "Fechar menu"
               : "Abrir menu"
           }
-          aria-expanded={
-            mobileOpen
-          }
+          aria-expanded={mobileOpen}
           onClick={() =>
             setMobileOpen(
-              (current) =>
-                !current
+              (current) => !current
             )
           }
           className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-xl transition hover:border-zinc-700 hover:bg-zinc-800"
         >
-          {mobileOpen
-            ? "✕"
-            : "☰"}
+          {mobileOpen ? "✕" : "☰"}
         </button>
 
       </header>
