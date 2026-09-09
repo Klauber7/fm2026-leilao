@@ -939,7 +939,9 @@ export default function ShoppingListPage() {
                           </p>
 
                           <p className="mt-3 text-xs text-zinc-600">
-                            O valor da negociação é livre entre os clubes.
+                            {player.team_id === null
+                              ? "Jogador livre no mercado: este é o valor inicial do leilão."
+                              : "Jogador de clube: o valor da negociação é definido pela proposta entre os clubes."}
                           </p>
 
                         </div>
@@ -963,12 +965,19 @@ export default function ShoppingListPage() {
                           >
                             Já é seu jogador
                           </button>
-                        ) : (
+                        ) : player.team_id === null ? (
                           <Link
-                            href={`/transfers/negotiations/new?playerId=${player.id}&sellerTeamId=${player.team_id || ""}`}
+                            href={`/players/${player.id}`}
                             className="rounded-xl bg-green-500 px-4 py-3 text-center font-black text-black transition hover:bg-green-400"
                           >
-                            Fazer proposta
+                            DAR LANCE — {money(currentValue)}
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/transfers/negotiations/new?playerId=${player.id}&sellerTeamId=${player.team_id}`}
+                            className="rounded-xl bg-blue-500 px-4 py-3 text-center font-black text-white transition hover:bg-blue-400"
+                          >
+                            FAZER PROPOSTA
                           </Link>
                         )}
 
