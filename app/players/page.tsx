@@ -3,7 +3,6 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from "react";
 
@@ -47,24 +46,6 @@ type AttributeFilter = {
 
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
-const PLAYER_MARKET_STATE_KEY = "friendzone-player-market-state";
-
-type PlayerMarketState = {
-  search: string;
-  selectedCategory: string;
-  minCA: string;
-  maxCA: string;
-  minCP: string;
-  maxCP: string;
-  minAge: string;
-  maxAge: string;
-  minValue: string;
-  maxValue: string;
-  nationality: string;
-  attributeFilters: AttributeFilter[];
-  page: number;
-  scrollY: number;
-};
 
 function normalizeSearch(value: string) {
   return value
@@ -353,170 +334,6 @@ export default function PlayersPage() {
   ] =
     useState("");
 
-  const [marketStateReady, setMarketStateReady] =
-    useState(false);
-
-  const restoreScrollYRef = useRef(0);
-  const restoreScrollDoneRef = useRef(false);
-
-  const saveMarketState = useCallback(() => {
-    if (typeof window === "undefined" || !marketStateReady) {
-      return;
-    }
-
-    const state: PlayerMarketState = {
-      search,
-      selectedCategory,
-      minCA,
-      maxCA,
-      minCP,
-      maxCP,
-      minAge,
-      maxAge,
-      minValue,
-      maxValue,
-      nationality,
-      attributeFilters,
-      page,
-      scrollY: window.scrollY,
-    };
-
-    sessionStorage.setItem(
-      PLAYER_MARKET_STATE_KEY,
-      JSON.stringify(state)
-    );
-  }, [
-    marketStateReady,
-    search,
-    selectedCategory,
-    minCA,
-    maxCA,
-    minCP,
-    maxCP,
-    minAge,
-    maxAge,
-    minValue,
-    maxValue,
-    nationality,
-    attributeFilters,
-    page,
-  ]);
-
-  /*
-    RESTAURA PESQUISA, FILTROS, PÁGINA E SCROLL
-  */
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const raw = sessionStorage.getItem(
-        PLAYER_MARKET_STATE_KEY
-      );
-
-      if (raw) {
-        const saved = JSON.parse(raw) as Partial<PlayerMarketState>;
-
-        if (typeof saved.search === "string") setSearch(saved.search);
-        if (typeof saved.selectedCategory === "string") {
-          setSelectedCategory(saved.selectedCategory);
-        }
-        if (typeof saved.minCA === "string") setMinCA(saved.minCA);
-        if (typeof saved.maxCA === "string") setMaxCA(saved.maxCA);
-        if (typeof saved.minCP === "string") setMinCP(saved.minCP);
-        if (typeof saved.maxCP === "string") setMaxCP(saved.maxCP);
-        if (typeof saved.minAge === "string") setMinAge(saved.minAge);
-        if (typeof saved.maxAge === "string") setMaxAge(saved.maxAge);
-        if (typeof saved.minValue === "string") setMinValue(saved.minValue);
-        if (typeof saved.maxValue === "string") setMaxValue(saved.maxValue);
-        if (typeof saved.nationality === "string") {
-          setNationality(saved.nationality);
-        }
-        if (Array.isArray(saved.attributeFilters)) {
-          setAttributeFilters(saved.attributeFilters);
-        }
-        if (
-          typeof saved.page === "number" &&
-          Number.isFinite(saved.page) &&
-          saved.page > 0
-        ) {
-          setPage(saved.page);
-        }
-        if (
-          typeof saved.scrollY === "number" &&
-          Number.isFinite(saved.scrollY)
-        ) {
-          restoreScrollYRef.current = saved.scrollY;
-        }
-      }
-    } catch (error) {
-      console.error(
-        "Erro ao restaurar estado do mercado de jogadores:",
-        error
-      );
-    } finally {
-      setMarketStateReady(true);
-    }
-  }, []);
-
-  /*
-    SALVA O ESTADO DURANTE O USO DO MERCADO
-  */
-
-  useEffect(() => {
-    if (!marketStateReady || typeof window === "undefined") {
-      return;
-    }
-
-    const handleScroll = () => {
-      saveMarketState();
-    };
-
-    const handlePageHide = () => {
-      saveMarketState();
-    };
-
-    saveMarketState();
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("pagehide", handlePageHide);
-
-    return () => {
-      saveMarketState();
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("pagehide", handlePageHide);
-    };
-  }, [marketStateReady, saveMarketState]);
-
-  /*
-    RESTAURA A POSIÇÃO DA TELA DEPOIS DOS CARDS CARREGAREM
-  */
-
-  useEffect(() => {
-    if (
-      !marketStateReady ||
-      loading ||
-      restoreScrollDoneRef.current ||
-      typeof window === "undefined"
-    ) {
-      return;
-    }
-
-    const targetY = restoreScrollYRef.current;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({
-          top: targetY,
-          behavior: "auto",
-        });
-        restoreScrollDoneRef.current = true;
-      });
-    });
-  }, [marketStateReady, loading, players.length]);
-
   /*
     CARREGA CLUBE DO PRESIDENTE
     E LISTA DE COMPRAS
@@ -625,15 +442,27 @@ export default function PlayersPage() {
   ) {
     let team = myTeam;
 
+    setShoppingLoadingId(
+      player.id
+    );
+    setShoppingMessage("");
+
     if (!team) {
       const {
         data: { user },
         error: authError,
-      } = await supabase.auth.getUser();
+      } =
+        await supabase.auth.getUser();
 
-      if (authError || !user) {
+      if (
+        authError ||
+        !user
+      ) {
         setShoppingMessage(
-          "Você precisa estar logado."
+          "Você precisa estar logado para adicionar jogadores à lista."
+        );
+        setShoppingLoadingId(
+          null
         );
         return;
       }
@@ -641,14 +470,25 @@ export default function PlayersPage() {
       const {
         data: teamData,
         error: teamError,
-      } = await supabase
-        .from("teams")
-        .select("id, name, manager_id")
-        .eq("manager_id", user.id)
-        .limit(1)
-        .maybeSingle();
+      } =
+        await supabase
+          .from("teams")
+          .select(`
+            id,
+            name,
+            manager_id
+          `)
+          .eq(
+            "manager_id",
+            user.id
+          )
+          .limit(1)
+          .maybeSingle();
 
-      if (teamError || !teamData) {
+      if (
+        teamError ||
+        !teamData
+      ) {
         console.error(
           "Erro ao identificar clube:",
           teamError
@@ -657,6 +497,9 @@ export default function PlayersPage() {
         setShoppingMessage(
           "Não foi possível identificar o seu clube."
         );
+        setShoppingLoadingId(
+          null
+        );
         return;
       }
 
@@ -664,22 +507,26 @@ export default function PlayersPage() {
       setMyTeam(team);
     }
 
-    setShoppingLoadingId(
-      player.id
-    );
-    setShoppingMessage("");
-
     const isSaved =
       shoppingListIds.has(
         player.id
       );
 
     if (isSaved) {
-      const { error } = await supabase
-        .from("player_shopping_list")
-        .delete()
-        .eq("team_id", team.id)
-        .eq("player_id", player.id);
+      const { error } =
+        await supabase
+          .from(
+            "player_shopping_list"
+          )
+          .delete()
+          .eq(
+            "team_id",
+            team.id
+          )
+          .eq(
+            "player_id",
+            player.id
+          );
 
       if (error) {
         console.error(
@@ -690,15 +537,21 @@ export default function PlayersPage() {
         setShoppingMessage(
           `Erro ao remover: ${error.message}`
         );
-
-        setShoppingLoadingId(null);
+        setShoppingLoadingId(
+          null
+        );
         return;
       }
 
       setShoppingListIds(
         (current) => {
-          const next = new Set(current);
-          next.delete(player.id);
+          const next =
+            new Set(current);
+
+          next.delete(
+            player.id
+          );
+
           return next;
         }
       );
@@ -707,12 +560,18 @@ export default function PlayersPage() {
         `${player.name} foi removido da sua lista de compras.`
       );
     } else {
-      const { error } = await supabase
-        .from("player_shopping_list")
-        .insert({
-          team_id: team.id,
-          player_id: player.id,
-        });
+      const { error } =
+        await supabase
+          .from(
+            "player_shopping_list"
+          )
+          .insert({
+            team_id:
+              team.id,
+
+            player_id:
+              player.id,
+          });
 
       if (error) {
         console.error(
@@ -720,7 +579,16 @@ export default function PlayersPage() {
           error
         );
 
-        if (error.code === "23505") {
+        if (
+          error.code === "23505" ||
+          String(
+            error.message || ""
+          )
+            .toLowerCase()
+            .includes(
+              "duplicate"
+            )
+        ) {
           await loadShoppingList();
 
           setShoppingMessage(
@@ -732,14 +600,21 @@ export default function PlayersPage() {
           );
         }
 
-        setShoppingLoadingId(null);
+        setShoppingLoadingId(
+          null
+        );
         return;
       }
 
       setShoppingListIds(
         (current) => {
-          const next = new Set(current);
-          next.add(player.id);
+          const next =
+            new Set(current);
+
+          next.add(
+            player.id
+          );
+
           return next;
         }
       );
@@ -749,7 +624,9 @@ export default function PlayersPage() {
       );
     }
 
-    setShoppingLoadingId(null);
+    setShoppingLoadingId(
+      null
+    );
   }
 
   /*
@@ -1162,10 +1039,6 @@ export default function PlayersPage() {
   */
 
   useEffect(() => {
-    if (!marketStateReady) {
-      return;
-    }
-
     loadTransferWindow();
 
     loadPlayers();
@@ -1174,7 +1047,6 @@ export default function PlayersPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    marketStateReady,
     page,
     selectedCategory,
   ]);
@@ -1327,12 +1199,6 @@ export default function PlayersPage() {
   */
 
   function clearFilters() {
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem(PLAYER_MARKET_STATE_KEY);
-      restoreScrollYRef.current = 0;
-      restoreScrollDoneRef.current = true;
-    }
-
     setSearch("");
 
     setMinCA("");
@@ -1963,7 +1829,6 @@ export default function PlayersPage() {
 
                   <Link
                     href={`/players/${player.id}`}
-                    onClick={saveMarketState}
                     className="block"
                   >
 
@@ -2051,7 +1916,6 @@ export default function PlayersPage() {
                   {marketOpen ? (
                     <Link
                       href={`/players/${player.id}`}
-                      onClick={saveMarketState}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
                       DAR LANCE —{" "}
