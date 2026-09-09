@@ -623,11 +623,45 @@ export default function PlayersPage() {
   async function toggleShoppingList(
     player: Player
   ) {
-    if (!myTeam) {
-      setShoppingMessage(
-        "Não foi possível identificar o seu clube."
-      );
-      return;
+    let team = myTeam;
+
+    if (!team) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        setShoppingMessage(
+          "Você precisa estar logado."
+        );
+        return;
+      }
+
+      const {
+        data: teamData,
+        error: teamError,
+      } = await supabase
+        .from("teams")
+        .select("id, name, manager_id")
+        .eq("manager_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (teamError || !teamData) {
+        console.error(
+          "Erro ao identificar clube:",
+          teamError
+        );
+
+        setShoppingMessage(
+          "Não foi possível identificar o seu clube."
+        );
+        return;
+      }
+
+      team = teamData as Team;
+      setMyTeam(team);
     }
 
     setShoppingLoadingId(
@@ -641,22 +675,11 @@ export default function PlayersPage() {
       );
 
     if (isSaved) {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "player_shopping_list"
-          )
-          .delete()
-          .eq(
-            "team_id",
-            myTeam.id
-          )
-          .eq(
-            "player_id",
-            player.id
-          );
+      const { error } = await supabase
+        .from("player_shopping_list")
+        .delete()
+        .eq("team_id", team.id)
+        .eq("player_id", player.id);
 
       if (error) {
         console.error(
@@ -665,24 +688,17 @@ export default function PlayersPage() {
         );
 
         setShoppingMessage(
-          "Não foi possível remover o jogador da lista."
+          `Erro ao remover: ${error.message}`
         );
 
-        setShoppingLoadingId(
-          null
-        );
+        setShoppingLoadingId(null);
         return;
       }
 
       setShoppingListIds(
         (current) => {
-          const next =
-            new Set(current);
-
-          next.delete(
-            player.id
-          );
-
+          const next = new Set(current);
+          next.delete(player.id);
           return next;
         }
       );
@@ -691,20 +707,12 @@ export default function PlayersPage() {
         `${player.name} foi removido da sua lista de compras.`
       );
     } else {
-      const {
-        error,
-      } =
-        await supabase
-          .from(
-            "player_shopping_list"
-          )
-          .insert({
-            team_id:
-              myTeam.id,
-
-            player_id:
-              player.id,
-          });
+      const { error } = await supabase
+        .from("player_shopping_list")
+        .insert({
+          team_id: team.id,
+          player_id: player.id,
+        });
 
       if (error) {
         console.error(
@@ -712,15 +720,7 @@ export default function PlayersPage() {
           error
         );
 
-        if (
-          String(
-            error.message || ""
-          )
-            .toLowerCase()
-            .includes(
-              "duplicate"
-            )
-        ) {
+        if (error.code === "23505") {
           await loadShoppingList();
 
           setShoppingMessage(
@@ -728,25 +728,18 @@ export default function PlayersPage() {
           );
         } else {
           setShoppingMessage(
-            "Não foi possível adicionar o jogador à lista."
+            `Erro ao adicionar: ${error.message}`
           );
         }
 
-        setShoppingLoadingId(
-          null
-        );
+        setShoppingLoadingId(null);
         return;
       }
 
       setShoppingListIds(
         (current) => {
-          const next =
-            new Set(current);
-
-          next.add(
-            player.id
-          );
-
+          const next = new Set(current);
+          next.add(player.id);
           return next;
         }
       );
@@ -756,9 +749,7 @@ export default function PlayersPage() {
       );
     }
 
-    setShoppingLoadingId(
-      null
-    );
+    setShoppingLoadingId(null);
   }
 
   /*
@@ -2084,8 +2075,7 @@ export default function PlayersPage() {
                     type="button"
                     disabled={
                       shoppingLoadingId ===
-                        player.id ||
-                      !myTeam
+                        player.id
                     }
                     onClick={() =>
                       toggleShoppingList(
