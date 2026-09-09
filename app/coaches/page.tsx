@@ -114,6 +114,7 @@ export default function CoachesPage() {
   const restoreScrollYRef = useRef(0);
   const restoreScrollDoneRef = useRef(false);
   const skipNextSearchResetRef = useRef(false);
+  const skipNextStateSaveRef = useRef(true);
 
   const saveMarketState = useCallback(() => {
     if (typeof window === "undefined" || !marketStateReady) {
@@ -132,9 +133,16 @@ export default function CoachesPage() {
       scrollY: window.scrollY,
     };
 
+    const serialized = JSON.stringify(state);
+
     sessionStorage.setItem(
       STAFF_MARKET_STATE_KEY,
-      JSON.stringify(state)
+      serialized
+    );
+
+    localStorage.setItem(
+      STAFF_MARKET_STATE_KEY,
+      serialized
     );
   }, [
     marketStateReady,
@@ -154,7 +162,9 @@ export default function CoachesPage() {
     }
 
     try {
-      const raw = sessionStorage.getItem(STAFF_MARKET_STATE_KEY);
+      const raw =
+        localStorage.getItem(STAFF_MARKET_STATE_KEY) ||
+        sessionStorage.getItem(STAFF_MARKET_STATE_KEY);
 
       if (raw) {
         const saved = JSON.parse(raw) as Partial<StaffMarketState>;
@@ -195,6 +205,7 @@ export default function CoachesPage() {
         error
       );
     } finally {
+      skipNextStateSaveRef.current = true;
       setMarketStateReady(true);
     }
   }, []);
@@ -212,13 +223,16 @@ export default function CoachesPage() {
       saveMarketState();
     };
 
-    saveMarketState();
+    if (skipNextStateSaveRef.current) {
+      skipNextStateSaveRef.current = false;
+    } else {
+      saveMarketState();
+    }
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("pagehide", handlePageHide);
 
     return () => {
-      saveMarketState();
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("pagehide", handlePageHide);
     };
@@ -583,13 +597,22 @@ export default function CoachesPage() {
   }
 
   function handleSearch() {
-    setPage(1);
-    loadCoaches();
+    const nextSearch =
+      cleanSearch(search);
+
+    setDebouncedSearch(
+      nextSearch
+    );
+
+    if (page !== 1) {
+      setPage(1);
+    }
   }
 
   function clearFilters() {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem(STAFF_MARKET_STATE_KEY);
+      localStorage.removeItem(STAFF_MARKET_STATE_KEY);
       restoreScrollYRef.current = 0;
       restoreScrollDoneRef.current = true;
     }

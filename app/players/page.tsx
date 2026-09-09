@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -46,6 +47,24 @@ type AttributeFilter = {
 
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
+const PLAYER_MARKET_STATE_KEY = "friendzone-player-market-state";
+
+type PlayerMarketState = {
+  search: string;
+  selectedCategory: string;
+  minCA: string;
+  maxCA: string;
+  minCP: string;
+  maxCP: string;
+  minAge: string;
+  maxAge: string;
+  minValue: string;
+  maxValue: string;
+  nationality: string;
+  attributeFilters: AttributeFilter[];
+  page: number;
+  scrollY: number;
+};
 
 function normalizeSearch(value: string) {
   return value
@@ -333,6 +352,347 @@ export default function PlayersPage() {
     setShoppingMessage,
   ] =
     useState("");
+
+  const [
+    marketStateReady,
+    setMarketStateReady,
+  ] =
+    useState(false);
+
+  const restoreScrollYRef =
+    useRef(0);
+
+  const restoreScrollDoneRef =
+    useRef(false);
+
+  const skipNextStateSaveRef =
+    useRef(true);
+
+  const saveMarketState =
+    useCallback(() => {
+      if (
+        typeof window ===
+          "undefined" ||
+        !marketStateReady
+      ) {
+        return;
+      }
+
+      const state:
+        PlayerMarketState = {
+        search,
+        selectedCategory,
+        minCA,
+        maxCA,
+        minCP,
+        maxCP,
+        minAge,
+        maxAge,
+        minValue,
+        maxValue,
+        nationality,
+        attributeFilters,
+        page,
+        scrollY:
+          window.scrollY,
+      };
+
+      const serialized =
+        JSON.stringify(state);
+
+      sessionStorage.setItem(
+        PLAYER_MARKET_STATE_KEY,
+        serialized
+      );
+
+      localStorage.setItem(
+        PLAYER_MARKET_STATE_KEY,
+        serialized
+      );
+    }, [
+      marketStateReady,
+      search,
+      selectedCategory,
+      minCA,
+      maxCA,
+      minCP,
+      maxCP,
+      minAge,
+      maxAge,
+      minValue,
+      maxValue,
+      nationality,
+      attributeFilters,
+      page,
+    ]);
+
+  /*
+    RESTAURA PESQUISA, FILTROS,
+    PÁGINA E POSIÇÃO DA TELA
+  */
+
+  useEffect(() => {
+    if (
+      typeof window ===
+      "undefined"
+    ) {
+      return;
+    }
+
+    try {
+      const raw =
+        localStorage.getItem(
+          PLAYER_MARKET_STATE_KEY
+        ) ||
+        sessionStorage.getItem(
+          PLAYER_MARKET_STATE_KEY
+        );
+
+      if (raw) {
+        const saved =
+          JSON.parse(
+            raw
+          ) as Partial<PlayerMarketState>;
+
+        if (
+          typeof saved.search ===
+          "string"
+        ) {
+          setSearch(
+            saved.search
+          );
+        }
+
+        if (
+          typeof saved.selectedCategory ===
+          "string"
+        ) {
+          setSelectedCategory(
+            saved.selectedCategory
+          );
+        }
+
+        if (
+          typeof saved.minCA ===
+          "string"
+        ) {
+          setMinCA(saved.minCA);
+        }
+
+        if (
+          typeof saved.maxCA ===
+          "string"
+        ) {
+          setMaxCA(saved.maxCA);
+        }
+
+        if (
+          typeof saved.minCP ===
+          "string"
+        ) {
+          setMinCP(saved.minCP);
+        }
+
+        if (
+          typeof saved.maxCP ===
+          "string"
+        ) {
+          setMaxCP(saved.maxCP);
+        }
+
+        if (
+          typeof saved.minAge ===
+          "string"
+        ) {
+          setMinAge(
+            saved.minAge
+          );
+        }
+
+        if (
+          typeof saved.maxAge ===
+          "string"
+        ) {
+          setMaxAge(
+            saved.maxAge
+          );
+        }
+
+        if (
+          typeof saved.minValue ===
+          "string"
+        ) {
+          setMinValue(
+            saved.minValue
+          );
+        }
+
+        if (
+          typeof saved.maxValue ===
+          "string"
+        ) {
+          setMaxValue(
+            saved.maxValue
+          );
+        }
+
+        if (
+          typeof saved.nationality ===
+          "string"
+        ) {
+          setNationality(
+            saved.nationality
+          );
+        }
+
+        if (
+          Array.isArray(
+            saved.attributeFilters
+          )
+        ) {
+          setAttributeFilters(
+            saved.attributeFilters
+          );
+        }
+
+        if (
+          typeof saved.page ===
+            "number" &&
+          Number.isFinite(
+            saved.page
+          ) &&
+          saved.page > 0
+        ) {
+          setPage(
+            saved.page
+          );
+        }
+
+        if (
+          typeof saved.scrollY ===
+            "number" &&
+          Number.isFinite(
+            saved.scrollY
+          )
+        ) {
+          restoreScrollYRef.current =
+            saved.scrollY;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao restaurar estado do mercado de jogadores:",
+        error
+      );
+    } finally {
+      skipNextStateSaveRef.current =
+        true;
+
+      setMarketStateReady(
+        true
+      );
+    }
+  }, []);
+
+  /*
+    SALVA O ESTADO DO MERCADO
+  */
+
+  useEffect(() => {
+    if (
+      !marketStateReady ||
+      typeof window ===
+        "undefined"
+    ) {
+      return;
+    }
+
+    if (
+      skipNextStateSaveRef.current
+    ) {
+      skipNextStateSaveRef.current =
+        false;
+    } else {
+      saveMarketState();
+    }
+
+    const handleScroll =
+      () => {
+        saveMarketState();
+      };
+
+    const handlePageHide =
+      () => {
+        saveMarketState();
+      };
+
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      { passive: true }
+    );
+
+    window.addEventListener(
+      "pagehide",
+      handlePageHide
+    );
+
+    return () => {
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide
+      );
+    };
+  }, [
+    marketStateReady,
+    saveMarketState,
+  ]);
+
+  /*
+    RESTAURA O SCROLL SÓ
+    DEPOIS DOS CARDS CARREGAREM
+  */
+
+  useEffect(() => {
+    if (
+      !marketStateReady ||
+      loading ||
+      restoreScrollDoneRef.current ||
+      typeof window ===
+        "undefined"
+    ) {
+      return;
+    }
+
+    const targetY =
+      restoreScrollYRef.current;
+
+    requestAnimationFrame(
+      () => {
+        requestAnimationFrame(
+          () => {
+            window.scrollTo({
+              top: targetY,
+              behavior:
+                "auto",
+            });
+
+            restoreScrollDoneRef.current =
+              true;
+          }
+        );
+      }
+    );
+  }, [
+    marketStateReady,
+    loading,
+    players.length,
+  ]);
 
   /*
     CARREGA CLUBE DO PRESIDENTE
@@ -1039,6 +1399,12 @@ export default function PlayersPage() {
   */
 
   useEffect(() => {
+    if (
+      !marketStateReady
+    ) {
+      return;
+    }
+
     loadTransferWindow();
 
     loadPlayers();
@@ -1047,6 +1413,7 @@ export default function PlayersPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    marketStateReady,
     page,
     selectedCategory,
   ]);
@@ -1199,6 +1566,21 @@ export default function PlayersPage() {
   */
 
   function clearFilters() {
+    if (
+      typeof window !==
+      "undefined"
+    ) {
+      sessionStorage.removeItem(
+        PLAYER_MARKET_STATE_KEY
+      );
+
+      restoreScrollYRef.current =
+        0;
+
+      restoreScrollDoneRef.current =
+        true;
+    }
+
     setSearch("");
 
     setMinCA("");
@@ -1829,6 +2211,9 @@ export default function PlayersPage() {
 
                   <Link
                     href={`/players/${player.id}`}
+                    onClick={
+                      saveMarketState
+                    }
                     className="block"
                   >
 
@@ -1916,6 +2301,9 @@ export default function PlayersPage() {
                   {marketOpen ? (
                     <Link
                       href={`/players/${player.id}`}
+                      onClick={
+                        saveMarketState
+                      }
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
                       DAR LANCE —{" "}
