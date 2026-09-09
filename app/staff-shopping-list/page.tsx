@@ -25,9 +25,76 @@ type CartRow = {
   created_at: string;
 };
 
+type StaffAuction = {
+  id: number;
+  coach_id: number;
+  status: string | null;
+  starting_value: number | null;
+  current_bid: number | null;
+  winner_team_id: number | null;
+  ends_at: string | null;
+};
+
 type CartItem = CartRow & {
   coach: Coach | null;
+  auction: StaffAuction | null;
+  leadingTeamName: string | null;
 };
+
+function formatMoney(value: number | null | undefined) {
+  if (value == null) return "—";
+
+  const amount = Number(value);
+
+  if (amount >= 1_000_000) {
+    const millions = amount / 1_000_000;
+    return `€${millions.toLocaleString("pt-BR", {
+      minimumFractionDigits: millions % 1 === 0 ? 0 : 1,
+      maximumFractionDigits: 2,
+    })}M`;
+  }
+
+  if (amount >= 1_000) {
+    const thousands = amount / 1_000;
+    return `€${thousands.toLocaleString("pt-BR", {
+      minimumFractionDigits: thousands % 1 === 0 ? 0 : 1,
+      maximumFractionDigits: 1,
+    })}K`;
+  }
+
+  return `€${amount.toLocaleString("pt-BR")}`;
+}
+
+function getNextBid(auction: StaffAuction | null) {
+  if (!auction) return null;
+
+  const base = Math.max(
+    Number(auction.current_bid || 0),
+    Number(auction.starting_value || 0)
+  );
+
+  if (base <= 0) return null;
+
+  return Math.ceil(base * 1.15);
+}
+
+function getRemainingTime(endsAt: string | null, now: number) {
+  if (!endsAt) return "Sem leilão";
+
+  const diff = new Date(endsAt).getTime() - now;
+
+  if (diff <= 0) return "Encerrado";
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0"
+  )}:${String(seconds).padStart(2, "0")}`;
+}
 
 export default function StaffShoppingListPage() {
   const router = useRouter();
@@ -37,13 +104,14 @@ export default function StaffShoppingListPage() {
 
   const [loading, setLoading] = useState(true);
   const [removingId, setRemovingId] = useState<number | null>(null);
-  const [finalizing, setFinalizing] = useState(false);
+  const [biddingAuctionId, setBiddingAuctionId] = useState<number | null>(null);
 
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [now, setNow] = useState(Date.now());
 
   const loadCart = useCallback(async () => {
     setLoading(true);
@@ -90,15 +158,32 @@ export default function StaffShoppingListPage() {
       return;
     }
 
-    const coachIds = cartRows.map((row) => row.coach_id);
+    const coachIds = cartRows.map((row) => Number(row.coach_id));
 
-    const { data: coaches, error: coachesError } = await supabase
-      .from("coaches")
-      .select("id, name, role, nationality, team_id")
-      .in("id", coachIds);
+    const [{ data: coaches, error: coachesError }, { data: auctions, error: auctionsError }] =
+      await Promise.all([
+        supabase
+          .from("coaches")
+          .select("id, name, role, nationality, team_id")
+          .in("id", coachIds),
+
+        supabase
+          .from("staff_auctions")
+          .select(
+            "id, coach_id, status, starting_value, current_bid, winner_team_id, ends_at, created_at"
+          )
+          .in("coach_id", coachIds)
+          .order("created_at", { ascending: false }),
+      ]);
 
     if (coachesError) {
       setError(coachesError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (auctionsError) {
+      setError(auctionsError.message);
       setLoading(false);
       return;
     }
@@ -107,11 +192,74 @@ export default function StaffShoppingListPage() {
       (coaches || []).map((coach) => [Number(coach.id), coach])
     );
 
+    // Mantém somente o leilão mais recente de cada profissional.
+    const auctionMap = new Map<number, StaffAuction>();
+
+    for (const rawAuction of auctions || []) {
+      const coachId = Number(rawAuction.coach_id);
+
+      if (!auctionMap.has(coachId)) {
+        auctionMap.set(coachId, {
+          id: Number(rawAuction.id),
+          coach_id: coachId,
+          status: rawAuction.status,
+          starting_value:
+            rawAuction.starting_value == null
+              ? null
+              : Number(rawAuction.starting_value),
+          current_bid:
+            rawAuction.current_bid == null ? null : Number(rawAuction.current_bid),
+          winner_team_id:
+            rawAuction.winner_team_id == null
+              ? null
+              : Number(rawAuction.winner_team_id),
+          ends_at: rawAuction.ends_at,
+        });
+      }
+    }
+
+    const winnerTeamIds = Array.from(
+      new Set(
+        Array.from(auctionMap.values())
+          .map((auction) => auction.winner_team_id)
+          .filter((id): id is number => id != null)
+      )
+    );
+
+    let teamNameMap = new Map<number, string>();
+
+    if (winnerTeamIds.length > 0) {
+      const { data: teams, error: teamsError } = await supabase
+        .from("teams")
+        .select("id, name")
+        .in("id", winnerTeamIds);
+
+      if (teamsError) {
+        setError(teamsError.message);
+        setLoading(false);
+        return;
+      }
+
+      teamNameMap = new Map(
+        (teams || []).map((team) => [Number(team.id), String(team.name)])
+      );
+    }
+
     setItems(
-      cartRows.map((row) => ({
-        ...(row as CartRow),
-        coach: (coachMap.get(Number(row.coach_id)) as Coach) || null,
-      }))
+      cartRows.map((row) => {
+        const coachId = Number(row.coach_id);
+        const auction = auctionMap.get(coachId) || null;
+
+        return {
+          ...(row as CartRow),
+          coach: (coachMap.get(coachId) as Coach) || null,
+          auction,
+          leadingTeamName:
+            auction?.winner_team_id != null
+              ? teamNameMap.get(auction.winner_team_id) || null
+              : null,
+        };
+      })
     );
 
     setLoading(false);
@@ -121,6 +269,16 @@ export default function StaffShoppingListPage() {
     loadCart();
   }, [loadCart]);
 
+  // Relógio da tela.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
+  // Atualiza automaticamente se a lista, o staff ou qualquer leilão de staff mudar.
   useEffect(() => {
     if (!myTeam) return;
 
@@ -145,6 +303,15 @@ export default function StaffShoppingListPage() {
         },
         loadCart
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "staff_auctions",
+        },
+        loadCart
+      )
       .subscribe();
 
     return () => {
@@ -154,7 +321,7 @@ export default function StaffShoppingListPage() {
 
   async function removeItem(item: CartItem) {
     const confirmed = window.confirm(
-      `Remover ${item.coach?.name || "este staff"} do carrinho?`
+      `Remover ${item.coach?.name || "este staff"} da Lista Preferencial?`
     );
 
     if (!confirmed) return;
@@ -178,157 +345,83 @@ export default function StaffShoppingListPage() {
       current.filter((currentItem) => currentItem.id !== item.id)
     );
 
-    setMessage("Staff removido do carrinho.");
+    setMessage("Staff removido da Lista Preferencial.");
     setRemovingId(null);
   }
 
-  async function finalizeHiring() {
-    if (!myTeam) {
-      setError("Não foi possível identificar o seu clube.");
-      return;
-    }
+  async function coverBid(item: CartItem) {
+    if (!item.auction) return;
 
-    if (items.length === 0) {
-      setError("Seu carrinho está vazio.");
-      return;
-    }
+    const nextBid = getNextBid(item.auction);
 
-    const availableItems = items.filter(
-      (item) => item.coach && item.coach.team_id === null
-    );
-
-    if (availableItems.length === 0) {
-      setError(
-        "Nenhum profissional do carrinho está disponível para contratação."
-      );
+    if (!nextBid) {
+      setError("Não foi possível calcular o próximo lance.");
       return;
     }
 
     const confirmed = window.confirm(
-      `Confirmar a contratação de ${
-        availableItems.length
-      } profissional${availableItems.length === 1 ? "" : "is"} pelo ${
-        myTeam.name
-      }?`
+      `Cobrir o lance de ${item.coach?.name || "este staff"} com ${formatMoney(
+        nextBid
+      )}?`
     );
 
     if (!confirmed) return;
 
-    setFinalizing(true);
+    setBiddingAuctionId(item.auction.id);
     setError("");
     setMessage("");
 
     try {
-      const coachIds = availableItems.map((item) => item.coach_id);
+      const { error: bidError } = await supabase.rpc("place_staff_bid", {
+        staff_auction_id_input: item.auction.id,
+        amount_input: nextBid,
+      });
 
-      /*
-       * Confere novamente no banco quais staffs continuam disponíveis.
-       * Isso evita contratar alguém que outro presidente acabou
-       * de contratar antes da confirmação.
-       */
-      const { data: stillAvailable, error: availabilityError } = await supabase
-        .from("coaches")
-        .select("id")
-        .in("id", coachIds)
-        .is("team_id", null);
+      if (bidError) {
+        const text = bidError.message || "";
 
-      if (availabilityError) {
-        throw availabilityError;
+        if (text.includes("INSUFFICIENT_AVAILABLE_BUDGET")) {
+          throw new Error("Saldo disponível insuficiente para este lance.");
+        }
+
+        if (text.includes("TRANSFER_WINDOW_CLOSED")) {
+          throw new Error("O mercado está fechado.");
+        }
+
+        if (
+          text.includes("AUCTION_EXPIRED") ||
+          text.includes("AUCTION_NOT_ACTIVE")
+        ) {
+          throw new Error("Este leilão não está mais ativo.");
+        }
+
+        if (text.includes("BID_TOO_LOW")) {
+          await loadCart();
+          throw new Error(
+            "Outro clube deu um lance antes de você. A lista foi atualizada."
+          );
+        }
+
+        throw bidError;
       }
 
-      const availableIds = (stillAvailable || []).map((coach) =>
-        Number(coach.id)
+      setMessage(
+        `Lance de ${formatMoney(nextBid)} enviado para ${
+          item.coach?.name || "o staff"
+        }.`
       );
-
-      if (availableIds.length === 0) {
-        setError(
-          "Os profissionais selecionados não estão mais disponíveis."
-        );
-
-        await loadCart();
-        return;
-      }
-
-      /*
-       * Coloca todos os staffs disponíveis no clube.
-       */
-      const { error: hiringError } = await supabase
-        .from("coaches")
-        .update({
-          team_id: myTeam.id,
-          hired_at: new Date().toISOString(),
-        })
-        .in("id", availableIds)
-        .is("team_id", null);
-
-      if (hiringError) {
-        throw hiringError;
-      }
-
-      /*
-       * Remove do carrinho os staffs que foram contratados.
-       */
-      const { error: clearCartError } = await supabase
-        .from("staff_shopping_list")
-        .delete()
-        .eq("team_id", myTeam.id)
-        .in("coach_id", availableIds);
-
-      if (clearCartError) {
-        throw clearCartError;
-      }
-
-      /*
-       * Também remove do carrinho qualquer staff que já
-       * tenha sido contratado por outro clube.
-       */
-      const unavailableIds = coachIds.filter(
-        (id) => !availableIds.includes(Number(id))
-      );
-
-      if (unavailableIds.length > 0) {
-        await supabase
-          .from("staff_shopping_list")
-          .delete()
-          .eq("team_id", myTeam.id)
-          .in("coach_id", unavailableIds);
-      }
-
-      if (unavailableIds.length > 0) {
-        setMessage(
-          `${availableIds.length} profissional${
-            availableIds.length === 1 ? "" : "is"
-          } contratado${
-            availableIds.length === 1 ? "" : "s"
-          } pelo ${myTeam.name}. ${
-            unavailableIds.length
-          } profissional${
-            unavailableIds.length === 1 ? "" : "is"
-          } não estava${
-            unavailableIds.length === 1 ? "" : "m"
-          } mais disponível${
-            unavailableIds.length === 1 ? "" : "is"
-          }.`
-        );
-      } else {
-        setMessage(
-          `${availableIds.length} profissional${
-            availableIds.length === 1 ? "" : "is"
-          } contratado${
-            availableIds.length === 1 ? "" : "s"
-          } com sucesso pelo ${myTeam.name}.`
-        );
-      }
 
       await loadCart();
-    } catch (error) {
-      console.error("Erro ao finalizar contratação:", error);
+    } catch (err) {
+      console.error("Erro ao cobrir lance de staff:", err);
 
       setError(
-        "Não foi possível finalizar a contratação. Tente novamente."
+        err instanceof Error
+          ? err.message
+          : "Não foi possível realizar o lance."
       );
     } finally {
-      setFinalizing(false);
+      setBiddingAuctionId(null);
     }
   }
 
@@ -361,12 +454,20 @@ export default function StaffShoppingListPage() {
     });
   }, [items, search, roleFilter]);
 
-  const availableCount = items.filter(
-    (item) => item.coach && item.coach.team_id === null
-  ).length;
+  const activeAuctionCount = items.filter((item) => {
+    if (!item.auction) return false;
 
-  const unavailableCount = items.filter(
-    (item) => item.coach && item.coach.team_id !== null
+    return (
+      item.auction.status === "active" &&
+      !!item.auction.ends_at &&
+      new Date(item.auction.ends_at).getTime() > now
+    );
+  }).length;
+
+  const leadingCount = items.filter(
+    (item) =>
+      item.auction?.winner_team_id != null &&
+      item.auction.winner_team_id === myTeam?.id
   ).length;
 
   return (
@@ -379,11 +480,12 @@ export default function StaffShoppingListPage() {
             </p>
 
             <h1 className="mt-2 text-5xl font-black">
-              Carrinho de Staff
+              Lista Preferencial de Staff
             </h1>
 
             <p className="mt-3 text-zinc-400">
-              Profissionais selecionados pelo {myTeam?.name || "seu clube"}.
+              Acompanhe somente os profissionais que interessam ao{" "}
+              {myTeam?.name || "seu clube"} e cubra lances sem sair desta página.
             </p>
           </div>
 
@@ -408,48 +510,19 @@ export default function StaffShoppingListPage() {
         )}
 
         {!loading && items.length > 0 && (
-          <section className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm font-black uppercase tracking-widest text-green-400">
-                  Comissão selecionada
-                </p>
+          <section className="mt-8 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-sm font-bold text-purple-300">
+                {items.length} na lista
+              </span>
 
-                <h2 className="mt-2 text-3xl font-black">
-                  {items.length} profissional
-                  {items.length === 1 ? "" : "is"} no carrinho
-                </h2>
+              <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400">
+                {activeAuctionCount} em leilão
+              </span>
 
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-bold text-green-400">
-                    {availableCount} disponível
-                    {availableCount === 1 ? "" : "is"}
-                  </span>
-
-                  {unavailableCount > 0 && (
-                    <span className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-bold text-red-400">
-                      {unavailableCount} indisponível
-                      {unavailableCount === 1 ? "" : "is"}
-                    </span>
-                  )}
-                </div>
-
-                <p className="mt-4 text-zinc-400">
-                  Confirme abaixo para adicionar os profissionais disponíveis
-                  ao {myTeam?.name}.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={finalizeHiring}
-                disabled={finalizing || availableCount === 0}
-                className="rounded-xl bg-green-600 px-8 py-4 text-lg font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-              >
-                {finalizing
-                  ? "FINALIZANDO..."
-                  : "FINALIZAR CONTRATAÇÃO"}
-              </button>
+              <span className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm font-bold text-yellow-300">
+                {leadingCount} sendo vencido{leadingCount === 1 ? "" : "s"} por você
+              </span>
             </div>
           </section>
         )}
@@ -480,9 +553,7 @@ export default function StaffShoppingListPage() {
 
         <section className="mt-10">
           <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-black">
-              Selecionados
-            </h2>
+            <h2 className="text-3xl font-black">Selecionados</h2>
 
             <span className="rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-2 font-black text-purple-300">
               {filteredItems.length}
@@ -491,20 +562,18 @@ export default function StaffShoppingListPage() {
 
           {loading ? (
             <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400">
-              Carregando carrinho...
+              Carregando Lista Preferencial...
             </div>
           ) : items.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
-              <p className="text-6xl">
-                🛒
-              </p>
+              <p className="text-6xl">⭐</p>
 
               <h3 className="mt-5 text-3xl font-black">
-                Carrinho vazio
+                Lista Preferencial vazia
               </h3>
 
               <p className="mt-3 text-zinc-400">
-                Adicione profissionais disponíveis no mercado.
+                Adicione profissionais que você deseja acompanhar.
               </p>
 
               <Link
@@ -516,9 +585,7 @@ export default function StaffShoppingListPage() {
             </div>
           ) : filteredItems.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center">
-              <h3 className="text-2xl font-black">
-                Nenhum resultado
-              </h3>
+              <h3 className="text-2xl font-black">Nenhum resultado</h3>
 
               <p className="mt-3 text-zinc-400">
                 Nenhum profissional corresponde à sua busca.
@@ -531,15 +598,32 @@ export default function StaffShoppingListPage() {
 
                 if (!coach) return null;
 
-                const isAvailable = coach.team_id === null;
+                const auction = item.auction;
+                const nextBid = getNextBid(auction);
+
+                const isAuctionActive =
+                  auction?.status === "active" &&
+                  !!auction.ends_at &&
+                  new Date(auction.ends_at).getTime() > now;
+
+                const myTeamIsLeading =
+                  auction?.winner_team_id != null &&
+                  auction.winner_team_id === myTeam?.id;
+
+                const displayedCurrentBid =
+                  auction?.current_bid != null
+                    ? Number(auction.current_bid)
+                    : auction?.starting_value != null
+                    ? Number(auction.starting_value)
+                    : null;
 
                 return (
                   <article
                     key={item.id}
                     className={`rounded-2xl border p-6 ${
-                      isAvailable
-                        ? "border-zinc-800 bg-zinc-900"
-                        : "border-red-500/30 bg-red-500/5"
+                      myTeamIsLeading
+                        ? "border-green-500/40 bg-green-500/5"
+                        : "border-zinc-800 bg-zinc-900"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">
@@ -547,13 +631,17 @@ export default function StaffShoppingListPage() {
                         👔
                       </div>
 
-                      {isAvailable ? (
+                      {myTeamIsLeading ? (
                         <span className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs font-black text-green-400">
-                          DISPONÍVEL
+                          VOCÊ ESTÁ GANHANDO
+                        </span>
+                      ) : isAuctionActive ? (
+                        <span className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-black text-yellow-300">
+                          EM LEILÃO
                         </span>
                       ) : (
-                        <span className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-black text-red-400">
-                          INDISPONÍVEL
+                        <span className="rounded-lg border border-zinc-600 bg-zinc-800 px-3 py-2 text-xs font-black text-zinc-300">
+                          SEM LEILÃO ATIVO
                         </span>
                       )}
                     </div>
@@ -562,19 +650,82 @@ export default function StaffShoppingListPage() {
                       {coach.role || "Comissão técnica"}
                     </p>
 
-                    <h3 className="mt-2 text-2xl font-black">
-                      {coach.name}
-                    </h3>
+                    <h3 className="mt-2 text-2xl font-black">{coach.name}</h3>
 
                     <p className="mt-3 text-zinc-400">
-                      {coach.nationality ||
-                        "Nacionalidade não informada"}
+                      {coach.nationality || "Nacionalidade não informada"}
                     </p>
 
-                    {!isAvailable && (
-                      <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-300">
-                        Este profissional já foi contratado por outro clube e
-                        não poderá ser confirmado.
+                    <div className="mt-6 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                          Último lance
+                        </p>
+
+                        <p className="mt-2 text-lg font-black text-white">
+                          {auction
+                            ? formatMoney(displayedCurrentBid)
+                            : "Sem lance"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                          Quem está ganhando
+                        </p>
+
+                        <p
+                          className={`mt-2 text-lg font-black ${
+                            myTeamIsLeading ? "text-green-400" : "text-white"
+                          }`}
+                        >
+                          {auction?.winner_team_id
+                            ? item.leadingTeamName || "Clube não identificado"
+                            : "Sem lances"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                          Tempo restante
+                        </p>
+
+                        <p
+                          className={`mt-2 text-lg font-black ${
+                            isAuctionActive ? "text-yellow-300" : "text-zinc-400"
+                          }`}
+                        >
+                          {getRemainingTime(auction?.ends_at || null, now)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                          Próximo lance +15%
+                        </p>
+
+                        <p className="mt-2 text-lg font-black text-purple-300">
+                          {nextBid ? formatMoney(nextBid) : "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isAuctionActive && nextBid && !myTeamIsLeading && (
+                      <button
+                        type="button"
+                        onClick={() => coverBid(item)}
+                        disabled={biddingAuctionId === auction?.id}
+                        className="mt-4 w-full rounded-xl bg-green-600 px-5 py-4 text-center font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                      >
+                        {biddingAuctionId === auction?.id
+                          ? "ENVIANDO LANCE..."
+                          : `COBRIR LANCE — ${formatMoney(nextBid)}`}
+                      </button>
+                    )}
+
+                    {myTeamIsLeading && isAuctionActive && (
+                      <div className="mt-4 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-center font-black text-green-400">
+                        Seu clube está com o maior lance.
                       </div>
                     )}
 
@@ -590,14 +741,12 @@ export default function StaffShoppingListPage() {
                         type="button"
                         disabled={
                           removingId === item.id ||
-                          finalizing
+                          biddingAuctionId === auction?.id
                         }
                         onClick={() => removeItem(item)}
                         className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-black text-red-400 hover:bg-red-500/20 disabled:opacity-50"
                       >
-                        {removingId === item.id
-                          ? "Removendo..."
-                          : "Remover"}
+                        {removingId === item.id ? "Removendo..." : "Remover"}
                       </button>
                     </div>
                   </article>
