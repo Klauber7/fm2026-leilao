@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Coach = {
@@ -22,6 +22,23 @@ type Coach = {
 type Team = {
   id: number;
   name: string;
+};
+
+type TransferWindow = {
+  id: number;
+  window_number: number;
+  name: string | null;
+  status: string;
+};
+
+type StaffAuction = {
+  id: number;
+  coach_id: number;
+  starting_value: number | null;
+  current_bid: number | null;
+  winner_team_id: number | null;
+  status: string;
+  ends_at: string | null;
 };
 
 function money(value: number | null | undefined) {
@@ -52,7 +69,10 @@ function getErrorMessage(error: unknown) {
 
 export default function CoachDetailPage() {
   const params = useParams();
-  const coachId = Number(params.id);
+  const router = useRouter();
+  const coachId = Number(
+    Array.isArray(params.id) ? params.id[0] : params.id
+  );
 
   const [coach, setCoach] = useState<Coach | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -60,6 +80,14 @@ export default function CoachDetailPage() {
   const [loading, setLoading] = useState(true);
   const [cartLoading, setCartLoading] = useState(false);
   const [isInCart, setIsInCart] = useState(false);
+
+  const [currentWindow, setCurrentWindow] =
+    useState<TransferWindow | null>(null);
+
+  const [activeAuction, setActiveAuction] =
+    useState<StaffAuction | null>(null);
+
+  const [startingAuction, setStartingAuction] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -104,6 +132,58 @@ export default function CoachDetailPage() {
         (coachData as Coach | null) ?? null;
 
       setCoach(loadedCoach);
+
+      const [windowResult, auctionResult] = await Promise.all([
+        supabase
+          .from("transfer_windows")
+          .select("id, window_number, name, status")
+          .eq("status", "open")
+          .order("window_number", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+
+        supabase
+          .from("staff_auctions")
+          .select(`
+            id,
+            coach_id,
+            starting_value,
+            current_bid,
+            winner_team_id,
+            status,
+            ends_at
+          `)
+          .eq("coach_id", coachId)
+          .eq("status", "active")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (windowResult.error) {
+        console.error("Erro ao carregar janela:", windowResult.error);
+        setCurrentWindow(null);
+      } else {
+        setCurrentWindow(
+          windowResult.data
+            ? (windowResult.data as TransferWindow)
+            : null
+        );
+      }
+
+      if (auctionResult.error) {
+        console.error(
+          "Erro ao carregar leilão de staff:",
+          auctionResult.error
+        );
+        setActiveAuction(null);
+      } else {
+        setActiveAuction(
+          auctionResult.data
+            ? (auctionResult.data as StaffAuction)
+            : null
+        );
+      }
 
       const {
         data: { user },
@@ -174,10 +254,33 @@ export default function CoachDetailPage() {
       .on(
         "postgres_changes",
         {
-          event: "UPDATE",
+          event: "*",
           schema: "public",
           table: "coaches",
           filter: `id=eq.${coachId}`,
+        },
+        () => {
+          loadPage();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "staff_auctions",
+          filter: `coach_id=eq.${coachId}`,
+        },
+        () => {
+          loadPage();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "transfer_windows",
         },
         () => {
           loadPage();
@@ -293,6 +396,120 @@ export default function CoachDetailPage() {
     }
   }
 
+  async function handleAuction() {
+    if (!coach) {
+      setErrorMessage("Profissional não encontrado.");
+      return;
+    }
+
+    if (!team) {
+      setErrorMessage("Você precisa possuir um clube para dar lance.");
+      return;
+    }
+
+    if (!currentWindow) {
+      setErrorMessage("O mercado está fechado.");
+      return;
+    }
+
+    if (coach.team_id !== null) {
+      setErrorMessage("Este profissional já foi contratado.");
+      return;
+    }
+
+    if (activeAuction) {
+      router.push(`/staff-auctions/${activeAuction.id}`);
+      return;
+    }
+
+    const startingValue = Number(coach.value || 0);
+
+    if (!Number.isFinite(startingValue) || startingValue < 0) {
+      setErrorMessage("Este profissional não possui valor válido.");
+      return;
+    }
+
+    setStartingAuction(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const { data, error } = await supabase.rpc(
+        "create_staff_auction",
+        {
+          coach_id_input: coach.id,
+          starting_value_input: startingValue,
+        }
+      );
+
+      if (error) {
+        const { data: existingAuction } = await supabase
+          .from("staff_auctions")
+          .select("id")
+          .eq("coach_id", coach.id)
+          .eq("status", "active")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingAuction?.id) {
+          router.push(`/staff-auctions/${existingAuction.id}`);
+          return;
+        }
+
+        throw error;
+      }
+
+      let auctionId: number | null = null;
+
+      if (
+        data &&
+        typeof data === "object" &&
+        "auction_id" in data
+      ) {
+        auctionId = Number(
+          (data as { auction_id: number }).auction_id
+        );
+      }
+
+      if (!auctionId) {
+        const {
+          data: createdAuction,
+          error: createdAuctionError,
+        } = await supabase
+          .from("staff_auctions")
+          .select("id")
+          .eq("coach_id", coach.id)
+          .eq("status", "active")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (createdAuctionError) {
+          throw createdAuctionError;
+        }
+
+        auctionId = createdAuction?.id
+          ? Number(createdAuction.id)
+          : null;
+      }
+
+      if (!auctionId) {
+        throw new Error(
+          "O leilão foi criado, mas não foi possível localizar o ID."
+        );
+      }
+
+      router.push(`/staff-auctions/${auctionId}`);
+    } catch (error) {
+      const message = getErrorMessage(error);
+      console.error("Erro ao criar leilão de staff:", error);
+      setErrorMessage(message);
+    } finally {
+      setStartingAuction(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="min-h-screen bg-zinc-950 p-10 text-white">
@@ -305,12 +522,13 @@ export default function CoachDetailPage() {
     return (
       <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
         <div className="mx-auto max-w-5xl">
-          <Link
-            href="/coaches"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="font-bold text-green-400"
           >
             ← Voltar
-          </Link>
+          </button>
 
           <h1 className="mt-8 text-4xl font-black">
             Profissional não encontrado
@@ -332,16 +550,19 @@ export default function CoachDetailPage() {
     coach.team_id !== null &&
     coach.team_id === team?.id;
 
+  const marketOpen = Boolean(currentWindow);
+
   return (
     <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <Link
-            href="/coaches"
+          <button
+            type="button"
+            onClick={() => router.back()}
             className="font-bold text-green-400 hover:text-green-300"
           >
             ← Voltar ao mercado
-          </Link>
+          </button>
 
           {team && (
             <Link
@@ -364,6 +585,19 @@ export default function CoachDetailPage() {
             {successMessage}
           </div>
         )}
+
+        <div className="mt-8">
+          {marketOpen ? (
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-5 py-4 text-green-300">
+              🟢 Mercado de jogadores e staff aberto
+              {currentWindow?.name ? ` — ${currentWindow.name}` : ""}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-red-300">
+              🔒 Mercado de jogadores e staff fechado
+            </div>
+          )}
+        </div>
 
         <section className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[380px_1fr]">
           <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
@@ -445,7 +679,7 @@ export default function CoachDetailPage() {
 
             <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-7">
               <h2 className="text-2xl font-black">
-                Seleção de Staff
+                Leilão e Lista de Staff
               </h2>
 
               {team ? (
@@ -462,6 +696,35 @@ export default function CoachDetailPage() {
 
                   {isAvailable && (
                     <>
+                      {marketOpen ? (
+                        <button
+                          type="button"
+                          onClick={handleAuction}
+                          disabled={startingAuction}
+                          className="mt-7 w-full rounded-xl bg-green-600 py-4 font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                        >
+                          {startingAuction
+                            ? "ABRINDO LEILÃO..."
+                            : activeAuction
+                            ? "ENTRAR NO LEILÃO"
+                            : `DAR LANCE — ${money(coach.value)}`}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="mt-7 w-full cursor-not-allowed rounded-xl border border-red-500/30 bg-red-500/10 py-4 font-black text-red-400"
+                        >
+                          🔒 MERCADO FECHADO
+                        </button>
+                      )}
+
+                      {activeAuction && (
+                        <div className="mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center font-bold text-yellow-300">
+                          Este profissional já possui um leilão ativo.
+                        </div>
+                      )}
+
                       <button
                         type="button"
                         onClick={toggleCart}
