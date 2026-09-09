@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Coach = {
@@ -31,6 +31,19 @@ type TransferWindow = {
 };
 
 const PAGE_SIZE = 50;
+const STAFF_MARKET_STATE_KEY = "friendzone-staff-market-state";
+
+type StaffMarketState = {
+  search: string;
+  debouncedSearch: string;
+  roleFilter: string;
+  minCA: string;
+  maxCA: string;
+  minCP: string;
+  maxCP: string;
+  page: number;
+  scrollY: number;
+};
 
 const STAFF_ROLES = [
   "Treinador",
@@ -97,14 +110,160 @@ export default function CoachesPage() {
   const [total, setTotal] = useState(0);
   const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
 
+  const [marketStateReady, setMarketStateReady] = useState(false);
+  const restoreScrollYRef = useRef(0);
+  const restoreScrollDoneRef = useRef(false);
+  const skipNextSearchResetRef = useRef(false);
+
+  const saveMarketState = useCallback(() => {
+    if (typeof window === "undefined" || !marketStateReady) {
+      return;
+    }
+
+    const state: StaffMarketState = {
+      search,
+      debouncedSearch,
+      roleFilter,
+      minCA,
+      maxCA,
+      minCP,
+      maxCP,
+      page,
+      scrollY: window.scrollY,
+    };
+
+    sessionStorage.setItem(
+      STAFF_MARKET_STATE_KEY,
+      JSON.stringify(state)
+    );
+  }, [
+    marketStateReady,
+    search,
+    debouncedSearch,
+    roleFilter,
+    minCA,
+    maxCA,
+    minCP,
+    maxCP,
+    page,
+  ]);
+
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(STAFF_MARKET_STATE_KEY);
+
+      if (raw) {
+        const saved = JSON.parse(raw) as Partial<StaffMarketState>;
+
+        if (typeof saved.search === "string") {
+          setSearch(saved.search);
+          setDebouncedSearch(
+            typeof saved.debouncedSearch === "string"
+              ? saved.debouncedSearch
+              : cleanSearch(saved.search)
+          );
+          skipNextSearchResetRef.current = true;
+        }
+        if (typeof saved.roleFilter === "string") {
+          setRoleFilter(saved.roleFilter);
+        }
+        if (typeof saved.minCA === "string") setMinCA(saved.minCA);
+        if (typeof saved.maxCA === "string") setMaxCA(saved.maxCA);
+        if (typeof saved.minCP === "string") setMinCP(saved.minCP);
+        if (typeof saved.maxCP === "string") setMaxCP(saved.maxCP);
+        if (
+          typeof saved.page === "number" &&
+          Number.isFinite(saved.page) &&
+          saved.page > 0
+        ) {
+          setPage(saved.page);
+        }
+        if (
+          typeof saved.scrollY === "number" &&
+          Number.isFinite(saved.scrollY)
+        ) {
+          restoreScrollYRef.current = saved.scrollY;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao restaurar estado do mercado de staff:",
+        error
+      );
+    } finally {
+      setMarketStateReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!marketStateReady || typeof window === "undefined") {
+      return;
+    }
+
+    const handleScroll = () => {
+      saveMarketState();
+    };
+
+    const handlePageHide = () => {
+      saveMarketState();
+    };
+
+    saveMarketState();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      saveMarketState();
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [marketStateReady, saveMarketState]);
+
+  useEffect(() => {
+    if (
+      !marketStateReady ||
+      loading ||
+      restoreScrollDoneRef.current ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const targetY = restoreScrollYRef.current;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: targetY,
+          behavior: "auto",
+        });
+        restoreScrollDoneRef.current = true;
+      });
+    });
+  }, [marketStateReady, loading, coaches.length]);
+
+  useEffect(() => {
+    if (!marketStateReady) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       setDebouncedSearch(cleanSearch(search));
-      setPage(1);
+
+      if (skipNextSearchResetRef.current) {
+        skipNextSearchResetRef.current = false;
+      } else {
+        setPage(1);
+      }
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [search]);
+  }, [search, marketStateReady]);
 
   const resolveMyTeam = useCallback(async (): Promise<Team | null> => {
     const {
@@ -280,13 +439,21 @@ export default function CoachesPage() {
   ]);
 
   useEffect(() => {
+    if (!marketStateReady) {
+      return;
+    }
+
     loadTransferWindow();
     loadCoaches();
-  }, [loadTransferWindow, loadCoaches]);
+  }, [marketStateReady, loadTransferWindow, loadCoaches]);
 
   useEffect(() => {
+    if (!marketStateReady) {
+      return;
+    }
+
     loadCart();
-  }, [loadCart]);
+  }, [marketStateReady, loadCart]);
 
   useEffect(() => {
     const channel = supabase
@@ -421,6 +588,13 @@ export default function CoachesPage() {
   }
 
   function clearFilters() {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(STAFF_MARKET_STATE_KEY);
+      restoreScrollYRef.current = 0;
+      restoreScrollDoneRef.current = true;
+    }
+
+    skipNextSearchResetRef.current = false;
     setSearch("");
     setDebouncedSearch("");
     setRoleFilter("all");
@@ -604,7 +778,7 @@ export default function CoachesPage() {
                     </span>
                   </div>
 
-                  <Link href={`/coaches/${coach.id}`} className="block">
+                  <Link href={`/coaches/${coach.id}`} onClick={saveMarketState} className="block">
                     {/* NOME */}
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-green-300">
                       {coach.name} - {coach.age ?? "-"} anos
@@ -654,6 +828,7 @@ export default function CoachesPage() {
                   {marketOpen ? (
                     <Link
                       href={`/coaches/${coach.id}`}
+                      onClick={saveMarketState}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
                       DAR LANCE —{" "}
