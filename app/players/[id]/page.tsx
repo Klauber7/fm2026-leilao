@@ -20,6 +20,7 @@ type Player = {
   available: boolean | null;
   drafted: boolean | null;
   image_url: string | null;
+  team_id: number | null;
 
   ambition: number | null;
   pressure: number | null;
@@ -87,6 +88,31 @@ type Player = {
   height: string | null;
   left_foot: string | null;
   right_foot: string | null;
+};
+
+type Team = {
+  id: number;
+  name: string;
+  budget: number | null;
+  manager_id: string | null;
+};
+
+type Auction = {
+  id: number;
+  player_id: number | null;
+  starting_value: number | null;
+  current_bid: number | null;
+  winner_team_id: number | null;
+  status: string | null;
+  ends_at: string | null;
+};
+
+type TransferWindow = {
+  id: number;
+  season_number: number | null;
+  window_number: number;
+  name: string | null;
+  status: string;
 };
 
 type NumericPlayerKey = {
@@ -446,6 +472,13 @@ export default function PlayerPage() {
 
   const [player, setPlayer] = useState<Player | null>(null);
   const [loading, setLoading] = useState(true);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [currentWindow, setCurrentWindow] =
+    useState<TransferWindow | null>(null);
+  const [activeAuction, setActiveAuction] =
+    useState<Auction | null>(null);
+  const [startingAuction, setStartingAuction] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (id) loadPlayer();
@@ -473,6 +506,7 @@ export default function PlayerPage() {
         available,
         drafted,
         image_url,
+        team_id,
 
         ambition,
         pressure,
@@ -547,11 +581,185 @@ export default function PlayerPage() {
     if (error) {
       console.error("Erro ao carregar jogador:", error);
       setPlayer(null);
-    } else {
-      setPlayer(data as Player);
+      setErrorMessage(error.message);
+      setLoading(false);
+      return;
     }
 
+    const loadedPlayer = data as Player;
+    setPlayer(loadedPlayer);
+
+    const [authResult, windowResult, auctionResult] = await Promise.all([
+      supabase.auth.getUser(),
+      supabase
+        .from("transfer_windows")
+        .select("id, season_number, window_number, name, status")
+        .eq("status", "open")
+        .order("season_number", { ascending: false })
+        .order("window_number", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("auctions")
+        .select(
+          "id, player_id, starting_value, current_bid, winner_team_id, status, ends_at"
+        )
+        .eq("player_id", loadedPlayer.id)
+        .eq("status", "active")
+        .order("id", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (windowResult.error) {
+      console.error("Erro ao carregar janela:", windowResult.error);
+      setCurrentWindow(null);
+    } else {
+      setCurrentWindow(
+        windowResult.data
+          ? (windowResult.data as TransferWindow)
+          : null
+      );
+    }
+
+    if (auctionResult.error) {
+      console.error("Erro ao carregar leilão:", auctionResult.error);
+      setActiveAuction(null);
+    } else {
+      setActiveAuction(
+        auctionResult.data ? (auctionResult.data as Auction) : null
+      );
+    }
+
+    const user = authResult.data.user;
+
+    if (user) {
+      const { data: teamData, error: teamError } = await supabase
+        .from("teams")
+        .select("id, name, budget, manager_id")
+        .eq("manager_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (teamError) {
+        console.error("Erro ao carregar clube:", teamError);
+        setTeam(null);
+      } else {
+        setTeam(teamData ? (teamData as Team) : null);
+      }
+    } else {
+      setTeam(null);
+    }
+
+    setErrorMessage("");
     setLoading(false);
+  }
+
+  async function handleAuction() {
+    if (!player) return;
+
+    if (!team) {
+      alert("Você precisa estar vinculado a um clube para dar lance.");
+      return;
+    }
+
+    if (!currentWindow) {
+      alert("O mercado está fechado.");
+      return;
+    }
+
+    if (player.team_id !== null) {
+      alert("Este jogador já pertence a um clube.");
+      return;
+    }
+
+    if (activeAuction) {
+      router.push(`/auctions/${activeAuction.id}`);
+      return;
+    }
+
+    setStartingAuction(true);
+    setErrorMessage("");
+
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        "start_player_auction",
+        {
+          player_id_input: player.id,
+        }
+      );
+
+      if (rpcError) {
+        const { data: existingAuction } = await supabase
+          .from("auctions")
+          .select("id")
+          .eq("player_id", player.id)
+          .eq("status", "active")
+          .order("id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existingAuction?.id) {
+          router.push(`/auctions/${existingAuction.id}`);
+          return;
+        }
+
+        throw rpcError;
+      }
+
+      let auctionId: number | null = null;
+
+      if (typeof rpcData === "number" || typeof rpcData === "string") {
+        const parsed = Number(rpcData);
+        if (Number.isFinite(parsed) && parsed > 0) auctionId = parsed;
+      } else if (rpcData && typeof rpcData === "object") {
+        const maybeId =
+          "auction_id" in rpcData
+            ? Number((rpcData as { auction_id?: unknown }).auction_id)
+            : "id" in rpcData
+              ? Number((rpcData as { id?: unknown }).id)
+              : NaN;
+
+        if (Number.isFinite(maybeId) && maybeId > 0) {
+          auctionId = maybeId;
+        }
+      }
+
+      if (!auctionId) {
+        const { data: createdAuction, error: createdAuctionError } =
+          await supabase
+            .from("auctions")
+            .select("id")
+            .eq("player_id", player.id)
+            .eq("status", "active")
+            .order("id", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (createdAuctionError) throw createdAuctionError;
+
+        auctionId = createdAuction?.id ? Number(createdAuction.id) : null;
+      }
+
+      if (!auctionId) {
+        throw new Error(
+          "O leilão foi iniciado, mas não foi possível localizar o leilão ativo."
+        );
+      }
+
+      router.push(`/auctions/${auctionId}`);
+    } catch (auctionError) {
+      const message =
+        auctionError instanceof Error
+          ? auctionError.message
+          : "Não foi possível iniciar o leilão.";
+
+      console.error("Erro ao iniciar leilão:", auctionError);
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setStartingAuction(false);
+    }
   }
 
   if (loading) {
@@ -593,7 +801,7 @@ export default function PlayerPage() {
         >
         <button
           type="button"
-          onClick={() => router.push("/players")}
+          onClick={() => router.back()}
           style={{
             background: "#27272a",
             color: "#e4e4e7",
@@ -608,6 +816,104 @@ export default function PlayerPage() {
         >
           ← Jogadores
         </button>
+
+        {errorMessage && (
+          <div
+            style={{
+              background: "#450a0a",
+              border: "1px solid #dc2626",
+              borderRadius: "7px",
+              padding: "8px 10px",
+              color: "#fecaca",
+              fontSize: "11px",
+              fontWeight: 700,
+              marginBottom: "8px",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "10px",
+            background: currentWindow ? "#052e16" : "#450a0a",
+            border: `1px solid ${currentWindow ? "#16a34a" : "#dc2626"}`,
+            borderRadius: "7px",
+            padding: "7px 9px",
+            marginBottom: "8px",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: "10px",
+                fontWeight: 900,
+                color: currentWindow ? "#86efac" : "#fecaca",
+              }}
+            >
+              {currentWindow ? "🟢 LEILÃO ABERTO" : "🔒 LEILÃO FECHADO"}
+            </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "#d4d4d8",
+                marginTop: "2px",
+              }}
+            >
+              {activeAuction
+                ? `Leilão #${activeAuction.id} em andamento`
+                : currentWindow
+                  ? "Clique para iniciar ou entrar no leilão deste jogador."
+                  : "Aguarde a abertura do mercado."}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAuction}
+            disabled={
+              startingAuction ||
+              !currentWindow ||
+              !team ||
+              player.team_id !== null
+            }
+            style={{
+              minWidth: "190px",
+              background:
+                startingAuction ||
+                !currentWindow ||
+                !team ||
+                player.team_id !== null
+                  ? "#3f3f46"
+                  : "#16a34a",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "8px 12px",
+              fontSize: "10px",
+              fontWeight: 900,
+              cursor:
+                startingAuction ||
+                !currentWindow ||
+                !team ||
+                player.team_id !== null
+                  ? "not-allowed"
+                  : "pointer",
+            }}
+          >
+            {player.team_id !== null
+              ? "JÁ CONTRATADO"
+              : startingAuction
+                ? "ABRINDO..."
+                : activeAuction
+                  ? "ENTRAR NO LEILÃO"
+                  : `DAR LANCE — ${formatValue(player.value)}`}
+          </button>
+        </div>
 
         <div
           style={{
