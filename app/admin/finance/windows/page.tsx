@@ -1214,6 +1214,149 @@ export default function TransferWindowsAdminPage() {
     }
   }
 
+
+  /*
+  ============================================================
+  CONTROLE RÁPIDO DOS LEILÕES / MERCADO
+  ============================================================
+  */
+
+  async function openAuctionMarket() {
+    const confirmed =
+      window.confirm(
+        "ABRIR O MERCADO E OS LEILÕES DE JOGADORES E STAFF?"
+      );
+
+    if (
+      !confirmed
+    ) {
+      return;
+    }
+
+    setProcessing(
+      true
+    );
+
+    try {
+      const {
+        data,
+        error,
+      } =
+        await supabase.rpc(
+          "admin_set_all_auctions_open",
+          {
+            p_open:
+              true,
+          }
+        );
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+      if (
+        data !==
+        true
+      ) {
+        throw new Error(
+          "O Supabase não confirmou a abertura do mercado."
+        );
+      }
+
+      alert(
+        "MERCADO E LEILÕES ABERTOS!"
+      );
+
+      await loadPage();
+    } catch (
+      error: any
+    ) {
+      console.error(
+        "Erro ao abrir mercado/leilões:",
+        error
+      );
+
+      alert(
+        error?.message ||
+          "Erro ao abrir mercado e leilões."
+      );
+    } finally {
+      setProcessing(
+        false
+      );
+    }
+  }
+
+  async function closeAuctionMarket() {
+    const confirmed =
+      window.confirm(
+        "FECHAR O MERCADO E OS LEILÕES DE JOGADORES E STAFF?"
+      );
+
+    if (
+      !confirmed
+    ) {
+      return;
+    }
+
+    setProcessing(
+      true
+    );
+
+    try {
+      const {
+        data,
+        error,
+      } =
+        await supabase.rpc(
+          "admin_set_all_auctions_open",
+          {
+            p_open:
+              false,
+          }
+        );
+
+      if (
+        error
+      ) {
+        throw error;
+      }
+
+      if (
+        data !==
+        false
+      ) {
+        throw new Error(
+          "O Supabase não confirmou o fechamento do mercado."
+        );
+      }
+
+      alert(
+        "MERCADO E LEILÕES FECHADOS!"
+      );
+
+      await loadPage();
+    } catch (
+      error: any
+    ) {
+      console.error(
+        "Erro ao fechar mercado/leilões:",
+        error
+      );
+
+      alert(
+        error?.message ||
+          "Erro ao fechar mercado e leilões."
+      );
+    } finally {
+      setProcessing(
+        false
+      );
+    }
+  }
+
   function updateIndividualCredit(
     teamId: number,
     value: string
@@ -1297,6 +1440,70 @@ export default function TransferWindowsAdminPage() {
           </p>
 
         </header>
+
+        {/* CONTROLE RÁPIDO DOS LEILÕES */}
+
+        <section className="mt-8 rounded-2xl border border-purple-500/30 bg-purple-500/5 p-6">
+
+          <p className="font-black text-purple-400">
+            🔨 CONTROLE DOS LEILÕES
+          </p>
+
+          <h2 className="mt-2 text-3xl font-black">
+            Jogadores + Comissão Técnica
+          </h2>
+
+          <p className="mt-3 text-zinc-400">
+            Abra ou feche o mercado e os leilões de jogadores e staff ao mesmo tempo.
+          </p>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+
+            <button
+              type="button"
+              disabled={
+                processing ||
+                Boolean(
+                  currentWindow
+                )
+              }
+              onClick={
+                openAuctionMarket
+              }
+              className="rounded-xl bg-green-600 px-6 py-5 text-xl font-black hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            >
+              {processing
+                ? "PROCESSANDO..."
+                : currentWindow
+                ? "🟢 LEILÕES JÁ ESTÃO ABERTOS"
+                : "🟢 ABRIR LEILÕES"}
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                processing ||
+                !currentWindow
+              }
+              onClick={
+                closeAuctionMarket
+              }
+              className="rounded-xl bg-red-600 px-6 py-5 text-xl font-black hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+            >
+              {processing
+                ? "PROCESSANDO..."
+                : currentWindow
+                ? "🔴 FECHAR LEILÕES"
+                : "🔴 LEILÕES JÁ ESTÃO FECHADOS"}
+            </button>
+
+          </div>
+
+          <p className="mt-4 text-sm text-zinc-500">
+            Este controle usa a permissão administrativa da sua conta e não distribui créditos.
+          </p>
+
+        </section>
 
         {/* STATUS */}
 
