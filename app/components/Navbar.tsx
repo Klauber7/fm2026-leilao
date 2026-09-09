@@ -55,11 +55,6 @@ const mainMenu: MenuItem[] = [
     icon: "👨‍💼",
   },
   {
-    href: "/auctions",
-    label: "Leilões de Jogadores",
-    icon: "🔥",
-  },
-  {
     href: "/transfers",
     label: "Contratações",
     icon: "📄",
@@ -124,6 +119,7 @@ export default function Navbar() {
 
     return () => {
       document.body.style.overflow = "";
+
       window.removeEventListener(
         "keydown",
         handleEscape
