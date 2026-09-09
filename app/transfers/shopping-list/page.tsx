@@ -39,8 +39,10 @@ type ShoppingListRow = {
 type LiveShoppingRow = {
   shopping_list_id: number;
   shopping_team_id: number;
+
   player_id: number;
   player_name: string;
+
   position: string | null;
   ca: number | null;
   player_value: number | null;
@@ -82,6 +84,13 @@ type ShoppingPlayer = {
   next_minimum_bid: number | null;
 };
 
+type TransferWindow = {
+  id: number;
+  window_number: number;
+  name: string | null;
+  status: string;
+};
+
 type SortOption =
   | "recent"
   | "name"
@@ -91,17 +100,10 @@ type SortOption =
   | "bid_desc"
   | "ending";
 
-type TransferWindow = {
-  id: number;
-  window_number: number;
-  name: string | null;
-  status: string;
-};
-
 function getErrorMessage(
   error: unknown
 ) {
-  const message =
+  const text =
     error instanceof Error
       ? error.message
       : String(
@@ -113,7 +115,7 @@ function getErrorMessage(
         );
 
   if (
-    message.includes(
+    text.includes(
       "NOT_AUTHENTICATED"
     )
   ) {
@@ -121,7 +123,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "TRANSFER_WINDOW_CLOSED"
     )
   ) {
@@ -129,7 +131,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "TEAM_NOT_FOUND"
     )
   ) {
@@ -137,7 +139,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "PLAYER_NOT_FOUND"
     )
   ) {
@@ -145,7 +147,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "PLAYER_ALREADY_CONTRACTED"
     )
   ) {
@@ -153,15 +155,15 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "PLAYER_HAS_NO_VALUE"
     )
   ) {
-    return "Este jogador não possui valor válido para iniciar o leilão.";
+    return "Este jogador não possui valor válido.";
   }
 
   if (
-    message.includes(
+    text.includes(
       "INSUFFICIENT_AVAILABLE_BUDGET"
     )
   ) {
@@ -169,7 +171,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "AUCTION_NOT_FOUND"
     )
   ) {
@@ -177,7 +179,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "AUCTION_NOT_ACTIVE"
     )
   ) {
@@ -185,7 +187,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "AUCTION_EXPIRED"
     )
   ) {
@@ -193,7 +195,7 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "BID_TOO_LOW"
     )
   ) {
@@ -201,14 +203,14 @@ function getErrorMessage(
   }
 
   if (
-    message.includes(
+    text.includes(
       "INVALID_BID"
     )
   ) {
     return "Valor de lance inválido.";
   }
 
-  return message;
+  return text;
 }
 
 export default function ShoppingListPage() {
@@ -218,7 +220,9 @@ export default function ShoppingListPage() {
     myTeam,
     setMyTeam,
   ] =
-    useState<Team | null>(null);
+    useState<Team | null>(
+      null
+    );
 
   const [
     currentWindow,
@@ -232,7 +236,9 @@ export default function ShoppingListPage() {
     items,
     setItems,
   ] =
-    useState<ShoppingPlayer[]>([]);
+    useState<ShoppingPlayer[]>(
+      []
+    );
 
   const [
     loading,
@@ -244,19 +250,25 @@ export default function ShoppingListPage() {
     removingId,
     setRemovingId,
   ] =
-    useState<number | null>(null);
+    useState<number | null>(
+      null
+    );
 
   const [
     bidLoadingId,
     setBidLoadingId,
   ] =
-    useState<number | null>(null);
+    useState<number | null>(
+      null
+    );
 
   const [
     startingAuctionId,
     setStartingAuctionId,
   ] =
-    useState<number | null>(null);
+    useState<number | null>(
+      null
+    );
 
   const [
     search,
@@ -268,7 +280,9 @@ export default function ShoppingListPage() {
     sort,
     setSort,
   ] =
-    useState<SortOption>("recent");
+    useState<SortOption>(
+      "recent"
+    );
 
   const [
     error,
@@ -286,10 +300,12 @@ export default function ShoppingListPage() {
     now,
     setNow,
   ] =
-    useState(Date.now());
+    useState(
+      Date.now()
+    );
 
   /*
-    RELÓGIO LOCAL
+    RELÓGIO
   */
 
   useEffect(() => {
@@ -311,14 +327,15 @@ export default function ShoppingListPage() {
   }, []);
 
   /*
-    CARREGA JANELA
+    JANELA DE TRANSFERÊNCIA
   */
 
   const loadTransferWindow =
     useCallback(async () => {
       const {
         data,
-        error,
+        error:
+          windowError,
       } =
         await supabase
           .from(
@@ -343,10 +360,12 @@ export default function ShoppingListPage() {
           .limit(1)
           .maybeSingle();
 
-      if (error) {
+      if (
+        windowError
+      ) {
         console.error(
           "Erro ao carregar janela:",
-          error
+          windowError
         );
 
         setCurrentWindow(
@@ -364,7 +383,7 @@ export default function ShoppingListPage() {
     }, []);
 
   /*
-    CARREGA LISTA + LEILÕES
+    LISTA DE COMPRAS
   */
 
   const loadShoppingList =
@@ -372,13 +391,12 @@ export default function ShoppingListPage() {
       setLoading(true);
       setError("");
 
-      /*
-        LOGIN
-      */
-
       const {
-        data: { user },
-        error: authError,
+        data: {
+          user,
+        },
+        error:
+          authError,
       } =
         await supabase.auth.getUser();
 
@@ -394,12 +412,14 @@ export default function ShoppingListPage() {
       }
 
       /*
-        IDENTIFICA CLUBE
+        CLUBE DO USUÁRIO
       */
 
       const {
-        data: teamData,
-        error: teamError,
+        data:
+          teamData,
+        error:
+          teamError,
       } =
         await supabase
           .from("teams")
@@ -427,7 +447,9 @@ export default function ShoppingListPage() {
           "Não foi possível identificar o seu clube."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
@@ -435,18 +457,19 @@ export default function ShoppingListPage() {
       const team =
         teamData as Team;
 
-      setMyTeam(team);
+      setMyTeam(
+        team
+      );
 
       /*
-        LISTA NORMAL
-
-        Usamos para manter
-        created_at.
+        LISTA SALVA
       */
 
       const {
-        data: listRows,
-        error: listError,
+        data:
+          listRows,
+        error:
+          listError,
       } =
         await supabase
           .from(
@@ -469,7 +492,9 @@ export default function ShoppingListPage() {
             }
           );
 
-      if (listError) {
+      if (
+        listError
+      ) {
         console.error(
           listError
         );
@@ -478,38 +503,41 @@ export default function ShoppingListPage() {
           "Não foi possível carregar sua lista de compras."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
 
       const rows =
-        (listRows ||
-          []) as ShoppingListRow[];
+        (
+          listRows ||
+          []
+        ) as ShoppingListRow[];
 
       if (
-        rows.length === 0
+        rows.length ===
+        0
       ) {
         setItems([]);
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
 
       /*
-        VIEW LIVE
-
-        Traz:
-        - leilão
-        - lance atual
-        - líder
-        - horário
-        - próximo lance +15%
+        VIEW COM DADOS
+        DO LEILÃO
       */
 
       const {
-        data: liveRows,
-        error: liveError,
+        data:
+          liveRows,
+        error:
+          liveError,
       } =
         await supabase
           .from(
@@ -538,9 +566,11 @@ export default function ShoppingListPage() {
             team.id
           );
 
-      if (liveError) {
+      if (
+        liveError
+      ) {
         console.error(
-          "Erro player_shopping_list_live:",
+          "Erro ao carregar dados dos leilões:",
           liveError
         );
 
@@ -548,7 +578,9 @@ export default function ShoppingListPage() {
           "Não foi possível carregar os dados dos leilões."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
@@ -557,23 +589,26 @@ export default function ShoppingListPage() {
         new Map<
           number,
           LiveShoppingRow
-        >(
-          (
-            (liveRows ||
-              []) as LiveShoppingRow[]
-          ).map(
-            (row) => [
-              Number(
-                row.player_id
-              ),
-              row,
-            ]
-          )
-        );
+        >();
+
+      (
+        (
+          liveRows ||
+          []
+        ) as LiveShoppingRow[]
+      ).forEach(
+        (row) => {
+          liveMap.set(
+            Number(
+              row.player_id
+            ),
+            row
+          );
+        }
+      );
 
       /*
-        DADOS COMPLETOS
-        DOS JOGADORES
+        JOGADORES
       */
 
       const playerIds =
@@ -585,11 +620,15 @@ export default function ShoppingListPage() {
         );
 
       const {
-        data: playersData,
-        error: playersError,
+        data:
+          playersData,
+        error:
+          playersError,
       } =
         await supabase
-          .from("players")
+          .from(
+            "players"
+          )
           .select(`
             id,
             name,
@@ -605,7 +644,9 @@ export default function ShoppingListPage() {
             playerIds
           );
 
-      if (playersError) {
+      if (
+        playersError
+      ) {
         console.error(
           playersError
         );
@@ -614,7 +655,9 @@ export default function ShoppingListPage() {
           "Não foi possível carregar os jogadores."
         );
 
-        setLoading(false);
+        setLoading(
+          false
+        );
 
         return;
       }
@@ -623,31 +666,36 @@ export default function ShoppingListPage() {
         new Map<
           number,
           Player
-        >(
-          (
-            (playersData ||
-              []) as Player[]
-          ).map(
-            (player) => [
-              Number(
-                player.id
-              ),
-              player,
-            ]
-          )
-        );
+        >();
+
+      (
+        (
+          playersData ||
+          []
+        ) as Player[]
+      ).forEach(
+        (player) => {
+          playerMap.set(
+            Number(
+              player.id
+            ),
+            player
+          );
+        }
+      );
 
       /*
         CLUBES ATUAIS
-        DOS JOGADORES
       */
 
       const currentTeamIds =
         Array.from(
           new Set(
             (
-              (playersData ||
-                []) as Player[]
+              (
+                playersData ||
+                []
+              ) as Player[]
             )
               .map(
                 (player) =>
@@ -655,9 +703,10 @@ export default function ShoppingListPage() {
               )
               .filter(
                 (
-                  teamId
-                ): teamId is number =>
-                  teamId !== null
+                  id
+                ): id is number =>
+                  id !==
+                  null
               )
           )
         );
@@ -674,12 +723,14 @@ export default function ShoppingListPage() {
       ) {
         const {
           data:
-            currentTeams,
+            teamsData,
           error:
-            currentTeamsError,
+            teamsError,
         } =
           await supabase
-            .from("teams")
+            .from(
+              "teams"
+            )
             .select(`
               id,
               name,
@@ -692,22 +743,26 @@ export default function ShoppingListPage() {
             );
 
         if (
-          currentTeamsError
+          teamsError
         ) {
           console.error(
-            currentTeamsError
+            teamsError
           );
         } else {
           (
-            (currentTeams ||
-              []) as Team[]
+            (
+              teamsData ||
+              []
+            ) as Team[]
           ).forEach(
-            (teamRow) => {
+            (
+              currentTeam
+            ) => {
               currentTeamMap.set(
                 Number(
-                  teamRow.id
+                  currentTeam.id
                 ),
-                teamRow
+                currentTeam
               );
             }
           );
@@ -715,7 +770,7 @@ export default function ShoppingListPage() {
       }
 
       /*
-        MONTA RESULTADO
+        MONTA LISTA FINAL
       */
 
       const hydrated =
@@ -728,14 +783,16 @@ export default function ShoppingListPage() {
                 Number(
                   row.player_id
                 )
-              ) || null;
+              ) ||
+              null;
 
             const live =
               liveMap.get(
                 Number(
                   row.player_id
                 )
-              ) || null;
+              ) ||
+              null;
 
             const currentTeam =
               player?.team_id
@@ -767,39 +824,48 @@ export default function ShoppingListPage() {
                 row.created_at,
 
               player,
+
               current_team:
                 currentTeam,
 
               auction_id:
-                live?.auction_id ??
+                live
+                  ?.auction_id ??
                 null,
 
               auction_status:
-                live?.auction_status ??
+                live
+                  ?.auction_status ??
                 null,
 
               starting_value:
-                live?.starting_value ??
+                live
+                  ?.starting_value ??
                 null,
 
               current_bid:
-                live?.current_bid ??
+                live
+                  ?.current_bid ??
                 null,
 
               leading_team_id:
-                live?.leading_team_id ??
+                live
+                  ?.leading_team_id ??
                 null,
 
               leading_team_name:
-                live?.leading_team_name ??
+                live
+                  ?.leading_team_name ??
                 null,
 
               ends_at:
-                live?.ends_at ??
+                live
+                  ?.ends_at ??
                 null,
 
               next_minimum_bid:
-                live?.next_minimum_bid ??
+                live
+                  ?.next_minimum_bid ??
                 null,
             };
           }
@@ -809,11 +875,15 @@ export default function ShoppingListPage() {
         hydrated
       );
 
-      setLoading(false);
-    }, [router]);
+      setLoading(
+        false
+      );
+    }, [
+      router,
+    ]);
 
   /*
-    LOAD INICIAL
+    LOAD
   */
 
   useEffect(() => {
@@ -829,14 +899,16 @@ export default function ShoppingListPage() {
   */
 
   useEffect(() => {
-    if (!myTeam) {
+    if (
+      !myTeam
+    ) {
       return;
     }
 
     const channel =
       supabase
         .channel(
-          `player-shopping-auctions-${myTeam.id}`
+          `player-shopping-list-${myTeam.id}`
         )
 
         .on(
@@ -886,11 +958,26 @@ export default function ShoppingListPage() {
         .on(
           "postgres_changes",
           {
-            event: "UPDATE",
+            event:
+              "UPDATE",
             schema:
               "public",
             table:
               "players",
+          },
+          () => {
+            loadShoppingList();
+          }
+        )
+
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema:
+              "public",
+            table:
+              "teams",
           },
           () => {
             loadShoppingList();
@@ -925,94 +1012,7 @@ export default function ShoppingListPage() {
   ]);
 
   /*
-    ENCERRA LEILÕES EXPIRADOS
-
-    Isso substitui a necessidade
-    de entrar na página geral
-    de leilões.
-  */
-
-  const closeExpiredAuctions =
-    useCallback(async () => {
-      const expired =
-        items.filter(
-          (item) => {
-            if (
-              item.auction_status !==
-                "active" ||
-              !item.auction_id ||
-              !item.ends_at
-            ) {
-              return false;
-            }
-
-            return (
-              new Date(
-                item.ends_at
-              ).getTime() <=
-              Date.now()
-            );
-          }
-        );
-
-      if (
-        expired.length === 0
-      ) {
-        return;
-      }
-
-      await Promise.all(
-        expired.map(
-          async (
-            item
-          ) => {
-            const {
-              error,
-            } =
-              await supabase.rpc(
-                "close_expired_auction",
-                {
-                  auction_id_input:
-                    item.auction_id,
-                }
-              );
-
-            if (error) {
-              console.error(
-                "Erro ao encerrar leilão:",
-                error
-              );
-            }
-          }
-        )
-      );
-
-      await loadShoppingList();
-    }, [
-      items,
-      loadShoppingList,
-    ]);
-
-  useEffect(() => {
-    const timer =
-      window.setInterval(
-        () => {
-          closeExpiredAuctions();
-        },
-        5000
-      );
-
-    return () => {
-      window.clearInterval(
-        timer
-      );
-    };
-  }, [
-    closeExpiredAuctions,
-  ]);
-
-  /*
-    FORMATA DINHEIRO
+    DINHEIRO
   */
 
   function money(
@@ -1035,7 +1035,8 @@ export default function ShoppingListPage() {
       }
     ).format(
       Number(
-        value || 0
+        value ||
+          0
       )
     );
   }
@@ -1050,7 +1051,9 @@ export default function ShoppingListPage() {
       | null
       | undefined
   ) {
-    if (!value) {
+    if (
+      !value
+    ) {
       return "-";
     }
 
@@ -1070,7 +1073,9 @@ export default function ShoppingListPage() {
       | string
       | null
   ) {
-    if (!endsAt) {
+    if (
+      !endsAt
+    ) {
       return 0;
     }
 
@@ -1135,14 +1140,109 @@ export default function ShoppingListPage() {
   }
 
   /*
-    REMOVER
+    FECHA LEILÕES
+    EXPIRADOS
+  */
+
+  const closeExpiredAuctions =
+    useCallback(async () => {
+      const expired =
+        items.filter(
+          (item) => {
+            if (
+              !item.auction_id ||
+              item.auction_status !==
+                "active" ||
+              !item.ends_at
+            ) {
+              return false;
+            }
+
+            return (
+              new Date(
+                item.ends_at
+              ).getTime() <=
+              Date.now()
+            );
+          }
+        );
+
+      if (
+        expired.length ===
+        0
+      ) {
+        return;
+      }
+
+      await Promise.all(
+        expired.map(
+          async (
+            item
+          ) => {
+            if (
+              !item.auction_id
+            ) {
+              return;
+            }
+
+            const {
+              error:
+                closeError,
+            } =
+              await supabase.rpc(
+                "close_expired_auction",
+                {
+                  auction_id_input:
+                    item.auction_id,
+                }
+              );
+
+            if (
+              closeError
+            ) {
+              console.error(
+                "Erro ao encerrar leilão:",
+                closeError
+              );
+            }
+          }
+        )
+      );
+
+      await loadShoppingList();
+    }, [
+      items,
+      loadShoppingList,
+    ]);
+
+  useEffect(() => {
+    const timer =
+      window.setInterval(
+        () => {
+          closeExpiredAuctions();
+        },
+        5000
+      );
+
+    return () => {
+      window.clearInterval(
+        timer
+      );
+    };
+  }, [
+    closeExpiredAuctions,
+  ]);
+
+  /*
+    REMOVER DA LISTA
   */
 
   async function removeItem(
     item: ShoppingPlayer
   ) {
     const playerName =
-      item.player?.name ||
+      item.player
+        ?.name ||
       "este jogador";
 
     const confirmed =
@@ -1150,7 +1250,9 @@ export default function ShoppingListPage() {
         `Remover ${playerName} da sua lista de compras?`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -1175,7 +1277,9 @@ export default function ShoppingListPage() {
           item.id
         );
 
-    if (removeError) {
+    if (
+      removeError
+    ) {
       console.error(
         removeError
       );
@@ -1203,19 +1307,17 @@ export default function ShoppingListPage() {
   }
 
   /*
-    PRIMEIRO LANCE
-
-    start_player_auction
-    cria o leilão e registra
-    o primeiro lance usando
-    o valor do jogador.
+    INICIAR LEILÃO
   */
 
   async function startAuction(
     item: ShoppingPlayer
   ) {
+    const player =
+      item.player;
+
     if (
-      !item.player
+      !player
     ) {
       return;
     }
@@ -1231,7 +1333,7 @@ export default function ShoppingListPage() {
     }
 
     if (
-      item.player.team_id !==
+      player.team_id !==
       null
     ) {
       setError(
@@ -1243,12 +1345,13 @@ export default function ShoppingListPage() {
 
     const startingValue =
       Number(
-        item.player.value ||
+        player.value ||
           0
       );
 
     if (
-      startingValue <= 0
+      startingValue <=
+      0
     ) {
       setError(
         "Este jogador não possui valor válido."
@@ -1259,17 +1362,19 @@ export default function ShoppingListPage() {
 
     const confirmed =
       window.confirm(
-        `Confirmar o primeiro lance em ${item.player.name} por ${money(
+        `Confirmar lance inicial em ${player.name} por ${money(
           startingValue
         )}?`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
     setStartingAuctionId(
-      item.player.id
+      player.id
     );
 
     setError("");
@@ -1284,7 +1389,7 @@ export default function ShoppingListPage() {
           "start_player_auction",
           {
             player_id_input:
-              item.player.id,
+              player.id,
           }
         );
 
@@ -1295,7 +1400,7 @@ export default function ShoppingListPage() {
       }
 
       setMessage(
-        `Leilão de ${item.player.name} iniciado. Você está liderando por ${money(
+        `Leilão de ${player.name} iniciado por ${money(
           startingValue
         )}.`
       );
@@ -1321,14 +1426,17 @@ export default function ShoppingListPage() {
   }
 
   /*
-    COBRIR LANCE +15%
+    COBRIR LANCE
   */
 
   async function coverBid(
     item: ShoppingPlayer
   ) {
+    const player =
+      item.player;
+
     if (
-      !item.player ||
+      !player ||
       !item.auction_id
     ) {
       return;
@@ -1350,7 +1458,8 @@ export default function ShoppingListPage() {
       );
 
     if (
-      remaining <= 0
+      remaining <=
+      0
     ) {
       setError(
         "O tempo deste leilão já terminou."
@@ -1383,10 +1492,8 @@ export default function ShoppingListPage() {
       );
 
     if (
-      !Number.isFinite(
-        nextBid
-      ) ||
-      nextBid <= 0
+      nextBid <=
+      0
     ) {
       setError(
         "Não foi possível calcular o próximo lance."
@@ -1397,12 +1504,14 @@ export default function ShoppingListPage() {
 
     const confirmed =
       window.confirm(
-        `Cobrir o lance em ${item.player.name} por ${money(
+        `Cobrir o lance de ${player.name} por ${money(
           nextBid
         )}?`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -1438,7 +1547,7 @@ export default function ShoppingListPage() {
       setMessage(
         `Lance de ${money(
           nextBid
-        )} enviado por ${item.player.name}. Você está liderando o leilão.`
+        )} enviado por ${player.name}.`
       );
 
       await loadShoppingList();
@@ -1464,7 +1573,7 @@ export default function ShoppingListPage() {
   }
 
   /*
-    FILTRO + ORDENAÇÃO
+    FILTRO
   */
 
   const filteredItems =
@@ -1474,13 +1583,15 @@ export default function ShoppingListPage() {
           .trim()
           .toLowerCase();
 
-      const filtered =
+      const result =
         items.filter(
           (item) => {
             const player =
               item.player;
 
-            if (!player) {
+            if (
+              !player
+            ) {
               return false;
             }
 
@@ -1489,16 +1600,16 @@ export default function ShoppingListPage() {
                 player.name,
                 player.position,
                 player.nationality,
-                item.current_team
+                item
+                  .current_team
                   ?.name,
-                item.leading_team_name,
+                item
+                  .leading_team_name,
               ]
                 .filter(
                   Boolean
                 )
-                .join(
-                  " "
-                )
+                .join(" ")
                 .toLowerCase();
 
             return (
@@ -1511,7 +1622,7 @@ export default function ShoppingListPage() {
         );
 
       return [
-        ...filtered,
+        ...result,
       ].sort(
         (a, b) => {
           const playerA =
@@ -1604,14 +1715,14 @@ export default function ShoppingListPage() {
             sort ===
             "ending"
           ) {
-            const timeA =
+            const aTime =
               a.ends_at
                 ? new Date(
                     a.ends_at
                   ).getTime()
                 : Number.MAX_SAFE_INTEGER;
 
-            const timeB =
+            const bTime =
               b.ends_at
                 ? new Date(
                     b.ends_at
@@ -1619,8 +1730,8 @@ export default function ShoppingListPage() {
                 : Number.MAX_SAFE_INTEGER;
 
             return (
-              timeA -
-              timeB
+              aTime -
+              bTime
             );
           }
 
@@ -1649,9 +1760,8 @@ export default function ShoppingListPage() {
       (item) =>
         item.auction_status ===
           "active" &&
-        Boolean(
-          item.auction_id
-        )
+        item.auction_id !==
+          null
     );
 
   const winningAuctions =
@@ -1665,20 +1775,25 @@ export default function ShoppingListPage() {
     activeAuctions.filter(
       (item) =>
         item.leading_team_id !==
+        null &&
+        item.leading_team_id !==
         myTeam?.id
     );
 
-  const totalCommitted =
+  const committedValue =
     winningAuctions.reduce(
       (
         total,
         item
-      ) =>
-        total +
-        Number(
-          item.current_bid ||
-            0
-        ),
+      ) => {
+        return (
+          total +
+          Number(
+            item.current_bid ||
+              0
+          )
+        );
+      },
       0
     );
 
@@ -1691,14 +1806,20 @@ export default function ShoppingListPage() {
     LOADING
   */
 
-  if (loading) {
+  if (
+    loading
+  ) {
     return (
       <main className="min-h-screen bg-[#08090b] px-6 py-10 text-white">
+
         <div className="mx-auto max-w-7xl">
+
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-zinc-400">
             Carregando lista de compras...
           </div>
+
         </div>
+
       </main>
     );
   }
@@ -1723,7 +1844,7 @@ export default function ShoppingListPage() {
             </h1>
 
             <p className="mt-3 max-w-3xl text-zinc-400">
-              Acompanhe somente os jogadores que você salvou: lance atual, clube líder, tempo restante e próximo lance automático de 15%.
+              Acompanhe seus jogadores, veja quem está ganhando cada leilão, o lance atual, o próximo lance e o tempo restante.
             </p>
 
             {myTeam && (
@@ -1757,23 +1878,26 @@ export default function ShoppingListPage() {
 
         </div>
 
-        {/* STATUS MERCADO */}
+        {/* MERCADO */}
 
         <section className="mt-8">
 
           {marketOpen ? (
+
             <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-5">
 
               <p className="font-black text-green-400">
-                🟢 MERCADO ABERTO
+                🟢 LEILÕES ABERTOS
               </p>
 
               <p className="mt-1 text-sm text-zinc-300">
-                Você pode iniciar e cobrir leilões diretamente pela Lista de Compras.
+                Você pode iniciar e cobrir lances diretamente pela sua Lista de Compras.
               </p>
 
             </div>
+
           ) : (
+
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5">
 
               <p className="font-black text-red-400">
@@ -1781,10 +1905,11 @@ export default function ShoppingListPage() {
               </p>
 
               <p className="mt-1 text-sm text-zinc-300">
-                Os leilões podem ser acompanhados, mas novos lances estão bloqueados.
+                Você pode acompanhar os jogadores, mas não pode enviar novos lances.
               </p>
 
             </div>
+
           )}
 
         </section>
@@ -1796,7 +1921,7 @@ export default function ShoppingListPage() {
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
 
             <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-              Na lista
+              Jogadores salvos
             </p>
 
             <p className="mt-3 text-3xl font-black">
@@ -1805,9 +1930,9 @@ export default function ShoppingListPage() {
 
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-5">
 
-            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+            <p className="text-xs font-black uppercase tracking-widest text-yellow-500">
               Leilões ativos
             </p>
 
@@ -1832,7 +1957,7 @@ export default function ShoppingListPage() {
           <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
 
             <p className="text-xs font-black uppercase tracking-widest text-red-500">
-              Precisa cobrir
+              Você foi superado
             </p>
 
             <p className="mt-3 text-3xl font-black text-red-400">
@@ -1841,15 +1966,15 @@ export default function ShoppingListPage() {
 
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
 
-            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-              Comprometido
+            <p className="text-xs font-black uppercase tracking-widest text-blue-500">
+              Valor comprometido
             </p>
 
             <p className="mt-3 text-xl font-black text-blue-400">
               {money(
-                totalCommitted
+                committedValue
               )}
             </p>
 
@@ -1861,27 +1986,32 @@ export default function ShoppingListPage() {
 
         <section className="mt-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 
             <div>
+
               <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                Orçamento atual do clube
+                Orçamento atual
               </p>
 
               <p className="mt-2 text-2xl font-black text-blue-400">
                 {money(
-                  myTeam?.budget
+                  myTeam
+                    ?.budget
                 )}
               </p>
+
             </div>
 
             {currentWindow && (
+
               <span className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm font-black text-green-400">
                 JANELA{" "}
                 {
                   currentWindow.window_number
                 }
               </span>
+
             )}
 
           </div>
@@ -1891,15 +2021,19 @@ export default function ShoppingListPage() {
         {/* MENSAGENS */}
 
         {error && (
-          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+
+          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 font-bold text-red-300">
             {error}
           </div>
+
         )}
 
         {message && (
-          <div className="mt-6 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-green-300">
+
+          <div className="mt-6 rounded-xl border border-green-500/30 bg-green-500/10 p-4 font-bold text-green-300">
             {message}
           </div>
+
         )}
 
         {/* FILTROS */}
@@ -1915,10 +2049,15 @@ export default function ShoppingListPage() {
               </label>
 
               <input
-                value={search}
-                onChange={(event) =>
+                value={
+                  search
+                }
+                onChange={(
+                  event
+                ) =>
                   setSearch(
-                    event.target.value
+                    event.target
+                      .value
                   )
                 }
                 placeholder="Nome, posição, nacionalidade ou clube..."
@@ -1934,8 +2073,12 @@ export default function ShoppingListPage() {
               </label>
 
               <select
-                value={sort}
-                onChange={(event) =>
+                value={
+                  sort
+                }
+                onChange={(
+                  event
+                ) =>
                   setSort(
                     event.target
                       .value as SortOption
@@ -1991,7 +2134,10 @@ export default function ShoppingListPage() {
             </h2>
 
             <span className="text-sm font-bold text-zinc-500">
-              {filteredItems.length} resultado(s)
+              {
+                filteredItems.length
+              }{" "}
+              resultado(s)
             </span>
 
           </div>
@@ -2010,7 +2156,7 @@ export default function ShoppingListPage() {
               </h3>
 
               <p className="mx-auto mt-3 max-w-xl text-zinc-500">
-                Vá ao Mercado de Jogadores e adicione os jogadores que deseja acompanhar.
+                Vá até o Mercado de Jogadores e adicione os jogadores que deseja acompanhar.
               </p>
 
               <Link
@@ -2027,16 +2173,19 @@ export default function ShoppingListPage() {
             <div className="grid gap-5 xl:grid-cols-2">
 
               {filteredItems.map(
-                (item) => {
-
+                (
+                  item
+                ) => {
                   const player =
                     item.player;
 
-                  if (!player) {
+                  if (
+                    !player
+                  ) {
                     return null;
                   }
 
-                  const currentValue =
+                  const playerValue =
                     Number(
                       player.value ||
                         0
@@ -2057,9 +2206,17 @@ export default function ShoppingListPage() {
                   const nextBid =
                     Number(
                       item.next_minimum_bid ||
-                        Math.ceil(
-                          currentBid *
-                            1.15
+                        (
+                          currentBid >
+                          0
+                            ? Math.ceil(
+                                currentBid *
+                                  1.15
+                              )
+                            : Math.ceil(
+                                playerValue *
+                                  1.15
+                              )
                         )
                     );
 
@@ -2070,9 +2227,8 @@ export default function ShoppingListPage() {
                   const hasActiveAuction =
                     item.auction_status ===
                       "active" &&
-                    Boolean(
-                      item.auction_id
-                    );
+                    item.auction_id !==
+                      null;
 
                   const remainingSeconds =
                     getRemainingSeconds(
@@ -2098,97 +2254,129 @@ export default function ShoppingListPage() {
 
                   return (
                     <article
-                      key={item.id}
+                      key={
+                        item.id
+                      }
                       className={[
                         "rounded-2xl border bg-zinc-900 p-6 transition",
-                        iAmWinning
-                          ? "border-green-500/40"
-                          : someoneElseWinning
-                            ? "border-red-500/40"
+                        iAmWinning &&
+                        !expired
+                          ? "border-green-500/50"
+                          : someoneElseWinning &&
+                              !expired
+                            ? "border-red-500/50"
                             : hasActiveAuction
-                              ? "border-yellow-500/30"
+                              ? "border-yellow-500/40"
                               : "border-zinc-800",
-                      ].join(" ")}
+                      ].join(
+                        " "
+                      )}
                     >
 
                       {/* STATUS */}
 
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap gap-2">
 
                         <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-black text-indigo-300">
                           🛒 NA LISTA
                         </span>
 
                         {isOwnPlayer && (
+
                           <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-black text-blue-400">
                             SEU ELENCO
                           </span>
-                        )}
 
-                        {hasActiveAuction &&
-                          iAmWinning &&
-                          !expired && (
-                          <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-black text-green-400">
-                            🟢 VOCÊ ESTÁ GANHANDO
-                          </span>
-                        )}
-
-                        {hasActiveAuction &&
-                          someoneElseWinning &&
-                          !expired && (
-                          <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-black text-red-400">
-                            🔴 VOCÊ FOI SUPERADO
-                          </span>
                         )}
 
                         {hasActiveAuction &&
                           !expired && (
+
                           <span className="rounded-full bg-yellow-500/15 px-3 py-1 text-xs font-black text-yellow-400">
                             🔥 LEILÃO ATIVO
                           </span>
+
+                        )}
+
+                        {iAmWinning &&
+                          !expired && (
+
+                          <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs font-black text-green-400">
+                            🟢 VOCÊ ESTÁ GANHANDO
+                          </span>
+
+                        )}
+
+                        {someoneElseWinning &&
+                          !expired && (
+
+                          <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-black text-red-400">
+                            🔴 VOCÊ FOI SUPERADO
+                          </span>
+
                         )}
 
                         {expired && (
+
                           <span className="rounded-full bg-zinc-700 px-3 py-1 text-xs font-black text-zinc-300">
-                            TEMPO ENCERRADO
+                            ⏱ TEMPO ENCERRADO
                           </span>
+
                         )}
 
                       </div>
 
-                      {/* JOGADOR */}
+                      {/* DADOS */}
 
                       <div className="mt-5">
 
                         <h3 className="break-words text-2xl font-black">
-                          {player.name}
+                          {
+                            player.name
+                          }
                         </h3>
 
                         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-zinc-400">
 
                           <span>
-                            {player.position ||
-                              "Posição -"}
+                            {
+                              player.position ||
+                              "Posição -"
+                            }
                           </span>
 
                           {player.age !==
                             null && (
+
                             <span>
-                              {player.age} anos
+                              {
+                                player.age
+                              }{" "}
+                              anos
                             </span>
+
                           )}
 
                           {player.nationality && (
+
                             <span>
-                              {player.nationality}
+                              {
+                                player.nationality
+                              }
                             </span>
+
                           )}
 
                           {player.ca !==
                             null && (
+
                             <span className="font-black text-white">
-                              CA {player.ca}
+                              CA{" "}
+                              {
+                                player.ca
+                              }
                             </span>
+
                           )}
 
                         </div>
@@ -2202,23 +2390,37 @@ export default function ShoppingListPage() {
 
                         <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 
-                          <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="grid gap-5 sm:grid-cols-2">
 
-                            <div>
+                            {/* QUEM GANHA */}
+
+                            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
 
                               <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                                Lance atual
+                                Quem está ganhando
                               </p>
 
-                              <p className="mt-2 text-2xl font-black text-yellow-400">
-                                {money(
-                                  currentBid
+                              <p
+                                className={[
+                                  "mt-2 text-xl font-black",
+                                  iAmWinning
+                                    ? "text-green-400"
+                                    : "text-red-400",
+                                ].join(
+                                  " "
                                 )}
+                              >
+                                {
+                                  item.leading_team_name ||
+                                  "Sem líder"
+                                }
                               </p>
 
                             </div>
 
-                            <div>
+                            {/* TEMPO */}
+
+                            <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
 
                               <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
                                 Tempo restante
@@ -2231,51 +2433,59 @@ export default function ShoppingListPage() {
                                   300
                                     ? "text-red-400"
                                     : "text-white",
-                                ].join(" ")}
-                              >
-                                {formatRemainingTime(
-                                  item.ends_at
+                                ].join(
+                                  " "
                                 )}
+                              >
+                                {
+                                  formatRemainingTime(
+                                    item.ends_at
+                                  )
+                                }
                               </p>
 
                             </div>
 
                           </div>
 
-                          <div className="mt-5 border-t border-zinc-800 pt-5">
+                          {/* LANCE ATUAL */}
 
-                            <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                              Quem está ganhando
+                          <div className="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+
+                            <p className="text-xs font-black uppercase tracking-widest text-yellow-500">
+                              Lance atual
                             </p>
 
-                            <p
-                              className={[
-                                "mt-2 text-xl font-black",
-                                iAmWinning
-                                  ? "text-green-400"
-                                  : "text-red-400",
-                              ].join(" ")}
-                            >
-                              {item.leading_team_name ||
-                                "Sem líder"}
+                            <p className="mt-2 text-3xl font-black text-yellow-400">
+                              {
+                                money(
+                                  currentBid
+                                )
+                              }
                             </p>
 
                           </div>
 
-                          {!expired && (
-                            <div className="mt-5 border-t border-zinc-800 pt-5">
+                          {/* PRÓXIMO */}
 
-                              <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
+                          {!expired && (
+
+                            <div className="mt-4 rounded-xl border border-green-500/20 bg-green-500/5 p-4">
+
+                              <p className="text-xs font-black uppercase tracking-widest text-green-500">
                                 Próximo lance +15%
                               </p>
 
-                              <p className="mt-2 text-2xl font-black text-green-400">
-                                {money(
-                                  nextBid
-                                )}
+                              <p className="mt-2 text-3xl font-black text-green-400">
+                                {
+                                  money(
+                                    nextBid
+                                  )
+                                }
                               </p>
 
                             </div>
+
                           )}
 
                         </div>
@@ -2285,40 +2495,48 @@ export default function ShoppingListPage() {
                         <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
 
                           <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                            Valor inicial
+                            Valor do jogador
                           </p>
 
-                          <p className="mt-2 text-2xl font-black text-white">
-                            {money(
-                              currentValue
-                            )}
+                          <p className="mt-2 text-2xl font-black">
+                            {
+                              money(
+                                playerValue
+                              )
+                            }
                           </p>
 
-                          {!isOwnPlayer &&
-                            player.team_id ===
-                              null && (
+                          {player.team_id ===
+                            null &&
+                            !hasActiveAuction && (
+
                             <p className="mt-3 text-sm text-zinc-500">
-                              Ainda não existe um leilão ativo para este jogador.
+                              Ainda não existe leilão ativo para este jogador.
                             </p>
+
                           )}
 
                           {player.team_id !==
                             null && (
+
                             <p className="mt-3 text-sm text-zinc-500">
                               Clube atual:{" "}
                               <span className="font-black text-white">
-                                {item.current_team
-                                  ?.name ||
-                                  "Clube"}
+                                {
+                                  item.current_team
+                                    ?.name ||
+                                  "Clube"
+                                }
                               </span>
                             </p>
+
                           )}
 
                         </div>
 
                       )}
 
-                      {/* BOTÕES */}
+                      {/* AÇÕES */}
 
                       <div className="mt-6 grid gap-3 border-t border-zinc-800 pt-6 sm:grid-cols-3">
 
@@ -2381,7 +2599,7 @@ export default function ShoppingListPage() {
                               {bidLoadingId ===
                               item.auction_id
                                 ? "ENVIANDO..."
-                                : `COBRIR — ${money(
+                                : `COBRIR ${money(
                                     nextBid
                                   )}`}
                             </button>
@@ -2417,8 +2635,8 @@ export default function ShoppingListPage() {
                             {startingAuctionId ===
                             player.id
                               ? "INICIANDO..."
-                              : `DAR LANCE — ${money(
-                                  currentValue
+                              : `DAR LANCE ${money(
+                                  playerValue
                                 )}`}
                           </button>
 
@@ -2447,9 +2665,11 @@ export default function ShoppingListPage() {
 
                       <p className="mt-5 text-xs text-zinc-600">
                         Adicionado em{" "}
-                        {dateTime(
-                          item.created_at
-                        )}
+                        {
+                          dateTime(
+                            item.created_at
+                          )
+                        }
                       </p>
 
                     </article>
