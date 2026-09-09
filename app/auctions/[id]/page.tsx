@@ -144,7 +144,7 @@ function extractErrorMessage(
         "BID_TOO_LOW"
       )
     ) {
-      return "O lance precisa ser maior que o lance atual.";
+      return "O lance precisa respeitar o mínimo de +15% sobre o valor atual.";
     }
 
     if (
@@ -812,7 +812,7 @@ export default function AuctionDetailPage() {
 
   const minimumBid =
     currentValue > 0
-      ? currentValue + 1
+      ? Math.ceil(currentValue * 1.15)
       : 1;
 
   const isClosed =
@@ -957,13 +957,13 @@ export default function AuctionDetailPage() {
     }
 
     if (
-      amount <=
-      currentValue
+      amount <
+      minimumBid
     ) {
       alert(
-        `O lance precisa ser maior que ${money(
-          currentValue
-        )}.`
+        `O próximo lance mínimo é ${money(
+          minimumBid
+        )} (+15% sobre o lance atual).`
       );
 
       return;
@@ -1391,7 +1391,7 @@ export default function AuctionDetailPage() {
             </p>
 
             <p className="mt-1 text-zinc-400">
-              Lance mínimo:{" "}
+              Próximo lance mínimo (+15%):{" "}
 
               <span className="font-bold text-green-400">
                 {money(
