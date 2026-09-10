@@ -1486,7 +1486,7 @@ export default function DashboardPage() {
             Acesso rápido
           </h2>
 
-          <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 
             <Link
               href="/players"
@@ -1507,24 +1507,6 @@ export default function DashboardPage() {
 
             </Link>
 
-            <Link
-              href="/auctions"
-              className="rounded-2xl border border-yellow-600 bg-yellow-500 p-7 text-black transition hover:-translate-y-1 hover:bg-yellow-400"
-            >
-
-              <span className="text-3xl">
-                🔨
-              </span>
-
-              <h3 className="mt-4 text-xl font-black">
-                Leilões
-              </h3>
-
-              <p className="mt-2 text-sm text-yellow-950">
-                Acompanhe e faça seus lances.
-              </p>
-
-            </Link>
 
             <Link
               href="/squad"
