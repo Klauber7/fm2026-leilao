@@ -1243,27 +1243,12 @@ export default function StaffShoppingListPage() {
       }
 
       /*
-        Dá o primeiro lance pelo valor inicial.
-        Assim o leilão passa a ter líder,
-        lance atual e contador como jogadores.
+        IMPORTANTE:
+        create_staff_auction já cria o primeiro lance automaticamente,
+        já define o clube como líder e já inicia o contador de 1 hora.
+        NÃO chamamos place_staff_bid aqui, porque isso tentaria dar
+        um segundo lance de +15% imediatamente.
       */
-
-      const {
-        error: bidError,
-      } =
-        await supabase.rpc(
-          "place_staff_bid",
-          {
-            staff_auction_id_input:
-              auctionId,
-            amount_input:
-              startingValue,
-          }
-        );
-
-      if (bidError) {
-        throw bidError;
-      }
 
       setMessage(
         `Primeiro lance de ${formatMoney(
