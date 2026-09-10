@@ -133,7 +133,7 @@ const categories = [
   "Zagueiro",
   "Lateral",
   "Volante",
-  "Meia Armador",
+  "Meia Atacante",
   "Ponta",
   "Atacante",
 ];
@@ -178,8 +178,8 @@ function getCategoryLabel(
     case "Volante":
       return "Volantes";
 
-    case "Meia Armador":
-      return "Meias";
+    case "Meia Atacante":
+      return "Meia Atacante";
 
     case "Ponta":
       return "Pontas";
