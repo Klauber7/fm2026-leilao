@@ -1074,227 +1074,61 @@ export default function PlayersPage() {
           (currentPage - 1) *
           PAGE_SIZE;
 
-        const to =
-          from +
-          PAGE_SIZE -
-          1;
-
-        let query =
-          supabase
-            .from(
-              "players"
-            )
-            .select(
-              `
-              id,
-              unique_id,
-              name,
-              age,
-              position,
-              nationality,
-              club,
-              ca,
-              cp,
-              value,
-              image_url,
-              category,
-              team_id
-              `,
-              {
-                count:
-                  "exact",
-              }
-            )
-            .order(
-              "ca",
-              {
-                ascending:
-                  false,
-                nullsFirst:
-                  false,
-              }
-            )
-            .order(
-              "cp",
-              {
-                ascending:
-                  false,
-                nullsFirst:
-                  false,
-              }
-            )
-            .order(
-              "name",
-              {
-                ascending:
-                  true,
-              }
-            );
-
         /*
-          MERCADO:
-          SÓ JOGADORES
-          SEM TEAM_ID
+          FILTRO UNIFICADO NO POSTGRESQL
+
+          Todos os filtros agora são processados juntos:
+          - categoria
+          - nome
+          - nacionalidade
+          - CA
+          - CP
+          - idade
+          - preço
+          - até 6 atributos
+
+          Isso evita a antiga lista gigante de IDs usada pelo
+          filter_player_ids_by_attributes e corrige o problema
+          de preço + atributo retornar zero resultados.
         */
 
-        query =
-          query.is(
-            "team_id",
-            null
-          );
-
-        if (
-          selectedCategory !==
-          "Todos"
-        ) {
-          query =
-            query.contains(
-              "category",
-              [
-                selectedCategory,
-              ]
-            );
-        }
-
-        const normalizedSearch =
-          normalizeSearch(search);
-
-        if (normalizedSearch) {
-          const searchTerms =
-            normalizedSearch.split(" ").filter(Boolean);
-
-          for (const term of searchTerms) {
-            query = query.ilike(
-              "search_name",
-              `%${term}%`
-            );
-          }
-        }
-
-        if (
-          nationality.trim()
-        ) {
-          query =
-            query.ilike(
-              "nationality",
-              `%${nationality.trim()}%`
-            );
-        }
-
-        if (minCA) {
-          query =
-            query.gte(
-              "ca",
-              Number(
-                minCA
-              )
-            );
-        }
-
-        if (maxCA) {
-          query =
-            query.lte(
-              "ca",
-              Number(
-                maxCA
-              )
-            );
-        }
-
-        if (minCP) {
-          query =
-            query.gte(
-              "cp",
-              Number(
-                minCP
-              )
-            );
-        }
-
-        if (maxCP) {
-          query =
-            query.lte(
-              "cp",
-              Number(
-                maxCP
-              )
-            );
-        }
-
-        if (minAge) {
-          query =
-            query.gte(
-              "age",
-              Number(
-                minAge
-              )
-            );
-        }
-
-        if (maxAge) {
-          query =
-            query.lte(
-              "age",
-              Number(
-                maxAge
-              )
-            );
-        }
-
-        if (minValue) {
-          query =
-            query.gte(
-              "value",
-              Number(
-                minValue
-              )
-            );
-        }
-
-        if (maxValue) {
-          query =
-            query.lte(
-              "value",
-              Number(
-                maxValue
-              )
-            );
-        }
-
-        /*
-          ATRIBUTOS JSONB:
-          Quando há filtros de atributos, usamos uma RPC no PostgreSQL
-          para comparar os valores como números (1-20).
-        */
         const activeAttributeFilters =
           attributeFilters.filter(
             (filter) =>
               filter.attribute &&
-              (filter.min || filter.max)
+              (
+                filter.min ||
+                filter.max
+              )
           );
 
-        if (
-          activeAttributeFilters.length >
-          0
-        ) {
+        const normalizedSearch =
+          normalizeSearch(
+            search
+          );
+
+        try {
           const {
-            data: matchingRows,
-            error: attributeError,
+            data,
+            error:
+              searchError,
           } =
             await supabase.rpc(
-              "filter_player_ids_by_attributes",
+              "search_players_market_filtered",
               {
                 p_filters:
                   activeAttributeFilters.map(
                     (filter) => ({
                       attribute:
                         filter.attribute,
+
                       min:
                         filter.min
                           ? Number(
                               filter.min
                             )
                           : null,
+
                       max:
                         filter.max
                           ? Number(
@@ -1303,76 +1137,133 @@ export default function PlayersPage() {
                           : null,
                     })
                   ),
+
+                p_category:
+                  selectedCategory !==
+                  "Todos"
+                    ? selectedCategory
+                    : null,
+
+                p_search:
+                  normalizedSearch ||
+                  null,
+
+                p_nationality:
+                  nationality.trim() ||
+                  null,
+
+                p_min_ca:
+                  minCA
+                    ? Number(
+                        minCA
+                      )
+                    : null,
+
+                p_max_ca:
+                  maxCA
+                    ? Number(
+                        maxCA
+                      )
+                    : null,
+
+                p_min_cp:
+                  minCP
+                    ? Number(
+                        minCP
+                      )
+                    : null,
+
+                p_max_cp:
+                  maxCP
+                    ? Number(
+                        maxCP
+                      )
+                    : null,
+
+                p_min_age:
+                  minAge
+                    ? Number(
+                        minAge
+                      )
+                    : null,
+
+                p_max_age:
+                  maxAge
+                    ? Number(
+                        maxAge
+                      )
+                    : null,
+
+                p_min_value:
+                  minValue
+                    ? Number(
+                        minValue
+                      )
+                    : null,
+
+                p_max_value:
+                  maxValue
+                    ? Number(
+                        maxValue
+                      )
+                    : null,
+
+                p_offset:
+                  from,
+
+                p_limit:
+                  PAGE_SIZE,
               }
             );
 
-          if (attributeError) {
-            console.error(
-              "Erro ao filtrar atributos:",
-              attributeError
-            );
-
-            setPlayers([]);
-            setTotal(0);
-            setLoading(false);
-            return;
-          }
-
-          const matchingIds = (
-            matchingRows || []
-          ).map(
-            (row: any) =>
-              Number(row.player_id)
-          );
-
           if (
-            matchingIds.length === 0
+            searchError
           ) {
+            console.error(
+              "Erro ao carregar jogadores:",
+              searchError
+            );
+
             setPlayers([]);
             setTotal(0);
             setLoading(false);
+
             return;
           }
 
-          query =
-            query.in(
-              "id",
-              matchingIds
-            );
-        }
+          const result =
+            (
+              data ||
+              {}
+            ) as {
+              items?: Player[];
+              total?: number;
+            };
 
-        query =
-          query.range(
-            from,
-            to
+          setPlayers(
+            Array.isArray(
+              result.items
+            )
+              ? result.items
+              : []
           );
 
-        const {
-          data,
-          error,
-          count,
-        } =
-          await query;
-
-        if (error) {
+          setTotal(
+            Number(
+              result.total ||
+                0
+            )
+          );
+        } catch (
+          error
+        ) {
           console.error(
             "Erro ao carregar jogadores:",
             error
           );
 
           setPlayers([]);
-
           setTotal(0);
-        } else {
-          setPlayers(
-            (data as Player[]) ||
-              []
-          );
-
-          setTotal(
-            count ||
-              0
-          );
         }
 
         setLoading(false);
