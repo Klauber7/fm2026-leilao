@@ -29,10 +29,12 @@ type Team = {
 
 type PositionGroup =
   | "goalkeepers"
-  | "defenders"
-  | "midfielders"
-  | "attackers"
-  | "others";
+  | "centerBacks"
+  | "fullBacks"
+  | "defensiveMidfielders"
+  | "attackingMidfielders"
+  | "wingers"
+  | "strikers";
 
 type SquadSection = {
   key: PositionGroup;
@@ -52,102 +54,145 @@ function money(value: number | null | undefined) {
 function normalizePosition(position: string | null) {
   return (position || "")
     .trim()
-    .toLowerCase()
+    .toUpperCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function hasAnyPosition(
+  position: string,
+  patterns: RegExp[]
+) {
+  return patterns.some((pattern) => pattern.test(position));
 }
 
 function getPositionGroup(position: string | null): PositionGroup {
-  const normalized = normalizePosition(position);
+  const p = normalizePosition(position);
 
-  const goalkeeperTerms = [
-    "gk",
-    "goalkeeper",
-    "goleiro",
-    "guarda-redes",
-    "guarda redes",
-  ];
-
-  const defenderTerms = [
-    "dc",
-    "cb",
-    "defender",
-    "defensor",
-    "zagueiro",
-    "central defender",
-    "dl",
-    "dr",
-    "lb",
-    "rb",
-    "left back",
-    "right back",
-    "lateral",
-    "ala",
-    "wb",
-  ];
-
-  const midfielderTerms = [
-    "dm",
-    "mc",
-    "cm",
-    "am",
-    "midfielder",
-    "meio-campista",
-    "meio campista",
-    "volante",
-    "meia",
-    "ml",
-    "mr",
-    "aml",
-    "amr",
-  ];
-
-  const attackerTerms = [
-    "st",
-    "cf",
-    "fw",
-    "attacker",
-    "atacante",
-    "avancado",
-    "avançado",
-    "striker",
-    "forward",
-    "ponta",
-  ];
-
+  // 1) GOLEIROS
   if (
-    goalkeeperTerms.some(
-      (term) => normalized === term || normalized.includes(term)
-    )
+    hasAnyPosition(p, [
+      /^GR$/,
+      /^GK$/,
+      /\bGOLEIRO\b/,
+      /\bGOALKEEPER\b/,
+      /\bGUARDA[- ]?REDES\b/,
+    ])
   ) {
     return "goalkeepers";
   }
 
+  // 2) ZAGUEIROS
   if (
-    defenderTerms.some(
-      (term) => normalized === term || normalized.includes(term)
-    )
+    hasAnyPosition(p, [
+      /^D\s*\(C\)/,
+      /^DC\b/,
+      /^CB\b/,
+      /\bZAGUEIRO\b/,
+      /\bCENTRAL DEFENDER\b/,
+      /\bCENTER BACK\b/,
+      /\bCENTRE BACK\b/,
+    ])
   ) {
-    return "defenders";
+    return "centerBacks";
   }
 
+  // 3) LATERAIS
   if (
-    midfielderTerms.some(
-      (term) => normalized === term || normalized.includes(term)
-    )
+    hasAnyPosition(p, [
+      /^D\s*\((D|E|DE)\)/,
+      /^DD\b/,
+      /^DE\b/,
+      /^DR\b/,
+      /^DL\b/,
+      /^RB\b/,
+      /^LB\b/,
+      /^WB\b/,
+      /\bLATERAL\b/,
+      /\bALA\b/,
+      /\bRIGHT BACK\b/,
+      /\bLEFT BACK\b/,
+      /\bWING BACK\b/,
+    ])
   ) {
-    return "midfielders";
+    return "fullBacks";
   }
 
+  // 4) VOLANTES / MEIAS CENTRAIS
   if (
-    attackerTerms.some(
-      (term) => normalized === term || normalized.includes(term)
-    )
+    hasAnyPosition(p, [
+      /^MD\b/,
+      /^DM\b/,
+      /^VOL\b/,
+      /^M\s*\(C\)/,
+      /^MC\b/,
+      /^CM\b/,
+      /\bVOLANTE\b/,
+      /\bDEFENSIVE MIDFIELDER\b/,
+      /\bMEIO[- ]?CAMPISTA CENTRAL\b/,
+      /\bCENTRAL MIDFIELDER\b/,
+    ])
   ) {
-    return "attackers";
+    return "defensiveMidfielders";
   }
 
-  return "others";
+  // 5) MEIAS ATACANTES
+  // Se tiver MO (C), mesmo junto com D/E, entra aqui.
+  if (
+    hasAnyPosition(p, [
+      /^MO\s*\((?:D?C|E?C|C|C[DE])\)/,
+      /^AMC\b/,
+      /^AM\s*\(C\)/,
+      /\bMEIA ATACANTE\b/,
+      /\bATTACKING MIDFIELDER\b/,
+    ])
+  ) {
+    return "attackingMidfielders";
+  }
+
+  // 6) PONTAS
+  if (
+    hasAnyPosition(p, [
+      /^MO\s*\((D|E|DE)\)/,
+      /^M\s*\((D|E|DE)\)/,
+      /^AML\b/,
+      /^AMR\b/,
+      /^ML\b/,
+      /^MR\b/,
+      /^LW\b/,
+      /^RW\b/,
+      /\bPONTA\b/,
+      /\bWINGER\b/,
+      /\bEXTREMO\b/,
+    ])
+  ) {
+    return "wingers";
+  }
+
+  // 7) ATACANTES
+  if (
+    hasAnyPosition(p, [
+      /^PL\b/,
+      /^ST\b/,
+      /^CF\b/,
+      /^FW\b/,
+      /\bATACANTE\b/,
+      /\bAVANCADO\b/,
+      /\bSTRIKER\b/,
+      /\bFORWARD\b/,
+      /\bCENTRE FORWARD\b/,
+      /\bCENTER FORWARD\b/,
+    ])
+  ) {
+    return "strikers";
+  }
+
+  if (p.startsWith("D")) return "centerBacks";
+  if (p.startsWith("MO")) return "attackingMidfielders";
+  if (p.startsWith("M")) return "defensiveMidfielders";
+
+  return "strikers";
 }
 
 function PlayerCard({
@@ -469,10 +514,12 @@ export default function SquadPage() {
   const sections = useMemo<SquadSection[]>(() => {
     const grouped: Record<PositionGroup, Player[]> = {
       goalkeepers: [],
-      defenders: [],
-      midfielders: [],
-      attackers: [],
-      others: [],
+      centerBacks: [],
+      fullBacks: [],
+      defensiveMidfielders: [],
+      attackingMidfielders: [],
+      wingers: [],
+      strikers: [],
     };
 
     players.forEach((player) => {
@@ -488,28 +535,40 @@ export default function SquadPage() {
         players: grouped.goalkeepers,
       },
       {
-        key: "defenders",
-        title: "Defensores",
-        abbreviation: "DEF",
-        players: grouped.defenders,
+        key: "centerBacks",
+        title: "Zagueiros",
+        abbreviation: "ZAG",
+        players: grouped.centerBacks,
       },
       {
-        key: "midfielders",
-        title: "Meio-campistas",
-        abbreviation: "MID",
-        players: grouped.midfielders,
+        key: "fullBacks",
+        title: "Laterais",
+        abbreviation: "LAT",
+        players: grouped.fullBacks,
       },
       {
-        key: "attackers",
+        key: "defensiveMidfielders",
+        title: "Volantes",
+        abbreviation: "VOL",
+        players: grouped.defensiveMidfielders,
+      },
+      {
+        key: "attackingMidfielders",
+        title: "Meias Atacantes",
+        abbreviation: "MEI",
+        players: grouped.attackingMidfielders,
+      },
+      {
+        key: "wingers",
+        title: "Pontas",
+        abbreviation: "PON",
+        players: grouped.wingers,
+      },
+      {
+        key: "strikers",
         title: "Atacantes",
         abbreviation: "ATA",
-        players: grouped.attackers,
-      },
-      {
-        key: "others",
-        title: "Outros jogadores",
-        abbreviation: "OUT",
-        players: grouped.others,
+        players: grouped.strikers,
       },
     ];
 
