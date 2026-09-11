@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { supabase } from "@/lib/supabase";
@@ -10,88 +10,255 @@ type AuthGuardProps = {
   children: ReactNode;
 };
 
-const publicRoutes = ["/", "/login"];
+/*
+  Essas páginas podem ser vistas SEM login
+  e NUNCA mostram a barra lateral.
+*/
+const publicRoutes = [
+  "/",
+  "/login",
+  "/reset-password",
+];
 
 function isPublicRoute(pathname: string) {
-  return publicRoutes.includes(pathname);
+  return publicRoutes.some(
+    (route) =>
+      pathname === route ||
+      pathname.startsWith(`${route}/`)
+  );
 }
 
-export default function AuthGuard({ children }: AuthGuardProps) {
+export default function AuthGuard({
+  children,
+}: AuthGuardProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
 
-  const publicPage = isPublicRoute(pathname);
+  const [authorized, setAuthorized] =
+    useState(false);
+
+  const publicPage =
+    isPublicRoute(pathname);
+
+  const verifyAccess = useCallback(
+    async () => {
+      /*
+        PÁGINAS PÚBLICAS
+
+        Login, página inicial e reset de senha
+        NÃO precisam carregar Navbar.
+      */
+      if (publicPage) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        /*
+          1. VERIFICA O USUÁRIO DE VERDADE
+        */
+        const {
+          data: { user },
+          error: userError,
+        } =
+          await supabase.auth.getUser();
+
+        if (
+          userError ||
+          !user
+        ) {
+          setAuthorized(false);
+
+          router.replace("/login");
+
+          return;
+        }
+
+        /*
+          2. VERIFICA SE ESSE USUÁRIO
+          ESTÁ NA LISTA APROVADA
+        */
+        const {
+          data: approval,
+          error: approvalError,
+        } = await supabase
+          .from("user_approvals")
+          .select("status")
+          .eq(
+            "user_id",
+            user.id
+          )
+          .eq(
+            "status",
+            "approved"
+          )
+          .maybeSingle();
+
+        /*
+          Se não estiver aprovado,
+          não entra no sistema.
+        */
+        if (
+          approvalError ||
+          !approval
+        ) {
+          if (approvalError) {
+            console.error(
+              "Erro ao verificar autorização:",
+              approvalError
+            );
+          }
+
+          setAuthorized(false);
+
+          await supabase.auth.signOut();
+
+          router.replace("/login");
+
+          return;
+        }
+
+        /*
+          3. USUÁRIO LOGADO
+          + APROVADO
+        */
+        setAuthorized(true);
+      } catch (error) {
+        console.error(
+          "Erro ao verificar acesso:",
+          error
+        );
+
+        setAuthorized(false);
+
+        await supabase.auth.signOut();
+
+        router.replace("/login");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      publicPage,
+      router,
+    ]
+  );
 
   useEffect(() => {
-    let active = true;
+    let mounted = true;
 
-    async function verifySession() {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession();
-
-      if (!active) {
+    async function runCheck() {
+      if (!mounted) {
         return;
       }
 
-      if (error) {
-        console.error("Erro ao verificar sessão:", error);
-      }
-
-      const hasSession = Boolean(session?.user);
-
-      setAuthenticated(hasSession);
-
-      if (!hasSession && !publicPage) {
-        router.replace("/login");
-        return;
-      }
-
-      if (hasSession && pathname === "/login") {
-        router.replace("/dashboard");
-        return;
-      }
-
-      setLoading(false);
+      await verifyAccess();
     }
 
-    verifySession();
+    runCheck();
 
+    /*
+      Se fizer login/logout,
+      verificamos novamente.
+    */
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) {
-        return;
-      }
+    } =
+      supabase.auth.onAuthStateChange(
+        async (
+          event,
+          session
+        ) => {
+          if (!mounted) {
+            return;
+          }
 
-      const hasSession = Boolean(session?.user);
+          /*
+            LOGOUT
+          */
+          if (
+            event ===
+              "SIGNED_OUT" ||
+            !session
+          ) {
+            setAuthorized(false);
 
-      setAuthenticated(hasSession);
+            if (!publicPage) {
+              router.replace(
+                "/login"
+              );
+            }
 
-      if (!hasSession && !publicPage) {
-        router.replace("/login");
-        return;
-      }
+            return;
+          }
 
-      if (hasSession && pathname === "/login") {
-        router.replace("/dashboard");
-        return;
-      }
+          /*
+            LOGIN / REFRESH DA SESSÃO
+          */
+          if (
+            event ===
+              "SIGNED_IN" ||
+            event ===
+              "TOKEN_REFRESHED"
+          ) {
+            /*
+              Na tela de login,
+              o próprio LoginPage
+              decide para onde mandar:
+              dashboard/admin/etc.
+            */
+            if (
+              pathname ===
+                "/login" ||
+              pathname === "/" ||
+              pathname ===
+                "/reset-password"
+            ) {
+              return;
+            }
 
-      setLoading(false);
-    });
+            await verifyAccess();
+          }
+        }
+      );
 
     return () => {
-      active = false;
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [pathname, publicPage, router]);
+  }, [
+    pathname,
+    publicPage,
+    router,
+    verifyAccess,
+  ]);
 
-  if (loading && !publicPage) {
+  /*
+    PÁGINA PÚBLICA
+
+    IMPORTANTE:
+    Aqui NÃO carregamos Navbar.
+  */
+  if (publicPage) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-white">
+        {children}
+      </div>
+    );
+  }
+
+  /*
+    Enquanto verifica login +
+    autorização, não mostra
+    absolutamente nada do sistema.
+  */
+  if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
         <div className="text-center">
@@ -105,17 +272,35 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  if (!authenticated && !publicPage) {
+  /*
+    NÃO AUTORIZADO
+
+    Não renderiza Navbar.
+    Não renderiza página.
+    Não renderiza menu.
+  */
+  if (!authorized) {
     return null;
   }
 
-  const showNavbar = authenticated && pathname !== "/login";
+  /*
+    SOMENTE AQUI o usuário
+    já está:
 
+    ✓ logado
+    ✓ autorizado
+    ✓ aprovado
+
+    Agora pode carregar Navbar
+    e o conteúdo do sistema.
+  */
   return (
     <>
-      {showNavbar && <Navbar />}
+      <Navbar />
 
-      <div className={showNavbar ? "lg:pl-72" : ""}>{children}</div>
+      <div className="lg:pl-72">
+        {children}
+      </div>
     </>
   );
 }
