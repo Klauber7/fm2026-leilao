@@ -81,143 +81,152 @@ function normalizeText(value: string | null | undefined) {
 function getPositionGroup(
   position: string | null
 ): PositionGroup {
-  const normalized = normalizeText(position);
+  const normalized = normalizeText(position)
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ",")
+    .trim();
 
   if (!normalized) {
     return "others";
   }
 
-  const goalkeeperTerms = [
-    "gk",
-    "gol",
-    "goleiro",
-    "goalkeeper",
-    "guarda-redes",
-    "guarda redes",
-    "gr",
-  ];
-
+  // Goleiros
   if (
-    goalkeeperTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
+    normalized === "gk" ||
+    normalized === "gr" ||
+    normalized === "gol" ||
+    normalized.includes("goleiro") ||
+    normalized.includes("goalkeeper") ||
+    normalized.includes("guarda-redes") ||
+    normalized.includes("guarda redes")
   ) {
     return "goalkeepers";
   }
 
-  const attackerTerms = [
-    "st",
-    "cf",
-    "fw",
-    "ata",
-    "atacante",
-    "atacantes",
-    "avancado",
-    "striker",
-    "forward",
-    "centroavante",
-    "ponta",
-    "winger",
-    "rw",
-    "lw",
-    "pd",
-    "pe",
-    "amr",
-    "aml",
-    "mr",
-    "ml",
-    "pl (c)",
-    "mo (d)",
-    "mo (e)",
-    "mo (de)",
-  ];
-
+  // Atacantes / pontas
   if (
-    attackerTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
+    normalized === "st" ||
+    normalized === "cf" ||
+    normalized === "fw" ||
+    normalized === "ata" ||
+    normalized === "pl" ||
+    normalized.includes("atacante") ||
+    normalized.includes("avancado") ||
+    normalized.includes("striker") ||
+    normalized.includes("forward") ||
+    normalized.includes("centroavante") ||
+    normalized.includes("ponta") ||
+    normalized.includes("winger") ||
+    normalized === "rw" ||
+    normalized === "lw" ||
+    normalized === "pd" ||
+    normalized === "pe" ||
+    normalized.includes("amr") ||
+    normalized.includes("aml") ||
+    normalized.includes("mo (d)") ||
+    normalized.includes("mo (e)") ||
+    normalized.includes("mo (de)") ||
+    normalized.includes("mo (ed)")
   ) {
     return "attackers";
   }
 
-  const midfielderTerms = [
-    "dm",
-    "dmc",
-    "md",
-    "vol",
-    "volante",
-    "mc",
-    "cm",
-    "m (c)",
-    "m/mo (c)",
-    "meio",
-    "meio-campista",
-    "midfielder",
-    "meia",
-    "meia atacante",
-    "attacking midfielder",
-    "am",
-    "amc",
-    "mo (c)",
-    "mo (dc)",
-    "mo (dec)",
-  ];
-
+  // Meio-campistas
   if (
-    midfielderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
+    normalized === "dm" ||
+    normalized === "dmc" ||
+    normalized === "md" ||
+    normalized === "mc" ||
+    normalized === "cm" ||
+    normalized === "am" ||
+    normalized === "amc" ||
+    normalized.includes("volante") ||
+    normalized.includes("meio") ||
+    normalized.includes("midfielder") ||
+    normalized.includes("meia") ||
+    normalized.includes("attacking midfielder") ||
+    normalized.includes("m (c)") ||
+    normalized.includes("m (d)") ||
+    normalized.includes("m (e)") ||
+    normalized.includes("m (dc)") ||
+    normalized.includes("m (ec)") ||
+    normalized.includes("m (dec)") ||
+    normalized.includes("m/mo") ||
+    normalized.includes("mo (c)") ||
+    normalized.includes("mo (dc)") ||
+    normalized.includes("mo (ec)") ||
+    normalized.includes("mo (dec)") ||
+    normalized.includes("mo (de)") ||
+    normalized.includes("mo (ed)")
   ) {
     return "midfielders";
   }
 
-  const defenderTerms = [
-    "dc",
-    "d c",
-    "cb",
-    "zag",
-    "zagueiro",
-    "defensor",
-    "defender",
-    "dl",
-    "dr",
-    "d l",
-    "d r",
-    "ld",
-    "le",
-    "lb",
-    "rb",
-    "lateral",
-    "left back",
-    "right back",
-    "wing back",
-    "wb",
-    "wbl",
-    "wbr",
-    "d (c)",
-    "d (d)",
-    "d (e)",
-    "d/da (d)",
-    "d/da (e)",
-  ];
-
+  // Defensores / laterais
   if (
-    defenderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
+    normalized === "dc" ||
+    normalized === "cb" ||
+    normalized === "dl" ||
+    normalized === "dr" ||
+    normalized === "ld" ||
+    normalized === "le" ||
+    normalized === "lb" ||
+    normalized === "rb" ||
+    normalized.includes("zag") ||
+    normalized.includes("zagueiro") ||
+    normalized.includes("defensor") ||
+    normalized.includes("defender") ||
+    normalized.includes("lateral") ||
+    normalized.includes("left back") ||
+    normalized.includes("right back") ||
+    normalized.includes("wing back") ||
+    normalized.includes("d (c)") ||
+    normalized.includes("d (d)") ||
+    normalized.includes("d (e)") ||
+    normalized.includes("d (dc)") ||
+    normalized.includes("d (ec)") ||
+    normalized.includes("d (dec)") ||
+    normalized.includes("d (de)") ||
+    normalized.includes("d (ed)") ||
+    normalized.includes("d/da") ||
+    normalized.includes("da (d)") ||
+    normalized.includes("da (e)") ||
+    normalized.includes("da (de)") ||
+    normalized.includes("da (ed)")
   ) {
     return "defenders";
   }
 
   return "others";
+}
+
+function getPositionBadge(position: string | null) {
+  const group = getPositionGroup(position);
+
+  if (group === "goalkeepers") return "GK";
+  if (group === "defenders") return "DEF";
+  if (group === "midfielders") return "MID";
+  if (group === "attackers") return "ATA";
+
+  const normalized = normalizeText(position);
+
+  if (normalized.includes("d/da") || normalized.includes("da (")) {
+    return "LAT";
+  }
+
+  if (
+    normalized.includes("mo (d)") ||
+    normalized.includes("mo (e)") ||
+    normalized.includes("ponta") ||
+    normalized === "rw" ||
+    normalized === "lw" ||
+    normalized === "pd" ||
+    normalized === "pe"
+  ) {
+    return "EXT";
+  }
+
+  return "OUT";
 }
 
 function getErrorMessage(error: unknown) {
@@ -367,7 +376,9 @@ function PlayerCardCompact({
                 className="h-full w-full object-cover"
               />
             ) : (
-              getInitials(player.name)
+              <span className="text-sm font-black text-zinc-300">
+                {getPositionBadge(player.position)}
+              </span>
             )}
           </div>
 
