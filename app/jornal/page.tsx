@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 
 type JournalSlot =
   | "highlight"
+  | "tv_matches"
   | "results"
   | "next_round"
   | "table"
@@ -20,6 +21,7 @@ type JournalImage = {
 
 const labels: Record<JournalSlot, string> = {
   highlight: "Destaque da Liga",
+  tv_matches: "Confrontos Televisionados",
   results: "Resultados da Rodada",
   next_round: "Próximos Confrontos",
   table: "Tabela",
@@ -28,10 +30,9 @@ const labels: Record<JournalSlot, string> = {
 };
 
 export default function JornalPage() {
-  const [images, setImages] = useState<
-    Record<JournalSlot, JournalImage | null>
-  >({
+  const [images, setImages] = useState<Record<JournalSlot, JournalImage | null>>({
     highlight: null,
+    tv_matches: null,
     results: null,
     next_round: null,
     table: null,
@@ -56,6 +57,7 @@ export default function JornalPage() {
 
     const nextState: Record<JournalSlot, JournalImage | null> = {
       highlight: null,
+      tv_matches: null,
       results: null,
       next_round: null,
       table: null,
@@ -66,6 +68,7 @@ export default function JornalPage() {
     for (const row of (data || []) as JournalImage[]) {
       if (
         row.slot === "highlight" ||
+        row.slot === "tv_matches" ||
         row.slot === "results" ||
         row.slot === "next_round" ||
         row.slot === "table" ||
@@ -92,9 +95,7 @@ export default function JornalPage() {
           schema: "public",
           table: "journal_images",
         },
-        () => {
-          void loadJournal();
-        }
+        () => void loadJournal()
       )
       .subscribe();
 
@@ -106,16 +107,28 @@ export default function JornalPage() {
   function ImageSection({
     slot,
     large = false,
+    featured = false,
   }: {
     slot: JournalSlot;
     large?: boolean;
+    featured?: boolean;
   }) {
     const item = images[slot];
 
     return (
-      <section>
+      <section
+        className={
+          featured
+            ? "rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-4 md:p-6"
+            : ""
+        }
+      >
         <div className="mb-4">
-          <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
+          <p
+            className={`text-sm font-black uppercase tracking-[0.2em] ${
+              featured ? "text-yellow-400" : "text-green-400"
+            }`}
+          >
             FriendZone League FM
           </p>
 
@@ -124,13 +137,22 @@ export default function JornalPage() {
               large ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
             }`}
           >
+            {featured ? "📺 " : ""}
             {labels[slot]}
           </h2>
+
+          {featured && (
+            <p className="mt-2 text-sm font-bold uppercase tracking-widest text-zinc-500">
+              Jogos em destaque da rodada
+            </p>
+          )}
         </div>
 
         <div
-          className={`overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 ${
-            large ? "min-h-[320px]" : "min-h-[240px]"
+          className={`overflow-hidden rounded-3xl border ${
+            featured ? "border-yellow-500/30" : "border-zinc-800"
+          } bg-zinc-900 ${
+            large || featured ? "min-h-[320px]" : "min-h-[240px]"
           }`}
         >
           {item ? (
@@ -141,12 +163,12 @@ export default function JornalPage() {
             />
           ) : (
             <div
-              className={`flex items-center justify-center p-10 text-center text-zinc-500 ${
-                large ? "min-h-[320px]" : "min-h-[240px]"
-              }`}
+              className={`flex ${
+                large || featured ? "min-h-[320px]" : "min-h-[240px]"
+              } items-center justify-center p-10 text-center text-zinc-500`}
             >
               <div>
-                <div className="text-5xl">📰</div>
+                <div className="text-5xl">{featured ? "📺" : "📰"}</div>
                 <p className="mt-4 font-bold">
                   Nenhuma imagem publicada ainda.
                 </p>
@@ -171,7 +193,7 @@ export default function JornalPage() {
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Destaques, resultados, tabela e competições da liga.
+            Destaques, jogos televisionados, resultados, tabela e competições da liga.
           </p>
         </header>
 
@@ -183,6 +205,9 @@ export default function JornalPage() {
           <div className="space-y-12">
             <ImageSection slot="highlight" large />
 
+            {/* DESTAQUE ESPECIAL LOGO ABAIXO DO DESTAQUE PRINCIPAL */}
+            <ImageSection slot="tv_matches" featured />
+
             <div className="grid grid-cols-1 gap-10 xl:grid-cols-2">
               <ImageSection slot="results" />
               <ImageSection slot="next_round" />
@@ -193,9 +218,7 @@ export default function JornalPage() {
               <ImageSection slot="cup" />
             </div>
 
-            <div className="grid grid-cols-1 gap-10">
-              <ImageSection slot="champions" />
-            </div>
+            <ImageSection slot="champions" />
           </div>
         )}
       </div>
