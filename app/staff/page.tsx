@@ -261,81 +261,85 @@ function StaffCard({
 }: {
   member: Coach;
 }) {
+  const roleLabel = member.role || "Staff";
+  const initials = member.name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
   return (
-    <article className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 transition duration-200 hover:-translate-y-1 hover:border-purple-500/60">
-      <div className="relative h-52 overflow-hidden bg-zinc-800">
-        {member.image_url ? (
-          <img
-            src={member.image_url}
-            alt={member.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center">
-            <span className="text-6xl">👔</span>
-
-            <span className="mt-3 text-sm font-semibold text-zinc-500">
-              Sem imagem
-            </span>
+    <article className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm">
+      <div className="p-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800">
+            {member.image_url ? (
+              <img
+                src={member.image_url}
+                alt={member.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="text-lg font-black text-zinc-400">
+                {initials || "ST"}
+              </span>
+            )}
           </div>
-        )}
 
-        <div className="absolute right-4 top-4 rounded-xl border border-green-400/40 bg-zinc-950/90 px-3 py-2 text-center backdrop-blur">
-          <p className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
-            CA
-          </p>
-
-          <p className="text-xl font-black leading-none text-green-400">
-            {member.ca ?? "-"}
-          </p>
-        </div>
-      </div>
-
-      <div className="p-5">
-        <p className="font-bold text-purple-400">
-          {member.role || "Comissão técnica"}
-        </p>
-
-        <h3 className="mt-1 break-words text-2xl font-black leading-tight">
-          {member.name}
-        </h3>
-
-        <p className="mt-3 text-zinc-400">
-          {member.nationality ||
-            "Nacionalidade não informada"}
-        </p>
-
-        <p className="mt-1 text-sm text-zinc-500">
-          {member.age !== null
-            ? `${member.age} anos`
-            : "Idade não informada"}
-        </p>
-
-        <div className="mt-5 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              PA
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[11px] font-black uppercase tracking-wide text-purple-400">
+              {roleLabel}
             </p>
 
-            <p className="mt-1 font-black">
-              {member.pa ?? "-"}
+            <h3 className="mt-0.5 break-words text-lg font-black leading-tight text-white">
+              {member.name}
+            </h3>
+
+            <p className="mt-1 text-xs text-zinc-400">
+              {member.age !== null ? `${member.age} anos` : "Idade não informada"}
+            </p>
+
+            <p className="mt-0.5 truncate text-xs text-zinc-500">
+              {member.nationality || "Nacionalidade não informada"}
             </p>
           </div>
 
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Valor
+          <div className="shrink-0 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-center">
+            <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+              CA
             </p>
-
-            <p className="mt-1 font-black text-green-400">
-              {money(member.value)}
+            <p className="text-xl font-black leading-none text-green-400">
+              {member.ca ?? "-"}
             </p>
           </div>
         </div>
 
-        <p className="mt-4 text-xs text-zinc-600">
-          Contratado em {formatDate(member.hired_at)}
-        </p>
+        <div className="mt-4 border-t border-zinc-800 pt-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[10px] font-medium text-zinc-500">
+                PA
+              </p>
+              <p className="mt-1 text-sm font-black text-white">
+                {member.pa ?? "-"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-medium text-zinc-500">
+                Valor estimado
+              </p>
+              <p className="mt-1 text-sm font-black text-green-400">
+                {money(member.value)}
+              </p>
+            </div>
+          </div>
+
+          <p className="mt-3 text-[10px] text-zinc-600">
+            Contratado em {formatDate(member.hired_at)}
+          </p>
+        </div>
       </div>
     </article>
   );
@@ -1149,7 +1153,7 @@ export default function StaffPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {section.members.map((member) => (
                     <StaffCard
                       key={member.id}
