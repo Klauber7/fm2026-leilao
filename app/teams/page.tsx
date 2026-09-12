@@ -11,8 +11,7 @@ type Team = {
 };
 
 function TeamCard({ team }: { team: Team }) {
-  const initial =
-    team.name?.trim()?.charAt(0)?.toUpperCase() || "T";
+  const initial = team.name?.trim()?.charAt(0)?.toUpperCase() || "T";
 
   return (
     <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/90 shadow-[0_0_0_1px_rgba(255,255,255,0.02)] transition hover:-translate-y-0.5 hover:border-zinc-700">
@@ -46,19 +45,12 @@ function TeamCard({ team }: { team: Team }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 border-t border-zinc-800 p-4">
+      <div className="border-t border-zinc-800 p-4">
         <Link
-          href={`/teams/${team.id}#elenco`}
-          className="rounded-xl bg-blue-600 px-4 py-3 text-center font-black text-white transition hover:bg-blue-500"
+          href={`/teams/${team.id}`}
+          className="block rounded-xl bg-blue-600 px-4 py-3 text-center font-black text-white transition hover:bg-blue-500"
         >
-          Ver elenco
-        </Link>
-
-        <Link
-          href={`/teams/${team.id}#staff`}
-          className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center font-black text-white transition hover:bg-zinc-800"
-        >
-          Ver staff
+          Ver time
         </Link>
       </div>
     </article>
@@ -87,9 +79,7 @@ export default function TeamsPage() {
       setTeams((data || []) as Team[]);
     } catch (error) {
       console.error("Erro ao carregar times:", error);
-      setErrorMessage(
-        "Não foi possível carregar os times."
-      );
+      setErrorMessage("Não foi possível carregar os times.");
     } finally {
       setLoading(false);
     }
@@ -139,26 +129,19 @@ export default function TeamsPage() {
           </div>
         )}
 
-        {!loading &&
-          !errorMessage &&
-          teams.length === 0 && (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center text-zinc-400">
-              Nenhum time encontrado.
-            </div>
-          )}
+        {!loading && !errorMessage && teams.length === 0 && (
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-8 text-center text-zinc-400">
+            Nenhum time encontrado.
+          </div>
+        )}
 
-        {!loading &&
-          !errorMessage &&
-          teams.length > 0 && (
-            <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {teams.map((team) => (
-                <TeamCard
-                  key={team.id}
-                  team={team}
-                />
-              ))}
-            </section>
-          )}
+        {!loading && !errorMessage && teams.length > 0 && (
+          <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+            {teams.map((team) => (
+              <TeamCard key={team.id} team={team} />
+            ))}
+          </section>
+        )}
       </div>
     </main>
   );

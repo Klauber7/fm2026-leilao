@@ -41,37 +41,11 @@ type Coach = {
   role: string | null;
   nationality: string | null;
   ca: number | null;
-  pa: number | null;
   cp: number | null;
-  preferred_formation: string | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
   hired_at: string | null;
-};
-
-type PlayerAuction = {
-  id: number;
-  player_id: number | null;
-  current_bid: number | null;
-  winner_team_id: number | null;
-  closed_at: string | null;
-  players: {
-    name: string;
-    position: string | null;
-  } | null;
-};
-
-type StaffAuction = {
-  id: number;
-  coach_id: number | null;
-  current_bid: number | null;
-  winner_team_id: number | null;
-  closed_at: string | null;
-  coaches: {
-    name: string;
-    role: string | null;
-  } | null;
 };
 
 type PositionGroup =
@@ -86,15 +60,6 @@ type PlayerSection = {
   title: string;
   abbreviation: string;
   players: Player[];
-};
-
-type RecentSigning = {
-  id: string;
-  type: "player" | "staff";
-  name: string;
-  role: string;
-  amount: number;
-  closedAt: string | null;
 };
 
 function money(value: number | null | undefined) {
@@ -122,10 +87,6 @@ function getPositionGroup(
     return "others";
   }
 
-  /*
-    GOLEIROS
-    Inclui qualquer variação de GK / goleiro.
-  */
   const goalkeeperTerms = [
     "gk",
     "gol",
@@ -133,6 +94,7 @@ function getPositionGroup(
     "goalkeeper",
     "guarda-redes",
     "guarda redes",
+    "gr",
   ];
 
   if (
@@ -145,62 +107,6 @@ function getPositionGroup(
     return "goalkeepers";
   }
 
-  /*
-    DEFENSORES
-    Inclui TODOS os zagueiros e laterais.
-  */
-  const defenderTerms = [
-    "dc",
-    "d c",
-    "cb",
-    "zag",
-    "zagueiro",
-    "zagueiros",
-    "defensor",
-    "defensores",
-    "defender",
-    "central defender",
-    "dl",
-    "dr",
-    "d l",
-    "d r",
-    "ld",
-    "le",
-    "lb",
-    "rb",
-    "lateral",
-    "laterais",
-    "lateral direito",
-    "lateral esquerdo",
-    "left back",
-    "right back",
-    "wing back",
-    "wing-back",
-    "wb",
-    "wbl",
-    "wbr",
-    "ala defensivo",
-  ];
-
-  if (
-    defenderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
-  ) {
-    return "defenders";
-  }
-
-  /*
-    ATACANTES
-    Inclui TODOS os pontas e atacantes.
-
-    IMPORTANTE:
-    Essa verificação vem ANTES dos meio-campistas
-    para AML / AMR / ML / MR não caírem por engano
-    na seção de meio-campo quando forem pontas.
-  */
   const attackerTerms = [
     "st",
     "cf",
@@ -209,18 +115,11 @@ function getPositionGroup(
     "atacante",
     "atacantes",
     "avancado",
-    "avancados",
     "striker",
     "forward",
     "centroavante",
-    "centro-avante",
     "ponta",
-    "pontas",
-    "ponta direita",
-    "ponta esquerda",
     "winger",
-    "right winger",
-    "left winger",
     "rw",
     "lw",
     "pd",
@@ -229,6 +128,10 @@ function getPositionGroup(
     "aml",
     "mr",
     "ml",
+    "pl (c)",
+    "mo (d)",
+    "mo (e)",
+    "mo (de)",
   ];
 
   if (
@@ -241,38 +144,27 @@ function getPositionGroup(
     return "attackers";
   }
 
-  /*
-    MEIO-CAMPISTAS
-    Inclui TODOS os volantes,
-    meio-campistas e meias-atacantes.
-  */
   const midfielderTerms = [
     "dm",
     "dmc",
+    "md",
     "vol",
     "volante",
-    "volantes",
     "mc",
     "cm",
+    "m (c)",
+    "m/mo (c)",
     "meio",
     "meio-campista",
-    "meio campista",
-    "meio-campistas",
-    "meio campistas",
     "midfielder",
-    "midfield",
-    "mei",
     "meia",
-    "meias",
-    "meia central",
     "meia atacante",
-    "meia-atacante",
-    "meia ofensivo",
-    "meia ofensiva",
     "attacking midfielder",
-    "advanced playmaker",
     "am",
     "amc",
+    "mo (c)",
+    "mo (dc)",
+    "mo (dec)",
   ];
 
   if (
@@ -285,9 +177,48 @@ function getPositionGroup(
     return "midfielders";
   }
 
+  const defenderTerms = [
+    "dc",
+    "d c",
+    "cb",
+    "zag",
+    "zagueiro",
+    "defensor",
+    "defender",
+    "dl",
+    "dr",
+    "d l",
+    "d r",
+    "ld",
+    "le",
+    "lb",
+    "rb",
+    "lateral",
+    "left back",
+    "right back",
+    "wing back",
+    "wb",
+    "wbl",
+    "wbr",
+    "d (c)",
+    "d (d)",
+    "d (e)",
+    "d/da (d)",
+    "d/da (e)",
+  ];
+
+  if (
+    defenderTerms.some(
+      (term) =>
+        normalized === term ||
+        normalized.includes(term)
+    )
+  ) {
+    return "defenders";
+  }
+
   return "others";
 }
-
 
 function getErrorMessage(error: unknown) {
   if (
@@ -303,105 +234,187 @@ function getErrorMessage(error: unknown) {
   return "Não foi possível carregar as informações do clube.";
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return "Data não informada";
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+
+  if (parts.length === 0) {
+    return "?";
   }
 
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "Data não informada";
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
   }
 
-  return date.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
 }
 
-function PlayerCard({
+function StatCard({
+  label,
+  value,
+  description,
+  accent = "text-white",
+}: {
+  label: string;
+  value: string | number;
+  description: string;
+  accent?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+      <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+        {label}
+      </p>
+
+      <p className={`mt-3 text-4xl font-black ${accent}`}>
+        {value}
+      </p>
+
+      <p className="mt-2 text-sm text-zinc-500">
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function BestPlayerCard({
+  player,
+}: {
+  player: Player | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-zinc-900 to-zinc-950 p-5">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-400">
+        Melhor jogador do elenco
+      </p>
+
+      {!player ? (
+        <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
+          Nenhum jogador disponível.
+        </div>
+      ) : (
+        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-500/20 bg-zinc-800">
+              {player.image_url ? (
+                <img
+                  src={player.image_url}
+                  alt={player.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-xl font-black text-yellow-400">
+                  ★
+                </span>
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-yellow-400">
+                Maior CA do elenco
+              </p>
+
+              <h2 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
+                {player.name}
+              </h2>
+
+              <p className="mt-1 text-sm text-zinc-400">
+                {player.position || "Sem posição"}
+                {player.age !== null ? ` · ${player.age} anos` : ""}
+                {player.nationality ? ` · ${player.nationality}` : ""}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 lg:min-w-[260px]">
+            <div className="rounded-2xl border border-yellow-500/20 bg-black/30 px-4 py-3 text-center">
+              <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                CA
+              </p>
+              <p className="mt-1 text-3xl font-black text-yellow-400">
+                {player.ca ?? "-"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-green-500/20 bg-black/30 px-4 py-3 text-center">
+              <p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+                Valor
+              </p>
+              <p className="mt-1 text-xl font-black text-green-400">
+                {money(player.value)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlayerCardCompact({
   player,
 }: {
   player: Player;
 }) {
   return (
-    <article className="group overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 transition duration-200 hover:-translate-y-1 hover:border-green-500/60">
-      <div className="relative h-48 overflow-hidden bg-zinc-800">
-        {player.image_url ? (
-          <img
-            src={player.image_url}
-            alt={player.name}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center text-zinc-500">
-            <span className="text-6xl">⚽</span>
-
-            <span className="mt-3 text-sm">
-              Sem imagem
-            </span>
+    <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95">
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 text-2xl font-black text-zinc-400">
+            {player.image_url ? (
+              <img
+                src={player.image_url}
+                alt={player.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              getInitials(player.name)
+            )}
           </div>
-        )}
 
-        <div className="absolute right-4 top-4 rounded-xl border border-green-500/30 bg-zinc-950/90 px-3 py-2 text-center backdrop-blur">
-          <p className="text-[10px] font-black uppercase text-zinc-500">
-            CA
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black uppercase tracking-wide text-green-400">
+              {player.position || "Sem posição"}
+            </p>
 
-          <p className="text-xl font-black leading-none text-green-400">
-            {player.ca ?? "-"}
-          </p>
+            <h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
+              {player.name}
+            </h3>
+
+            <p className="mt-1 text-base text-zinc-300">
+              {player.age !== null
+                ? `${player.age} anos`
+                : "Idade não informada"}
+            </p>
+
+            <p className="text-base text-zinc-500">
+              {player.nationality || "Nacionalidade não informada"}
+            </p>
+          </div>
+
+          <div className="shrink-0 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-center">
+            <p className="text-[11px] font-black uppercase tracking-wide text-zinc-400">
+              CA
+            </p>
+            <p className="text-4xl font-black leading-none text-green-400">
+              {player.ca ?? "-"}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="p-5">
-        <p className="font-bold text-green-400">
-          {player.position || "Sem posição"}
-        </p>
-
-        <h3 className="mt-1 text-2xl font-black">
-          {player.name}
-        </h3>
-
-        <p className="mt-3 text-zinc-400">
-          {player.nationality ||
-            "Nacionalidade não informada"}
-        </p>
-
-        <p className="mt-1 text-sm text-zinc-500">
-          {player.age !== null
-            ? `${player.age} anos`
-            : "Idade não informada"}
-        </p>
-
-        <div className="mt-5 flex items-end justify-between gap-4 border-t border-zinc-800 pt-4">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">
-              Valor estimado
-            </p>
-
-            <p className="mt-1 font-black text-green-400">
-              {money(player.value)}
-            </p>
-          </div>
-
-          <Link
-            href={`/players/${player.id}`}
-            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm font-bold transition hover:border-green-500 hover:text-green-400"
-          >
-            Ver jogador
-          </Link>
+        <div className="mt-5 border-t border-zinc-800 pt-4">
+          <p className="text-sm text-zinc-500">
+            Valor estimado
+          </p>
+          <p className="mt-1 text-3xl font-black text-green-400">
+            {money(player.value)}
+          </p>
         </div>
       </div>
     </article>
   );
 }
 
-function StaffCard({
+function StaffCardCompact({
   member,
   onRelease,
   releasing,
@@ -412,64 +425,88 @@ function StaffCard({
   releasing: boolean;
   canRelease: boolean;
 }) {
+  const refundPreview = Number(member.value || 0) * 0.5;
+
   return (
-    <article className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md">
-      <div className="mb-3 text-[12px] font-bold text-zinc-400">
-        ID do treinador -{" "}
-        <span className="font-black text-zinc-200">
-          {member.unique_id || member.id}
-        </span>
-      </div>
+    <article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95">
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 text-2xl font-black text-zinc-400">
+            {member.image_url ? (
+              <img
+                src={member.image_url}
+                alt={member.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              getInitials(member.name)
+            )}
+          </div>
 
-      <div className="mt-4 text-[14px] font-black text-white">
-        {member.name} - {member.age ?? "-"} anos
-      </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black uppercase tracking-wide text-purple-400">
+              {member.role || "Staff"}
+            </p>
 
-      <div className="mt-3 text-[13px] font-black text-green-400">
-        {member.role || "Treinador"}
-      </div>
+            <h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
+              {member.name}
+            </h3>
 
-      <div className="mt-3 text-sm font-black text-zinc-200">
-        CA - <span className="text-green-400">{member.ca ?? "-"}</span>
-      </div>
+            <p className="mt-1 text-base text-zinc-300">
+              {member.age !== null
+                ? `${member.age} anos`
+                : "Idade não informada"}
+            </p>
 
-      <div className="mt-2 text-sm font-black text-zinc-200">
-        CP - <span className="text-sky-400">{member.cp ?? member.pa ?? "-"}</span>
-      </div>
+            <p className="text-base text-zinc-500">
+              {member.nationality || "Nacionalidade não informada"}
+            </p>
+          </div>
 
-      <div className="mt-3 text-[13px] font-semibold text-zinc-200">
-        Tática preferida
-      </div>
-      <div className="mt-1 min-h-[38px] text-[13px] font-medium text-zinc-400">
-        {member.preferred_formation?.trim() || "Não informada"}
-      </div>
+          <div className="shrink-0 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-center">
+            <p className="text-[11px] font-black uppercase tracking-wide text-zinc-400">
+              CA
+            </p>
+            <p className="text-4xl font-black leading-none text-green-400">
+              {member.ca ?? "-"}
+            </p>
+          </div>
+        </div>
 
-      <div className="mt-3 text-[13px] font-semibold text-zinc-200">
-        Nacionalidade
-      </div>
-      <div className="mt-1 text-[13px] font-medium text-zinc-400">
-        {member.nationality || "-"}
+        <div className="mt-5 border-t border-zinc-800 pt-4">
+          <p className="text-sm text-zinc-500">
+            Valor estimado
+          </p>
+          <p className="mt-1 text-3xl font-black text-green-400">
+            {money(member.value)}
+          </p>
+        </div>
       </div>
 
       {canRelease && (
-        <button
-          type="button"
-          disabled={releasing}
-          onClick={() => onRelease(member)}
-          className="mt-4 w-full rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-[12px] font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {releasing ? "DISPENSANDO..." : "🗑 DISPENSAR — RECEBER 50%"}
-        </button>
-      )}
+        <div className="border-t border-red-500/30 bg-red-500/5 px-4 py-3">
+          <p className="text-sm font-black uppercase tracking-wide text-red-400">
+            Dispensa
+          </p>
+          <p className="mt-1 text-sm text-zinc-300">
+            Você recebe 50%
+          </p>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <p className="text-2xl font-black text-yellow-400">
+              {money(refundPreview)}
+            </p>
 
-      <div className="mt-4 border-t border-zinc-800 pt-3">
-        <div className="text-[12px] font-black uppercase text-red-400">
-          VALOR
+            <button
+              type="button"
+              disabled={releasing}
+              onClick={() => onRelease(member)}
+              className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-black text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {releasing ? "Dispensando..." : "Dispensar"}
+            </button>
+          </div>
         </div>
-        <div className="mt-1 text-[13px] font-medium text-red-300">
-          {money(member.value)}
-        </div>
-      </div>
+      )}
     </article>
   );
 }
@@ -483,53 +520,21 @@ export default function TeamPage() {
 
   const teamId = Number(rawTeamId);
 
-  const [team, setTeam] =
-    useState<Team | null>(null);
-
-  const [players, setPlayers] =
-    useState<Player[]>([]);
-
-  const [staff, setStaff] =
-    useState<Coach[]>([]);
-
-  const [
-    playerAuctions,
-    setPlayerAuctions,
-  ] = useState<PlayerAuction[]>([]);
-
-  const [
-    staffAuctions,
-    setStaffAuctions,
-  ] = useState<StaffAuction[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [errorMessage, setErrorMessage] =
-    useState("");
-
-  const [successMessage, setSuccessMessage] =
-    useState("");
-
-  const [releasingStaffId, setReleasingStaffId] =
-    useState<number | null>(null);
-
-  const [currentUserId, setCurrentUserId] =
-    useState<string | null>(null);
+  const [team, setTeam] = useState<Team | null>(null);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [staff, setStaff] = useState<Coach[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [releasingStaffId, setReleasingStaffId] = useState<number | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const loadTeam = useCallback(async () => {
-    if (
-      !Number.isInteger(teamId) ||
-      teamId <= 0
-    ) {
+    if (!Number.isInteger(teamId) || teamId <= 0) {
       setTeam(null);
       setPlayers([]);
       setStaff([]);
-      setPlayerAuctions([]);
-      setStaffAuctions([]);
-      setErrorMessage(
-        "Identificador do clube inválido."
-      );
+      setErrorMessage("Identificador do clube inválido.");
       setLoading(false);
       return;
     }
@@ -539,12 +544,9 @@ export default function TeamPage() {
       setErrorMessage("");
 
       const { data: authData } = await supabase.auth.getUser();
-      setCurrentUserId(authData.user?.id || null);
+      setCurrentUserId(authData.user?.id ?? null);
 
-      const {
-        data: teamData,
-        error: teamError,
-      } = await supabase
+      const { data: teamData, error: teamError } = await supabase
         .from("teams")
         .select(`
           id,
@@ -567,33 +569,14 @@ export default function TeamPage() {
         setTeam(null);
         setPlayers([]);
         setStaff([]);
-        setPlayerAuctions([]);
-        setStaffAuctions([]);
+        setLoading(false);
         return;
       }
 
       const loadedTeam = teamData as Team;
-
       setTeam(loadedTeam);
 
-      const [
-        {
-          data: playersData,
-          error: playersError,
-        },
-        {
-          data: staffData,
-          error: staffError,
-        },
-        {
-          data: playerHistoryData,
-          error: playerHistoryError,
-        },
-        {
-          data: staffHistoryData,
-          error: staffHistoryError,
-        },
-      ] = await Promise.all([
+      const [playersResult, staffResult] = await Promise.all([
         supabase
           .from("players")
           .select(`
@@ -612,9 +595,7 @@ export default function TeamPage() {
             ascending: false,
             nullsFirst: false,
           })
-          .order("name", {
-            ascending: true,
-          }),
+          .order("name", { ascending: true }),
 
         supabase
           .from("coaches")
@@ -626,9 +607,7 @@ export default function TeamPage() {
             role,
             nationality,
             ca,
-            pa,
             cp,
-            preferred_formation,
             value,
             image_url,
             team_id,
@@ -639,119 +618,32 @@ export default function TeamPage() {
             ascending: false,
             nullsFirst: false,
           })
-          .order("name", {
-            ascending: true,
-          }),
-
-        supabase
-          .from("auctions")
-          .select(`
-            id,
-            player_id,
-            current_bid,
-            winner_team_id,
-            closed_at,
-            players (
-              name,
-              position
-            )
-          `)
-          .eq("status", "closed")
-          .eq("winner_team_id", loadedTeam.id)
-          .order("closed_at", {
-            ascending: false,
-            nullsFirst: false,
-          })
-          .limit(5),
-
-        supabase
-          .from("staff_auctions")
-          .select(`
-            id,
-            coach_id,
-            current_bid,
-            winner_team_id,
-            closed_at,
-            coaches (
-              name,
-              role
-            )
-          `)
-          .eq("status", "closed")
-          .eq("winner_team_id", loadedTeam.id)
-          .order("closed_at", {
-            ascending: false,
-            nullsFirst: false,
-          })
-          .limit(5),
+          .order("name", { ascending: true }),
       ]);
 
-      if (playersError) {
-        throw playersError;
+      if (playersResult.error) {
+        throw playersResult.error;
       }
 
-      if (staffError) {
-        throw staffError;
+      if (staffResult.error) {
+        throw staffResult.error;
       }
 
-      if (playerHistoryError) {
-        throw playerHistoryError;
-      }
-
-      if (staffHistoryError) {
-        throw staffHistoryError;
-      }
-
-      setPlayers(
-        (playersData || []) as Player[]
-      );
-
-      setStaff(
-        (staffData || []) as Coach[]
-      );
-
-      setPlayerAuctions(
-        (playerHistoryData || []).map((item: any) => ({
-          ...item,
-          players: Array.isArray(item.players)
-            ? item.players[0] ?? null
-            : item.players ?? null,
-        })) as PlayerAuction[]
-      );
-
-      setStaffAuctions(
-        (staffHistoryData || []).map((item: any) => ({
-          ...item,
-          coaches: Array.isArray(item.coaches)
-            ? item.coaches[0] ?? null
-            : item.coaches ?? null,
-        })) as StaffAuction[]
-      );
+      setPlayers((playersResult.data || []) as Player[]);
+      setStaff((staffResult.data || []) as Coach[]);
     } catch (error) {
-      console.error(
-        "Erro ao carregar clube:",
-        error
-      );
-
-      setErrorMessage(
-        getErrorMessage(error)
-      );
+      console.error(error);
+      setErrorMessage(getErrorMessage(error));
+      setTeam(null);
+      setPlayers([]);
+      setStaff([]);
     } finally {
       setLoading(false);
     }
   }, [teamId]);
 
   useEffect(() => {
-    loadTeam();
-  }, [loadTeam]);
-
-  useEffect(() => {
-    if (
-      !Number.isInteger(teamId) ||
-      teamId <= 0
-    ) {
-      return;
-    }
+    void loadTeam();
 
     const channel = supabase
       .channel(`team-page-${teamId}`)
@@ -761,10 +653,9 @@ export default function TeamPage() {
           event: "*",
           schema: "public",
           table: "teams",
-          filter: `id=eq.${teamId}`,
         },
         () => {
-          loadTeam();
+          void loadTeam();
         }
       )
       .on(
@@ -773,10 +664,9 @@ export default function TeamPage() {
           event: "*",
           schema: "public",
           table: "players",
-          filter: `team_id=eq.${teamId}`,
         },
         () => {
-          loadTeam();
+          void loadTeam();
         }
       )
       .on(
@@ -785,34 +675,9 @@ export default function TeamPage() {
           event: "*",
           schema: "public",
           table: "coaches",
-          filter: `team_id=eq.${teamId}`,
         },
         () => {
-          loadTeam();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "auctions",
-          filter: `winner_team_id=eq.${teamId}`,
-        },
-        () => {
-          loadTeam();
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "staff_auctions",
-          filter: `winner_team_id=eq.${teamId}`,
-        },
-        () => {
-          loadTeam();
+          void loadTeam();
         }
       )
       .subscribe();
@@ -820,10 +685,12 @@ export default function TeamPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [teamId, loadTeam]);
+  }, [loadTeam, teamId]);
 
   async function releaseStaff(member: Coach) {
-    if (releasingStaffId !== null) return;
+    if (releasingStaffId !== null) {
+      return;
+    }
 
     const confirmed = window.confirm(
       `Dispensar ${member.name}?\n\n` +
@@ -831,7 +698,9 @@ export default function TeamPage() {
         `O staff voltará ao Mercado de Treinadores pelo seu preço normal: ${money(member.value)}.`
     );
 
-    if (!confirmed) return;
+    if (!confirmed) {
+      return;
+    }
 
     setReleasingStaffId(member.id);
     setErrorMessage("");
@@ -843,6 +712,7 @@ export default function TeamPage() {
 
     if (error) {
       const message = String(error.message || "");
+
       if (message.includes("STAFF_NOT_OWNED")) {
         setErrorMessage("Esse profissional não pertence ao seu clube.");
       } else if (message.includes("TEAM_NOT_FOUND")) {
@@ -854,6 +724,7 @@ export default function TeamPage() {
       } else {
         setErrorMessage("Não foi possível dispensar o profissional.");
       }
+
       setReleasingStaffId(null);
       return;
     }
@@ -872,192 +743,111 @@ export default function TeamPage() {
   }
 
   const totalSquadValue = useMemo(
-    () =>
-      players.reduce(
-        (total, player) =>
-          total +
-          Number(player.value || 0),
-        0
-      ),
+    () => players.reduce((total, player) => total + Number(player.value || 0), 0),
     [players]
   );
 
   const totalStaffValue = useMemo(
-    () =>
-      staff.reduce(
-        (total, member) =>
-          total +
-          Number(member.value || 0),
-        0
-      ),
+    () => staff.reduce((total, member) => total + Number(member.value || 0), 0),
     [staff]
   );
 
   const averageCa = useMemo(() => {
-    const validPlayers = players.filter(
-      (player) => player.ca !== null
-    );
+    const validPlayers = players.filter((player) => player.ca !== null);
 
     if (validPlayers.length === 0) {
       return 0;
     }
 
     return Math.round(
-      validPlayers.reduce(
-        (total, player) =>
-          total + Number(player.ca || 0),
-        0
-      ) / validPlayers.length
+      validPlayers.reduce((total, player) => total + Number(player.ca || 0), 0) /
+        validPlayers.length
     );
   }, [players]);
 
   const averageAge = useMemo(() => {
-    const validPlayers = players.filter(
-      (player) => player.age !== null
-    );
+    const validPlayers = players.filter((player) => player.age !== null);
 
     if (validPlayers.length === 0) {
       return 0;
     }
 
     return Math.round(
-      validPlayers.reduce(
-        (total, player) =>
-          total + Number(player.age || 0),
-        0
-      ) / validPlayers.length
+      validPlayers.reduce((total, player) => total + Number(player.age || 0), 0) /
+        validPlayers.length
     );
   }, [players]);
 
-  const playerSections =
-    useMemo<PlayerSection[]>(() => {
-      const grouped: Record<
-        PositionGroup,
-        Player[]
-      > = {
-        goalkeepers: [],
-        defenders: [],
-        midfielders: [],
-        attackers: [],
-        others: [],
-      };
+  const bestPlayer = useMemo(() => {
+    if (players.length === 0) {
+      return null;
+    }
 
-      players.forEach((player) => {
-        grouped[
-          getPositionGroup(
-            player.position
-          )
-        ].push(player);
-      });
+    return [...players].sort((a, b) => {
+      const caDifference = Number(b.ca || 0) - Number(a.ca || 0);
+      if (caDifference !== 0) {
+        return caDifference;
+      }
 
-      const sections: PlayerSection[] = [
-        {
-          key: "goalkeepers",
-          title: "Goleiros",
-          abbreviation: "GK",
-          players: grouped.goalkeepers,
-        },
-        {
-          key: "defenders",
-          title: "Defensores",
-          abbreviation: "DEF",
-          players: grouped.defenders,
-        },
-        {
-          key: "midfielders",
-          title: "Meio-campistas",
-          abbreviation: "MID",
-          players: grouped.midfielders,
-        },
-        {
-          key: "attackers",
-          title: "Atacantes",
-          abbreviation: "ATA",
-          players: grouped.attackers,
-        },
-        {
-          key: "others",
-          title: "Outros jogadores",
-          abbreviation: "OUT",
-          players: grouped.others,
-        },
-      ];
+      return Number(b.value || 0) - Number(a.value || 0);
+    })[0];
+  }, [players]);
 
-      return sections.filter(
-        (section) =>
-          section.players.length > 0
-      );
-    }, [players]);
+  const playerSections = useMemo<PlayerSection[]>(() => {
+    const grouped: Record<PositionGroup, Player[]> = {
+      goalkeepers: [],
+      defenders: [],
+      midfielders: [],
+      attackers: [],
+      others: [],
+    };
 
-  const recentSignings =
-    useMemo<RecentSigning[]>(() => {
-      const playerItems: RecentSigning[] =
-        playerAuctions.map(
-          (auction) => ({
-            id: `player-${auction.id}`,
-            type: "player",
-            name:
-              auction.players?.name ||
-              `Jogador #${auction.player_id}`,
-            role:
-              auction.players?.position ||
-              "Jogador",
-            amount: Number(
-              auction.current_bid || 0
-            ),
-            closedAt: auction.closed_at,
-          })
-        );
+    players.forEach((player) => {
+      grouped[getPositionGroup(player.position)].push(player);
+    });
 
-      const staffItems: RecentSigning[] =
-        staffAuctions.map(
-          (auction) => ({
-            id: `staff-${auction.id}`,
-            type: "staff",
-            name:
-              auction.coaches?.name ||
-              `Profissional #${auction.coach_id}`,
-            role:
-              auction.coaches?.role ||
-              "Comissão técnica",
-            amount: Number(
-              auction.current_bid || 0
-            ),
-            closedAt: auction.closed_at,
-          })
-        );
+    const sections: PlayerSection[] = [
+      {
+        key: "goalkeepers",
+        title: "Goleiros",
+        abbreviation: "GK",
+        players: grouped.goalkeepers,
+      },
+      {
+        key: "defenders",
+        title: "Defensores",
+        abbreviation: "DEF",
+        players: grouped.defenders,
+      },
+      {
+        key: "midfielders",
+        title: "Meio-campistas",
+        abbreviation: "MID",
+        players: grouped.midfielders,
+      },
+      {
+        key: "attackers",
+        title: "Atacantes",
+        abbreviation: "ATA",
+        players: grouped.attackers,
+      },
+      {
+        key: "others",
+        title: "Outros jogadores",
+        abbreviation: "OUT",
+        players: grouped.others,
+      },
+    ];
 
-      return [
-        ...playerItems,
-        ...staffItems,
-      ]
-        .sort((first, second) => {
-          const firstDate = first.closedAt
-            ? new Date(
-                first.closedAt
-              ).getTime()
-            : 0;
-
-          const secondDate = second.closedAt
-            ? new Date(
-                second.closedAt
-              ).getTime()
-            : 0;
-
-          return secondDate - firstDate;
-        })
-        .slice(0, 6);
-    }, [playerAuctions, staffAuctions]);
+    return sections.filter((section) => section.players.length > 0);
+  }, [players]);
 
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
         <div className="text-center">
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-zinc-700 border-t-green-400" />
-
-          <p className="mt-4 font-semibold text-zinc-400">
-            Carregando clube...
-          </p>
+          <p className="mt-4 font-semibold text-zinc-400">Carregando clube...</p>
         </div>
       </main>
     );
@@ -1067,14 +857,8 @@ export default function TeamPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
         <div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-          <div className="text-6xl">
-            🏟️
-          </div>
-
-          <h1 className="mt-5 text-4xl font-black">
-            Clube não encontrado
-          </h1>
-
+          <div className="text-6xl">🏟️</div>
+          <h1 className="mt-5 text-4xl font-black">Clube não encontrado</h1>
           <p className="mt-3 text-zinc-400">
             O clube solicitado não existe ou não está disponível.
           </p>
@@ -1106,69 +890,42 @@ export default function TeamPage() {
           ← Voltar para clubes
         </Link>
 
-        <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
-          <div className="flex flex-col gap-8 p-8 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-              <div className="flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-zinc-700 bg-zinc-950">
-                {team.logo_url ? (
-                  <img
-                    src={team.logo_url}
-                    alt={`Escudo do ${team.name}`}
-                    className="h-full w-full object-contain p-3"
-                  />
-                ) : (
-                  <span className="text-6xl">
-                    ⚽
-                  </span>
-                )}
+        <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-7">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex min-w-0 items-center gap-5">
+                <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 p-3">
+                  {team.logo_url ? (
+                    <img
+                      src={team.logo_url}
+                      alt={team.name}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-4xl font-black text-zinc-500">
+                      {getInitials(team.name)}
+                    </span>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xl font-black uppercase tracking-[0.18em] text-green-400">
+                    Perfil do clube
+                  </p>
+
+                  <h1 className="mt-2 text-5xl font-black leading-none md:text-6xl">
+                    {team.name}
+                  </h1>
+
+                  <p className="mt-4 text-3xl text-zinc-300">
+                    Manager: <span className="font-black text-white">{team.manager_name || "Sem presidente"}</span>
+                  </p>
+                </div>
               </div>
-
-              <div>
-                <p className="font-bold uppercase tracking-widest text-green-400">
-                  Perfil do clube
-                </p>
-
-                <h1 className="mt-2 text-4xl font-black md:text-6xl">
-                  {team.name}
-                </h1>
-
-                <p className="mt-3 text-lg text-zinc-400">
-                  Manager:{" "}
-                  <span className="font-bold text-white">
-                    {team.manager_name ||
-                      "Não informado"}
-                  </span>
-                </p>
-
-                {(team.city ||
-                  team.stadium) && (
-                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm text-zinc-500">
-                    {team.city && (
-                      <span>
-                        📍 {team.city}
-                      </span>
-                    )}
-
-                    {team.stadium && (
-                      <span>
-                        🏟️ {team.stadium}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-6 lg:min-w-72">
-              <p className="text-sm font-bold uppercase tracking-wider text-zinc-400">
-                Orçamento disponível
-              </p>
-
-              <p className="mt-2 text-3xl font-black text-green-400">
-                {money(team.budget)}
-              </p>
             </div>
           </div>
+
+          <BestPlayerCard player={bestPlayer} />
         </section>
 
         {errorMessage && (
@@ -1184,263 +941,121 @@ export default function TeamPage() {
         )}
 
         <section className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              Jogadores
-            </p>
+          <StatCard
+            label="Jogadores"
+            value={players.length}
+            description="Atletas no elenco"
+          />
 
-            <p className="mt-3 text-4xl font-black">
-              {players.length}
-            </p>
+          <StatCard
+            label="Comissão técnica"
+            value={staff.length}
+            description="Profissionais contratados"
+            accent="text-purple-400"
+          />
 
-            <p className="mt-2 text-sm text-zinc-500">
-              Atletas no elenco
-            </p>
-          </div>
+          <StatCard
+            label="CA médio"
+            value={averageCa || "-"}
+            description={averageAge ? `Idade média: ${averageAge} anos` : "Idade média não disponível"}
+            accent="text-green-400"
+          />
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              Comissão técnica
-            </p>
-
-            <p className="mt-3 text-4xl font-black text-purple-400">
-              {staff.length}
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-500">
-              Profissionais contratados
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              CA médio
-            </p>
-
-            <p className="mt-3 text-4xl font-black text-green-400">
-              {averageCa || "-"}
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-500">
-              Idade média:{" "}
-              {averageAge
-                ? `${averageAge} anos`
-                : "-"}
-            </p>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-            <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              Patrimônio esportivo
-            </p>
-
-            <p className="mt-3 text-2xl font-black text-green-400">
-              {money(
-                totalSquadValue +
-                  totalStaffValue
-              )}
-            </p>
-
-            <p className="mt-2 text-sm text-zinc-500">
-              Elenco e comissão
-            </p>
-          </div>
+          <StatCard
+            label="Patrimônio esportivo"
+            value={money(totalSquadValue + totalStaffValue)}
+            description="Elenco e comissão"
+            accent="text-green-400"
+          />
         </section>
 
-        <section className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <Link
-            href="/squad"
+        <section className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
+          <a
+            href="#elenco"
             className="rounded-2xl border border-blue-700 bg-blue-600 p-6 transition hover:-translate-y-1 hover:bg-blue-500"
           >
-            <span className="text-3xl">
-              👥
-            </span>
-
-            <h2 className="mt-4 text-xl font-black">
-              Meu elenco
-            </h2>
-
+            <span className="text-3xl">👥</span>
+            <h2 className="mt-4 text-xl font-black">Ver time</h2>
             <p className="mt-2 text-sm text-blue-100">
-              Visualizar todos os jogadores.
+              Visualizar jogadores do clube.
             </p>
-          </Link>
+          </a>
 
-          <Link
-            href="/staff"
+          <a
+            href="#staff"
             className="rounded-2xl border border-purple-700 bg-purple-600 p-6 transition hover:-translate-y-1 hover:bg-purple-500"
           >
-            <span className="text-3xl">
-              📋
-            </span>
-
-            <h2 className="mt-4 text-xl font-black">
-              Comissão técnica
-            </h2>
-
+            <span className="text-3xl">📋</span>
+            <h2 className="mt-4 text-xl font-black">Comissão técnica</h2>
             <p className="mt-2 text-sm text-purple-100">
               Visualizar os profissionais.
             </p>
-          </Link>
-
-          <Link
-            href="/transfers"
-            className="rounded-2xl border border-green-700 bg-green-600 p-6 transition hover:-translate-y-1 hover:bg-green-500"
-          >
-            <span className="text-3xl">
-              ✍️
-            </span>
-
-            <h2 className="mt-4 text-xl font-black">
-              Contratações
-            </h2>
-
-            <p className="mt-2 text-sm text-green-100">
-              Ver os contratados atuais.
-            </p>
-          </Link>
-
-          <Link
-            href="/history"
-            className="rounded-2xl border border-yellow-600 bg-yellow-500 p-6 text-black transition hover:-translate-y-1 hover:bg-yellow-400"
-          >
-            <span className="text-3xl">
-              📊
-            </span>
-
-            <h2 className="mt-4 text-xl font-black">
-              Histórico
-            </h2>
-
-            <p className="mt-2 text-sm text-yellow-950">
-              Conferir compras e valores.
-            </p>
-          </Link>
+          </a>
         </section>
 
         <section id="elenco" className="mt-16 scroll-mt-24">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-bold uppercase tracking-widest text-blue-400">
-                Elenco principal
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Jogadores do clube
-              </h2>
-            </div>
-
-            <Link
-              href="/squad"
-              className="font-bold text-green-400 transition hover:text-green-300"
-            >
-              Ver elenco completo →
-            </Link>
+          <div>
+            <p className="font-bold uppercase tracking-widest text-blue-400">
+              Elenco principal
+            </p>
+            <h2 className="mt-2 text-4xl font-black">Jogadores do clube</h2>
           </div>
 
           {players.length === 0 ? (
             <div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-              <div className="text-6xl">
-                ⚽
-              </div>
-
-              <h3 className="mt-5 text-3xl font-black">
-                Elenco vazio
-              </h3>
-
+              <div className="text-6xl">⚽</div>
+              <h3 className="mt-5 text-3xl font-black">Elenco vazio</h3>
               <p className="mt-3 text-zinc-400">
                 Este clube ainda não contratou jogadores.
               </p>
-
-              <Link
-                href="/auctions"
-                className="mt-7 inline-block rounded-xl bg-green-600 px-6 py-3 font-black transition hover:bg-green-500"
-              >
-                Ver leilões
-              </Link>
             </div>
           ) : (
             <div className="mt-10 space-y-14">
-              {playerSections.map(
-                (section) => (
-                  <section
-                    key={section.key}
-                  >
-                    <div className="mb-6 flex items-center gap-4">
-                      <span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-black text-blue-400">
-                        {section.abbreviation}
-                      </span>
+              {playerSections.map((section) => (
+                <section key={section.key}>
+                  <div className="mb-6 flex items-center gap-4">
+                    <span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-black text-blue-400">
+                      {section.abbreviation}
+                    </span>
 
-                      <h3 className="text-3xl font-black">
-                        {section.title}
-                      </h3>
+                    <h3 className="text-3xl font-black">{section.title}</h3>
 
-                      <span className="font-bold text-zinc-500">
-                        {section.players.length}
-                      </span>
-                    </div>
+                    <span className="font-bold text-zinc-500">
+                      {section.players.length}
+                    </span>
+                  </div>
 
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {section.players.map(
-                        (player) => (
-                          <PlayerCard
-                            key={player.id}
-                            player={player}
-                          />
-                        )
-                      )}
-                    </div>
-                  </section>
-                )
-              )}
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
+                    {section.players.map((player) => (
+                      <PlayerCardCompact key={player.id} player={player} />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           )}
         </section>
 
         <section id="staff" className="mt-16 scroll-mt-24">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-bold uppercase tracking-widest text-purple-400">
-                Staff
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Comissão técnica
-              </h2>
-            </div>
-
-            <Link
-              href="/staff"
-              className="font-bold text-green-400 transition hover:text-green-300"
-            >
-              Ver comissão completa →
-            </Link>
+          <div>
+            <p className="font-bold uppercase tracking-widest text-purple-400">
+              Staff
+            </p>
+            <h2 className="mt-2 text-4xl font-black">Comissão técnica</h2>
           </div>
 
           {staff.length === 0 ? (
             <div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-              <div className="text-6xl">
-                👔
-              </div>
-
-              <h3 className="mt-5 text-3xl font-black">
-                Comissão vazia
-              </h3>
-
+              <div className="text-6xl">👔</div>
+              <h3 className="mt-5 text-3xl font-black">Comissão vazia</h3>
               <p className="mt-3 text-zinc-400">
                 Este clube ainda não contratou profissionais.
               </p>
-
-              <Link
-                href="/staff-auctions"
-                className="mt-7 inline-block rounded-xl bg-green-600 px-6 py-3 font-black transition hover:bg-green-500"
-              >
-                Ver leilões
-              </Link>
             </div>
           ) : (
-            <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
               {staff.map((member) => (
-                <StaffCard
+                <StaffCardCompact
                   key={member.id}
                   member={member}
                   onRelease={releaseStaff}
@@ -1450,135 +1065,6 @@ export default function TeamPage() {
               ))}
             </div>
           )}
-        </section>
-
-        <section className="mt-16">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="font-bold uppercase tracking-widest text-green-400">
-                Mercado
-              </p>
-
-              <h2 className="mt-2 text-4xl font-black">
-                Últimas contratações
-              </h2>
-            </div>
-
-            <Link
-              href="/history"
-              className="font-bold text-green-400 transition hover:text-green-300"
-            >
-              Ver histórico completo →
-            </Link>
-          </div>
-
-          {recentSignings.length === 0 ? (
-            <div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-              <p className="text-zinc-400">
-                Nenhuma contratação registrada para este clube.
-              </p>
-            </div>
-          ) : (
-            <div className="mt-7 space-y-4">
-              {recentSignings.map(
-                (signing) => (
-                  <article
-                    key={signing.id}
-                    className="flex flex-col gap-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-6 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${
-                          signing.type ===
-                          "player"
-                            ? "bg-blue-500/10"
-                            : "bg-purple-500/10"
-                        }`}
-                      >
-                        <span className="text-2xl">
-                          {signing.type ===
-                          "player"
-                            ? "⚽"
-                            : "👔"}
-                        </span>
-                      </div>
-
-                      <div>
-                        <p
-                          className={`text-sm font-bold uppercase ${
-                            signing.type ===
-                            "player"
-                              ? "text-blue-400"
-                              : "text-purple-400"
-                          }`}
-                        >
-                          {signing.type ===
-                          "player"
-                            ? "Jogador"
-                            : "Comissão técnica"}
-                        </p>
-
-                        <h3 className="mt-1 text-xl font-black">
-                          {signing.name}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-zinc-500">
-                          {signing.role} •{" "}
-                          {formatDate(
-                            signing.closedAt
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="sm:text-right">
-                      <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-                        Valor pago
-                      </p>
-
-                      <p className="mt-1 text-xl font-black text-green-400">
-                        {money(signing.amount)}
-                      </p>
-                    </div>
-                  </article>
-                )
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-16 rounded-3xl border border-zinc-800 bg-zinc-900 p-7 md:p-9">
-          <div className="flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="font-bold uppercase tracking-widest text-green-400">
-                Próxima contratação
-              </p>
-
-              <h2 className="mt-2 text-3xl font-black">
-                Reforce o clube
-              </h2>
-
-              <p className="mt-3 max-w-2xl text-zinc-400">
-                Use o orçamento disponível para disputar novos jogadores e profissionais.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/auctions"
-                className="rounded-xl bg-green-600 px-6 py-4 text-center font-black transition hover:bg-green-500"
-              >
-                Leilões de jogadores
-              </Link>
-
-              <Link
-                href="/staff-auctions"
-                className="rounded-xl border border-zinc-700 bg-zinc-950 px-6 py-4 text-center font-black transition hover:border-purple-500 hover:text-purple-400"
-              >
-                Leilões da comissão
-              </Link>
-            </div>
-          </div>
         </section>
       </div>
     </main>
