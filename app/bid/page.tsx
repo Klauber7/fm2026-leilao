@@ -21,7 +21,10 @@ type BidFeedRow = {
 
 function money(value: number | null | undefined) {
   const amount = Number(value || 0);
-  if (amount === 0) return "GRÁTIS";
+
+  if (amount === 0) {
+    return "GRÁTIS";
+  }
 
   return amount.toLocaleString("pt-BR", {
     style: "currency",
@@ -31,14 +34,23 @@ function money(value: number | null | undefined) {
 }
 
 function dateTime(value: string | null | undefined) {
-  if (!value) return "-";
+  if (!value) {
+    return "-";
+  }
+
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "-";
+  }
+
   return parsed.toLocaleString("pt-BR");
 }
 
 function pricingLabel(value: string | null | undefined) {
-  if (!value) return "";
+  if (!value) {
+    return "";
+  }
 
   const labels: Record<string, string> = {
     auction: "Leilão",
@@ -52,6 +64,14 @@ function pricingLabel(value: string | null | undefined) {
   };
 
   return labels[value] || value;
+}
+
+function normalizeText(value: string | null | undefined) {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 export default function BidPage() {
@@ -87,7 +107,9 @@ export default function BidPage() {
           nullsFirst: false,
         });
 
-      if (bidError) throw bidError;
+      if (bidError) {
+        throw bidError;
+      }
 
       setItems((data || []) as BidFeedRow[]);
     } catch (loadError) {
@@ -106,28 +128,58 @@ export default function BidPage() {
       .channel("bid-live-all-transfers")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "transfer_history" },
-        () => void loadBid()
+        {
+          event: "*",
+          schema: "public",
+          table: "transfer_history",
+        },
+        () => {
+          void loadBid();
+        }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "draft_transfers" },
-        () => void loadBid()
+        {
+          event: "*",
+          schema: "public",
+          table: "draft_transfers",
+        },
+        () => {
+          void loadBid();
+        }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "staff_draft_transfers" },
-        () => void loadBid()
+        {
+          event: "*",
+          schema: "public",
+          table: "staff_draft_transfers",
+        },
+        () => {
+          void loadBid();
+        }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "auctions" },
-        () => void loadBid()
+        {
+          event: "*",
+          schema: "public",
+          table: "auctions",
+        },
+        () => {
+          void loadBid();
+        }
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "staff_auctions" },
-        () => void loadBid()
+        {
+          event: "*",
+          schema: "public",
+          table: "staff_auctions",
+        },
+        () => {
+          void loadBid();
+        }
       )
       .subscribe();
 
@@ -137,22 +189,29 @@ export default function BidPage() {
   }, [loadBid]);
 
   const filteredItems = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return items;
+    const query = normalizeText(search);
+
+    if (!query) {
+      return items;
+    }
 
     return items.filter((item) => {
-      const text = [
-        item.item_name,
-        item.staff_role,
-        item.origin_name,
-        item.destination_name,
-        pricingLabel(item.pricing_type),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      const searchableText = normalizeText(
+        [
+          item.item_name,
+          item.staff_role,
+          item.origin_name,
+          item.destination_name,
+          pricingLabel(item.pricing_type),
+          item.item_type === "staff" ? "staff comissao tecnica treinador" : "jogador",
+          item.player_id ? String(item.player_id) : "",
+          item.coach_id ? String(item.coach_id) : "",
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
 
-      return text.includes(query);
+      return searchableText.includes(query);
     });
   }, [items, search]);
 
@@ -174,13 +233,34 @@ export default function BidPage() {
         </div>
 
         <section className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar jogador, staff ou clube..."
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-green-500"
-          />
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar jogador, staff, clube, função ou ID..."
+              autoComplete="off"
+              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none transition placeholder:text-zinc-600 focus:border-green-500"
+            />
+
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="rounded-xl border border-zinc-700 bg-zinc-800 px-5 py-3 font-black text-zinc-200 transition hover:bg-zinc-700"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+
+          {!loading && !error && (
+            <p className="mt-3 text-sm font-bold text-zinc-500">
+              {search
+                ? `${filteredItems.length} resultado(s) encontrado(s)`
+                : `${items.length} registro(s) no BID`}
+            </p>
+          )}
         </section>
 
         {loading && (
@@ -197,7 +277,15 @@ export default function BidPage() {
 
         {!loading && !error && filteredItems.length === 0 && (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-            <p className="text-xl font-black">Nenhuma contratação encontrada.</p>
+            <p className="text-xl font-black">
+              Nenhuma contratação encontrada.
+            </p>
+
+            {search && (
+              <p className="mt-2 text-zinc-500">
+                Nenhum registro corresponde a “{search}”.
+              </p>
+            )}
           </div>
         )}
 
@@ -247,17 +335,21 @@ export default function BidPage() {
                       <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
                         Origem
                       </p>
+
                       <p className="mt-1 text-lg font-black">
                         {item.origin_name || "Mercado"}
                       </p>
                     </div>
 
-                    <span className="text-3xl font-black text-green-400">→</span>
+                    <span className="text-3xl font-black text-green-400">
+                      →
+                    </span>
 
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
                         Destino
                       </p>
+
                       <p className="mt-1 text-lg font-black">
                         {item.destination_name || "-"}
                       </p>
@@ -268,9 +360,11 @@ export default function BidPage() {
                     <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
                       Valor
                     </p>
+
                     <p className="mt-1 text-2xl font-black text-green-400">
                       {money(item.amount)}
                     </p>
+
                     <p className="mt-2 text-xs font-bold text-zinc-500">
                       {dateTime(item.completed_at)}
                     </p>
