@@ -258,19 +258,15 @@ function formatDate(value: string | null) {
 
 function StaffCard({
   member,
+  onRelease,
+  releasing,
 }: {
   member: Coach;
+  onRelease: (member: Coach) => void;
+  releasing: boolean;
 }) {
-  const roleLabel = member.role || "Staff";
-  const initials = member.name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-
   return (
-    <article className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm">
+    <article className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
       <div className="p-3">
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-zinc-700 bg-zinc-800">
@@ -281,18 +277,18 @@ function StaffCard({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="text-lg font-black text-zinc-400">
-                {initials || "ST"}
+              <span className="text-xl font-black text-zinc-500">
+                {member.name?.charAt(0)?.toUpperCase() || "S"}
               </span>
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-black uppercase tracking-wide text-purple-400">
-              {roleLabel}
+            <p className="text-[11px] font-black uppercase text-purple-400">
+              {member.role || "Staff"}
             </p>
 
-            <h3 className="mt-0.5 break-words text-lg font-black leading-tight text-white">
+            <h3 className="mt-0.5 truncate text-base font-black leading-tight text-white">
               {member.name}
             </h3>
 
@@ -305,40 +301,56 @@ function StaffCard({
             </p>
           </div>
 
-          <div className="shrink-0 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-center">
-            <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">
+          <div className="shrink-0 rounded-lg border border-green-500/40 bg-green-500/5 px-3 py-2 text-center">
+            <p className="text-[9px] font-black uppercase text-zinc-400">
               CA
             </p>
-            <p className="text-xl font-black leading-none text-green-400">
+            <p className="text-lg font-black leading-none text-green-400">
               {member.ca ?? "-"}
             </p>
           </div>
         </div>
 
-        <div className="mt-4 border-t border-zinc-800 pt-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] font-medium text-zinc-500">
-                PA
-              </p>
-              <p className="mt-1 text-sm font-black text-white">
-                {member.pa ?? "-"}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-[10px] font-medium text-zinc-500">
-                Valor estimado
-              </p>
-              <p className="mt-1 text-sm font-black text-green-400">
-                {money(member.value)}
-              </p>
-            </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase text-zinc-500">
+              PA
+            </p>
+            <p className="mt-1 text-sm font-black text-white">
+              {member.pa ?? "-"}
+            </p>
           </div>
 
-          <p className="mt-3 text-[10px] text-zinc-600">
-            Contratado em {formatDate(member.hired_at)}
-          </p>
+          <div>
+            <p className="text-[10px] font-bold uppercase text-zinc-500">
+              Valor
+            </p>
+            <p className="mt-1 text-sm font-black text-green-400">
+              {money(member.value)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-red-500/30 bg-red-500/5 p-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-wide text-red-400">
+              Dispensa
+            </p>
+            <p className="mt-1 text-[11px] leading-tight text-zinc-400">
+              Você recebe 50% do valor pago
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={releasing}
+            onClick={() => onRelease(member)}
+            className="rounded-lg border border-red-500/50 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {releasing ? "Dispensando..." : "Dispensar"}
+          </button>
         </div>
       </div>
     </article>
@@ -366,6 +378,12 @@ export default function StaffPage() {
 
   const [errorMessage, setErrorMessage] =
     useState("");
+
+  const [successMessage, setSuccessMessage] =
+    useState("");
+
+  const [releasingStaffId, setReleasingStaffId] =
+    useState<number | null>(null);
 
   const loadStaff = useCallback(async () => {
     try {
@@ -509,6 +527,70 @@ export default function StaffPage() {
       supabase.removeChannel(channel);
     };
   }, [team?.id, loadStaff]);
+
+  async function releaseStaff(member: Coach) {
+    if (releasingStaffId !== null) return;
+
+    const confirmed = window.confirm(
+      `Dispensar ${member.name}?\n\n` +
+        "O clube receberá 50% do valor realmente pago por este profissional.\n\n" +
+        `O staff voltará ao mercado pelo preço normal: ${money(member.value)}.`
+    );
+
+    if (!confirmed) return;
+
+    setReleasingStaffId(member.id);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    try {
+      const { data, error } = await supabase.rpc("release_staff", {
+        p_coach_id: member.id,
+      });
+
+      if (error) {
+        const message = String(error.message || "");
+
+        if (message.includes("STAFF_NOT_OWNED")) {
+          throw new Error("Esse profissional não pertence ao seu clube.");
+        }
+
+        if (message.includes("TEAM_NOT_FOUND")) {
+          throw new Error("Não foi possível localizar seu clube.");
+        }
+
+        if (message.includes("STAFF_NOT_FOUND")) {
+          throw new Error("Profissional não encontrado.");
+        }
+
+        if (message.includes("NOT_AUTHENTICATED")) {
+          throw new Error("Sua sessão expirou. Entre novamente.");
+        }
+
+        throw error;
+      }
+
+      const refund =
+        data && typeof data === "object" && "refund" in data
+          ? Number((data as { refund?: number }).refund || 0)
+          : 0;
+
+      setSuccessMessage(
+        `${member.name} foi dispensado. ${money(refund)} foram devolvidos ao orçamento do clube.`
+      );
+
+      await loadStaff();
+    } catch (error) {
+      console.error("Erro ao dispensar staff:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível dispensar o profissional."
+      );
+    } finally {
+      setReleasingStaffId(null);
+    }
+  }
 
   const totalValue = useMemo(
     () =>
@@ -866,6 +948,12 @@ export default function StaffPage() {
           </div>
         )}
 
+        {successMessage && (
+          <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
+            {successMessage}
+          </div>
+        )}
+
         <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
             <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
@@ -1153,11 +1241,13 @@ export default function StaffPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {section.members.map((member) => (
                     <StaffCard
                       key={member.id}
                       member={member}
+                      onRelease={releaseStaff}
+                      releasing={releasingStaffId === member.id}
                     />
                   ))}
                 </div>
