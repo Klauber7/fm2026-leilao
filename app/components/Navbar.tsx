@@ -1,14 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  usePathname,
-  useRouter,
-} from "next/navigation";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type AdminRole =
@@ -28,6 +22,11 @@ const mainMenu: MenuItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: "🏠",
+  },
+  {
+    href: "/jornal",
+    label: "Jornal",
+    icon: "📰",
   },
   {
     href: "/players",
@@ -55,7 +54,7 @@ const mainMenu: MenuItem[] = [
     icon: "👨‍💼",
   },
   {
-    href: "/transfers",
+    href: "/transfers/negotiations",
     label: "Negócios Internos",
     icon: "📄",
   },
@@ -82,7 +81,7 @@ export default function Navbar() {
     useState(false);
 
   useEffect(() => {
-    checkAdminRole();
+    void checkAdminRole();
   }, []);
 
   useEffect(() => {
@@ -95,8 +94,7 @@ export default function Navbar() {
       return;
     }
 
-    document.body.style.overflow =
-      "hidden";
+    document.body.style.overflow = "hidden";
 
     function handleEscape(
       event: KeyboardEvent
@@ -125,21 +123,14 @@ export default function Navbar() {
     const {
       data: { user },
       error: authError,
-    } =
-      await supabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
-    if (
-      authError ||
-      !user
-    ) {
+    if (authError || !user) {
       setAdminRole(null);
       return;
     }
 
-    const {
-      data,
-      error,
-    } =
+    const { data, error } =
       await supabase.rpc(
         "get_my_admin_role"
       );
@@ -171,9 +162,7 @@ export default function Navbar() {
       await supabase.auth.signOut();
 
     if (error) {
-      alert(
-        "Erro ao sair da conta."
-      );
+      alert("Erro ao sair da conta.");
       return;
     }
 
@@ -190,13 +179,13 @@ export default function Navbar() {
   const isLimitedAdmin =
     adminRole === "admin";
 
-  function isActive(
-    href: string
-  ) {
-    if (
-      href === "/dashboard"
-    ) {
+  function isActive(href: string) {
+    if (href === "/dashboard") {
       return pathname === "/dashboard";
+    }
+
+    if (href === "/jornal") {
+      return pathname === "/jornal";
     }
 
     return pathname.startsWith(href);
@@ -205,8 +194,7 @@ export default function Navbar() {
   function menuLinkClass(
     href: string
   ) {
-    const active =
-      isActive(href);
+    const active = isActive(href);
 
     return [
       "block rounded-xl px-4 py-3 transition",
@@ -219,24 +207,21 @@ export default function Navbar() {
   const navigation = (
     <>
       <nav className="space-y-2 text-sm font-bold">
+        {mainMenu.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={menuLinkClass(
+              item.href
+            )}
+          >
+            <span className="mr-2">
+              {item.icon}
+            </span>
 
-        {mainMenu.map(
-          (item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={menuLinkClass(
-                item.href
-              )}
-            >
-              <span className="mr-2">
-                {item.icon}
-              </span>
-
-              {item.label}
-            </Link>
-          )
-        )}
+            {item.label}
+          </Link>
+        ))}
 
         {canOpenFullAdmin && (
           <>
@@ -277,7 +262,6 @@ export default function Navbar() {
             </Link>
           </>
         )}
-
       </nav>
 
       <div className="mt-auto pt-6">
@@ -296,7 +280,6 @@ export default function Navbar() {
     <>
       {/* MOBILE TOP BAR */}
       <header className="fixed inset-x-0 top-0 z-[60] flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-950/95 px-4 text-white backdrop-blur lg:hidden">
-
         <Link
           href="/dashboard"
           className="leading-tight"
@@ -326,7 +309,6 @@ export default function Navbar() {
         >
           {mobileOpen ? "✕" : "☰"}
         </button>
-
       </header>
 
       {/* MOBILE OVERLAY */}
@@ -351,9 +333,7 @@ export default function Navbar() {
         ].join(" ")}
       >
         <div className="flex h-full flex-col overflow-y-auto px-5 pb-5 pt-5">
-
           <div className="mb-6 flex items-center justify-between gap-4">
-
             <Link
               href="/dashboard"
               className="block"
@@ -379,19 +359,15 @@ export default function Navbar() {
             >
               ✕
             </button>
-
           </div>
 
           {navigation}
-
         </div>
       </aside>
 
       {/* DESKTOP SIDEBAR */}
       <aside className="fixed left-0 top-0 z-50 hidden h-screen w-72 border-r border-zinc-800 bg-zinc-950 text-white lg:block">
-
         <div className="flex h-full flex-col overflow-y-auto p-6">
-
           <Link
             href="/dashboard"
             className="mb-10 block"
@@ -408,9 +384,7 @@ export default function Navbar() {
           </Link>
 
           {navigation}
-
         </div>
-
       </aside>
 
       {/* MOBILE SPACER */}
