@@ -29,12 +29,9 @@ type Team = {
 
 type PositionGroup =
   | "goalkeepers"
-  | "centerBacks"
-  | "fullBacks"
-  | "defensiveMidfielders"
-  | "attackingMidfielders"
-  | "wingers"
-  | "strikers";
+  | "defenders"
+  | "midfielders"
+  | "attackers";
 
 type SquadSection = {
   key: PositionGroup;
@@ -95,7 +92,7 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bCENTRE BACK\b/,
     ])
   ) {
-    return "centerBacks";
+    return "defenders";
   }
 
   // 3) LATERAIS
@@ -116,7 +113,7 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bWING BACK\b/,
     ])
   ) {
-    return "fullBacks";
+    return "defenders";
   }
 
   // 4) VOLANTES / MEIAS CENTRAIS
@@ -134,7 +131,7 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bCENTRAL MIDFIELDER\b/,
     ])
   ) {
-    return "defensiveMidfielders";
+    return "midfielders";
   }
 
   // 5) MEIAS ATACANTES
@@ -148,7 +145,7 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bATTACKING MIDFIELDER\b/,
     ])
   ) {
-    return "attackingMidfielders";
+    return "midfielders";
   }
 
   // 6) PONTAS
@@ -167,7 +164,7 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bEXTREMO\b/,
     ])
   ) {
-    return "wingers";
+    return "attackers";
   }
 
   // 7) ATACANTES
@@ -185,14 +182,14 @@ function getPositionGroup(position: string | null): PositionGroup {
       /\bCENTER FORWARD\b/,
     ])
   ) {
-    return "strikers";
+    return "attackers";
   }
 
-  if (p.startsWith("D")) return "centerBacks";
-  if (p.startsWith("MO")) return "attackingMidfielders";
-  if (p.startsWith("M")) return "defensiveMidfielders";
+  if (p.startsWith("D")) return "defenders";
+  if (p.startsWith("MO")) return "midfielders";
+  if (p.startsWith("M")) return "midfielders";
 
-  return "strikers";
+  return "attackers";
 }
 
 function PlayerCard({
@@ -514,12 +511,9 @@ export default function SquadPage() {
   const sections = useMemo<SquadSection[]>(() => {
     const grouped: Record<PositionGroup, Player[]> = {
       goalkeepers: [],
-      centerBacks: [],
-      fullBacks: [],
-      defensiveMidfielders: [],
-      attackingMidfielders: [],
-      wingers: [],
-      strikers: [],
+      defenders: [],
+      midfielders: [],
+      attackers: [],
     };
 
     players.forEach((player) => {
@@ -535,40 +529,22 @@ export default function SquadPage() {
         players: grouped.goalkeepers,
       },
       {
-        key: "centerBacks",
-        title: "Zagueiros",
-        abbreviation: "ZAG",
-        players: grouped.centerBacks,
+        key: "defenders",
+        title: "Defensores",
+        abbreviation: "DEF",
+        players: grouped.defenders,
       },
       {
-        key: "fullBacks",
-        title: "Laterais",
-        abbreviation: "LAT",
-        players: grouped.fullBacks,
+        key: "midfielders",
+        title: "Meio-campistas",
+        abbreviation: "MID",
+        players: grouped.midfielders,
       },
       {
-        key: "defensiveMidfielders",
-        title: "Volantes",
-        abbreviation: "VOL",
-        players: grouped.defensiveMidfielders,
-      },
-      {
-        key: "attackingMidfielders",
-        title: "Meias Atacantes",
-        abbreviation: "MEI",
-        players: grouped.attackingMidfielders,
-      },
-      {
-        key: "wingers",
-        title: "Pontas",
-        abbreviation: "PON",
-        players: grouped.wingers,
-      },
-      {
-        key: "strikers",
+        key: "attackers",
         title: "Atacantes",
         abbreviation: "ATA",
-        players: grouped.strikers,
+        players: grouped.attackers,
       },
     ];
 
