@@ -76,21 +76,24 @@ export default function AdminPage() {
       }
 
       const {
-        data: hasAdminAccess,
+        data: adminData,
         error: adminError,
       } =
-        await supabase.rpc(
-          "is_site_master"
-        );
+        await supabase
+          .from("admin_users")
+          .select("user_id")
+          .eq(
+            "user_id",
+            user.id
+          )
+          .maybeSingle();
 
       if (
         adminError ||
-        hasAdminAccess !== true
+        !adminData
       ) {
         console.error(
-          "Erro ao verificar acesso administrativo:",
-          adminError,
-          hasAdminAccess
+          adminError
         );
 
         router.replace(
@@ -519,16 +522,6 @@ export default function AdminPage() {
             />
 
             <AdminCard
-              href="/admin/rivalries"
-              eyebrow="Liga"
-              title="Rivalidades"
-              icon="⚔️"
-              description="Veja os 3 rivais definidos por cada clube e acompanhe quais equipes ainda não concluíram suas escolhas."
-              action="VER RIVALIDADES →"
-              color="red"
-            />
-
-            <AdminCard
               href="/admin/users"
               eyebrow="Acessos"
               title="Aprovação de Usuários"
@@ -536,16 +529,6 @@ export default function AdminPage() {
               description="Aprove, recuse ou reabra o acesso dos presidentes antes da entrada na liga."
               action="GERENCIAR USUÁRIOS →"
               color="red"
-            />
-
-            <AdminCard
-              href="/admin/administrators"
-              eyebrow="Permissões"
-              title="Administradores"
-              icon="👑"
-              description="Escolha entre os presidentes quem será Presidente, ADM ou ADM MASTER."
-              action="GERENCIAR ADMINISTRADORES →"
-              color="purple"
             />
 
             <AdminCard
@@ -620,6 +603,16 @@ export default function AdminPage() {
             />
 
             <AdminCard
+              href="/admin/jornal"
+              eyebrow="Comunicação"
+              title="Jornal FriendZone"
+              icon="📰"
+              description="Publique e substitua as imagens de destaque, resultados da rodada e próximos confrontos."
+              action="GERENCIAR JORNAL →"
+              color="green"
+            />
+
+            <AdminCard
               href="/bid"
               eyebrow="Registro oficial"
               title="BID"
@@ -651,6 +644,11 @@ export default function AdminPage() {
             <QuickLink
               href="/auctions"
               text="Leilões públicos"
+            />
+
+            <QuickLink
+              href="/jornal"
+              text="Jornal"
             />
 
             <QuickLink
