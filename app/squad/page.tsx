@@ -13,6 +13,7 @@ type Player = {
   id: number;
   name: string;
   position: string | null;
+  natural_position: string | null;
   age: number | null;
   nationality: string | null;
   ca: number | null;
@@ -64,12 +65,15 @@ function hasAnyPosition(
   return patterns.some((pattern) => pattern.test(position));
 }
 
-function getPositionGroup(position: string | null): PositionGroup {
-  const p = normalizePosition(position);
+function getPositionGroup(player: Player): PositionGroup {
+  const natural = normalizePosition(player.natural_position);
+  const p = normalizePosition(player.position);
 
-  // 1) GOLEIROS
+  // A posição natural manda na organização do elenco.
+  // Assim, por exemplo, Eric Smith fica em Meio-campistas porque
+  // natural_position = "Volante", mesmo podendo atuar também como zagueiro.
   if (
-    hasAnyPosition(p, [
+    hasAnyPosition(natural, [
       /^GR$/,
       /^GK$/,
       /\bGOLEIRO\b/,
@@ -80,34 +84,29 @@ function getPositionGroup(position: string | null): PositionGroup {
     return "goalkeepers";
   }
 
-  // 2) ZAGUEIROS
   if (
-    hasAnyPosition(p, [
-      /^D\s*\(C\)/,
-      /^DC\b/,
-      /^CB\b/,
+    hasAnyPosition(natural, [
+      /\bVOLANTE\b/,
+      /\bMEIO[- ]?CAMPISTA\b/,
+      /\bMEIA CENTRAL\b/,
+      /\bMEIA ATACANTE\b/,
+      /\bDEFENSIVE MIDFIELDER\b/,
+      /\bCENTRAL MIDFIELDER\b/,
+      /\bATTACKING MIDFIELDER\b/,
+    ])
+  ) {
+    return "midfielders";
+  }
+
+  if (
+    hasAnyPosition(natural, [
       /\bZAGUEIRO\b/,
+      /\bDEFENSOR\b/,
+      /\bLATERAL\b/,
+      /\bALA\b/,
       /\bCENTRAL DEFENDER\b/,
       /\bCENTER BACK\b/,
       /\bCENTRE BACK\b/,
-    ])
-  ) {
-    return "defenders";
-  }
-
-  // 3) LATERAIS
-  if (
-    hasAnyPosition(p, [
-      /^D\s*\((D|E|DE)\)/,
-      /^DD\b/,
-      /^DE\b/,
-      /^DR\b/,
-      /^DL\b/,
-      /^RB\b/,
-      /^LB\b/,
-      /^WB\b/,
-      /\bLATERAL\b/,
-      /\bALA\b/,
       /\bRIGHT BACK\b/,
       /\bLEFT BACK\b/,
       /\bWING BACK\b/,
@@ -116,31 +115,40 @@ function getPositionGroup(position: string | null): PositionGroup {
     return "defenders";
   }
 
-  // 4) VOLANTES / MEIAS CENTRAIS
+  if (
+    hasAnyPosition(natural, [
+      /\bPONTA\b/,
+      /\bATACANTE\b/,
+      /\bAVANCADO\b/,
+      /\bEXTREMO\b/,
+      /\bWINGER\b/,
+      /\bSTRIKER\b/,
+      /\bFORWARD\b/,
+      /\bCENTRE FORWARD\b/,
+      /\bCENTER FORWARD\b/,
+    ])
+  ) {
+    return "attackers";
+  }
+
+  // Fallback para registros sem natural_position.
+  // Primeiro identificamos meio-campistas para evitar que jogadores
+  // como "D (C), MD, M (C)" caiam automaticamente em Defensores.
   if (
     hasAnyPosition(p, [
-      /^MD\b/,
-      /^DM\b/,
-      /^VOL\b/,
-      /^M\s*\(C\)/,
-      /^MC\b/,
-      /^CM\b/,
+      /(^|,\s*)MD\b/,
+      /(^|,\s*)DM\b/,
+      /(^|,\s*)VOL\b/,
+      /(^|,\s*)M\s*\(C\)/,
+      /(^|,\s*)MC\b/,
+      /(^|,\s*)CM\b/,
+      /(^|,\s*)MO\s*\(C\)/,
+      /(^|,\s*)AMC\b/,
+      /(^|,\s*)AM\s*\(C\)/,
       /\bVOLANTE\b/,
       /\bDEFENSIVE MIDFIELDER\b/,
       /\bMEIO[- ]?CAMPISTA CENTRAL\b/,
       /\bCENTRAL MIDFIELDER\b/,
-    ])
-  ) {
-    return "midfielders";
-  }
-
-  // 5) MEIAS ATACANTES
-  // Se tiver MO (C), mesmo junto com D/E, entra aqui.
-  if (
-    hasAnyPosition(p, [
-      /^MO\s*\((?:D?C|E?C|C|C[DE])\)/,
-      /^AMC\b/,
-      /^AM\s*\(C\)/,
       /\bMEIA ATACANTE\b/,
       /\bATTACKING MIDFIELDER\b/,
     ])
@@ -148,32 +156,62 @@ function getPositionGroup(position: string | null): PositionGroup {
     return "midfielders";
   }
 
-  // 6) PONTAS
   if (
     hasAnyPosition(p, [
-      /^MO\s*\((D|E|DE)\)/,
-      /^M\s*\((D|E|DE)\)/,
-      /^AML\b/,
-      /^AMR\b/,
-      /^ML\b/,
-      /^MR\b/,
-      /^LW\b/,
-      /^RW\b/,
+      /(^|,\s*)GR\b/,
+      /(^|,\s*)GK\b/,
+      /\bGOLEIRO\b/,
+      /\bGOALKEEPER\b/,
+      /\bGUARDA[- ]?REDES\b/,
+    ])
+  ) {
+    return "goalkeepers";
+  }
+
+  if (
+    hasAnyPosition(p, [
+      /(^|,\s*)D\s*\(C\)/,
+      /(^|,\s*)DC\b/,
+      /(^|,\s*)CB\b/,
+      /(^|,\s*)D\s*\((D|E|DE)\)/,
+      /(^|,\s*)DD\b/,
+      /(^|,\s*)DE\b/,
+      /(^|,\s*)DR\b/,
+      /(^|,\s*)DL\b/,
+      /(^|,\s*)RB\b/,
+      /(^|,\s*)LB\b/,
+      /(^|,\s*)WB\b/,
+      /\bZAGUEIRO\b/,
+      /\bLATERAL\b/,
+      /\bALA\b/,
+      /\bCENTRAL DEFENDER\b/,
+      /\bCENTER BACK\b/,
+      /\bCENTRE BACK\b/,
+      /\bRIGHT BACK\b/,
+      /\bLEFT BACK\b/,
+      /\bWING BACK\b/,
+    ])
+  ) {
+    return "defenders";
+  }
+
+  if (
+    hasAnyPosition(p, [
+      /(^|,\s*)MO\s*\((D|E|DE)\)/,
+      /(^|,\s*)M\s*\((D|E|DE)\)/,
+      /(^|,\s*)AML\b/,
+      /(^|,\s*)AMR\b/,
+      /(^|,\s*)ML\b/,
+      /(^|,\s*)MR\b/,
+      /(^|,\s*)LW\b/,
+      /(^|,\s*)RW\b/,
+      /(^|,\s*)PL\b/,
+      /(^|,\s*)ST\b/,
+      /(^|,\s*)CF\b/,
+      /(^|,\s*)FW\b/,
       /\bPONTA\b/,
       /\bWINGER\b/,
       /\bEXTREMO\b/,
-    ])
-  ) {
-    return "attackers";
-  }
-
-  // 7) ATACANTES
-  if (
-    hasAnyPosition(p, [
-      /^PL\b/,
-      /^ST\b/,
-      /^CF\b/,
-      /^FW\b/,
       /\bATACANTE\b/,
       /\bAVANCADO\b/,
       /\bSTRIKER\b/,
@@ -185,11 +223,9 @@ function getPositionGroup(position: string | null): PositionGroup {
     return "attackers";
   }
 
-  if (p.startsWith("D")) return "defenders";
-  if (p.startsWith("MO")) return "midfielders";
-  if (p.startsWith("M")) return "midfielders";
-
-  return "attackers";
+  // Sem categoria reconhecida: mantém no meio-campo para não criar
+  // uma quinta seção "Outros".
+  return "midfielders";
 }
 
 function PlayerCard({
@@ -340,6 +376,7 @@ export default function SquadPage() {
           id,
           name,
           position,
+          natural_position,
           age,
           nationality,
           ca,
@@ -517,7 +554,7 @@ export default function SquadPage() {
     };
 
     players.forEach((player) => {
-      const group = getPositionGroup(player.position);
+      const group = getPositionGroup(player);
       grouped[group].push(player);
     });
 
