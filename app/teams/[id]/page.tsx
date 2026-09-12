@@ -1317,7 +1317,7 @@ export default function TeamPage() {
           </Link>
         </section>
 
-        <section className="mt-16">
+        <section id="elenco" className="mt-16 scroll-mt-24">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-bold uppercase tracking-widest text-blue-400">
@@ -1396,7 +1396,7 @@ export default function TeamPage() {
           )}
         </section>
 
-        <section className="mt-16">
+        <section id="staff" className="mt-16 scroll-mt-24">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="font-bold uppercase tracking-widest text-purple-400">
