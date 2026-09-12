@@ -118,6 +118,14 @@ function getPositionGroup(
 ): PositionGroup {
   const normalized = normalizeText(position);
 
+  if (!normalized) {
+    return "others";
+  }
+
+  /*
+    GOLEIROS
+    Inclui qualquer variação de GK / goleiro.
+  */
   const goalkeeperTerms = [
     "gk",
     "gol",
@@ -125,63 +133,6 @@ function getPositionGroup(
     "goalkeeper",
     "guarda-redes",
     "guarda redes",
-  ];
-
-  const defenderTerms = [
-    "dc",
-    "cb",
-    "zag",
-    "zagueiro",
-    "defensor",
-    "defender",
-    "central defender",
-    "dl",
-    "dr",
-    "ld",
-    "le",
-    "lb",
-    "rb",
-    "lateral",
-    "left back",
-    "right back",
-    "ala",
-    "wb",
-  ];
-
-  const midfielderTerms = [
-    "dm",
-    "mc",
-    "cm",
-    "vol",
-    "volante",
-    "mei",
-    "meia",
-    "meio",
-    "meio-campista",
-    "meio campista",
-    "midfielder",
-    "am",
-    "ml",
-    "mr",
-    "aml",
-    "amr",
-  ];
-
-  const attackerTerms = [
-    "ata",
-    "st",
-    "ca",
-    "cf",
-    "fw",
-    "pe",
-    "pd",
-    "lw",
-    "rw",
-    "atacante",
-    "avancado",
-    "striker",
-    "forward",
-    "ponta",
   ];
 
   if (
@@ -194,6 +145,43 @@ function getPositionGroup(
     return "goalkeepers";
   }
 
+  /*
+    DEFENSORES
+    Inclui TODOS os zagueiros e laterais.
+  */
+  const defenderTerms = [
+    "dc",
+    "d c",
+    "cb",
+    "zag",
+    "zagueiro",
+    "zagueiros",
+    "defensor",
+    "defensores",
+    "defender",
+    "central defender",
+    "dl",
+    "dr",
+    "d l",
+    "d r",
+    "ld",
+    "le",
+    "lb",
+    "rb",
+    "lateral",
+    "laterais",
+    "lateral direito",
+    "lateral esquerdo",
+    "left back",
+    "right back",
+    "wing back",
+    "wing-back",
+    "wb",
+    "wbl",
+    "wbr",
+    "ala defensivo",
+  ];
+
   if (
     defenderTerms.some(
       (term) =>
@@ -204,15 +192,44 @@ function getPositionGroup(
     return "defenders";
   }
 
-  if (
-    midfielderTerms.some(
-      (term) =>
-        normalized === term ||
-        normalized.includes(term)
-    )
-  ) {
-    return "midfielders";
-  }
+  /*
+    ATACANTES
+    Inclui TODOS os pontas e atacantes.
+
+    IMPORTANTE:
+    Essa verificação vem ANTES dos meio-campistas
+    para AML / AMR / ML / MR não caírem por engano
+    na seção de meio-campo quando forem pontas.
+  */
+  const attackerTerms = [
+    "st",
+    "cf",
+    "fw",
+    "ata",
+    "atacante",
+    "atacantes",
+    "avancado",
+    "avancados",
+    "striker",
+    "forward",
+    "centroavante",
+    "centro-avante",
+    "ponta",
+    "pontas",
+    "ponta direita",
+    "ponta esquerda",
+    "winger",
+    "right winger",
+    "left winger",
+    "rw",
+    "lw",
+    "pd",
+    "pe",
+    "amr",
+    "aml",
+    "mr",
+    "ml",
+  ];
 
   if (
     attackerTerms.some(
@@ -224,8 +241,53 @@ function getPositionGroup(
     return "attackers";
   }
 
+  /*
+    MEIO-CAMPISTAS
+    Inclui TODOS os volantes,
+    meio-campistas e meias-atacantes.
+  */
+  const midfielderTerms = [
+    "dm",
+    "dmc",
+    "vol",
+    "volante",
+    "volantes",
+    "mc",
+    "cm",
+    "meio",
+    "meio-campista",
+    "meio campista",
+    "meio-campistas",
+    "meio campistas",
+    "midfielder",
+    "midfield",
+    "mei",
+    "meia",
+    "meias",
+    "meia central",
+    "meia atacante",
+    "meia-atacante",
+    "meia ofensivo",
+    "meia ofensiva",
+    "attacking midfielder",
+    "advanced playmaker",
+    "am",
+    "amc",
+  ];
+
+  if (
+    midfielderTerms.some(
+      (term) =>
+        normalized === term ||
+        normalized.includes(term)
+    )
+  ) {
+    return "midfielders";
+  }
+
   return "others";
 }
+
 
 function getErrorMessage(error: unknown) {
   if (
