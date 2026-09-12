@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type JournalSlot = "highlight" | "results" | "next_round";
+type JournalSlot =
+  | "highlight"
+  | "results"
+  | "next_round"
+  | "table"
+  | "cup"
+  | "champions";
 
 type JournalImage = {
   slot: JournalSlot;
@@ -16,14 +22,23 @@ const labels: Record<JournalSlot, string> = {
   highlight: "Destaque da Liga",
   results: "Resultados da Rodada",
   next_round: "Próximos Confrontos",
+  table: "Tabela",
+  cup: "Copa",
+  champions: "Champions",
 };
 
 export default function JornalPage() {
-  const [images, setImages] = useState<Record<JournalSlot, JournalImage | null>>({
+  const [images, setImages] = useState<
+    Record<JournalSlot, JournalImage | null>
+  >({
     highlight: null,
     results: null,
     next_round: null,
+    table: null,
+    cup: null,
+    champions: null,
   });
+
   const [loading, setLoading] = useState(true);
 
   const loadJournal = useCallback(async () => {
@@ -43,13 +58,19 @@ export default function JornalPage() {
       highlight: null,
       results: null,
       next_round: null,
+      table: null,
+      cup: null,
+      champions: null,
     };
 
     for (const row of (data || []) as JournalImage[]) {
       if (
         row.slot === "highlight" ||
         row.slot === "results" ||
-        row.slot === "next_round"
+        row.slot === "next_round" ||
+        row.slot === "table" ||
+        row.slot === "cup" ||
+        row.slot === "champions"
       ) {
         nextState[row.slot] = row;
       }
@@ -93,15 +114,18 @@ export default function JornalPage() {
 
     return (
       <section>
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
-              FriendZone League FM
-            </p>
-            <h2 className={`${large ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"} mt-1 font-black`}>
-              {labels[slot]}
-            </h2>
-          </div>
+        <div className="mb-4">
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
+            FriendZone League FM
+          </p>
+
+          <h2
+            className={`mt-1 font-black ${
+              large ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
+            }`}
+          >
+            {labels[slot]}
+          </h2>
         </div>
 
         <div
@@ -117,9 +141,9 @@ export default function JornalPage() {
             />
           ) : (
             <div
-              className={`flex ${
+              className={`flex items-center justify-center p-10 text-center text-zinc-500 ${
                 large ? "min-h-[320px]" : "min-h-[240px]"
-              } items-center justify-center p-10 text-center text-zinc-500`}
+              }`}
             >
               <div>
                 <div className="text-5xl">📰</div>
@@ -147,7 +171,7 @@ export default function JornalPage() {
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Destaques, resultados e próximos confrontos da liga.
+            Destaques, resultados, tabela e competições da liga.
           </p>
         </header>
 
@@ -162,6 +186,15 @@ export default function JornalPage() {
             <div className="grid grid-cols-1 gap-10 xl:grid-cols-2">
               <ImageSection slot="results" />
               <ImageSection slot="next_round" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-10 xl:grid-cols-2">
+              <ImageSection slot="table" />
+              <ImageSection slot="cup" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-10">
+              <ImageSection slot="champions" />
             </div>
           </div>
         )}

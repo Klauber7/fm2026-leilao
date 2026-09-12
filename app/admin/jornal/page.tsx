@@ -3,7 +3,13 @@
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type JournalSlot = "highlight" | "results" | "next_round";
+type JournalSlot =
+  | "highlight"
+  | "results"
+  | "next_round"
+  | "table"
+  | "cup"
+  | "champions";
 
 type JournalImage = {
   slot: JournalSlot;
@@ -32,25 +38,53 @@ const slotConfig: Array<{
     title: "Próximos Confrontos",
     description: "Arte com os jogos da próxima rodada.",
   },
+  {
+    slot: "table",
+    title: "Tabela",
+    description: "Arte com a classificação atual da liga.",
+  },
+  {
+    slot: "cup",
+    title: "Copa",
+    description: "Arte com informações da Copa.",
+  },
+  {
+    slot: "champions",
+    title: "Champions",
+    description: "Arte com informações da Champions.",
+  },
 ];
 
 export default function AdminJornalPage() {
-  const [images, setImages] = useState<Record<JournalSlot, JournalImage | null>>({
+  const [images, setImages] = useState<
+    Record<JournalSlot, JournalImage | null>
+  >({
     highlight: null,
     results: null,
     next_round: null,
+    table: null,
+    cup: null,
+    champions: null,
   });
 
   const [files, setFiles] = useState<Record<JournalSlot, File | null>>({
     highlight: null,
     results: null,
     next_round: null,
+    table: null,
+    cup: null,
+    champions: null,
   });
 
-  const [previewUrls, setPreviewUrls] = useState<Record<JournalSlot, string | null>>({
+  const [previewUrls, setPreviewUrls] = useState<
+    Record<JournalSlot, string | null>
+  >({
     highlight: null,
     results: null,
     next_round: null,
+    table: null,
+    cup: null,
+    champions: null,
   });
 
   const [uploading, setUploading] = useState<JournalSlot | null>(null);
@@ -102,13 +136,19 @@ export default function AdminJornalPage() {
       highlight: null,
       results: null,
       next_round: null,
+      table: null,
+      cup: null,
+      champions: null,
     };
 
     for (const row of (data || []) as JournalImage[]) {
       if (
         row.slot === "highlight" ||
         row.slot === "results" ||
-        row.slot === "next_round"
+        row.slot === "next_round" ||
+        row.slot === "table" ||
+        row.slot === "cup" ||
+        row.slot === "champions"
       ) {
         nextState[row.slot] = row;
       }
@@ -123,7 +163,9 @@ export default function AdminJornalPage() {
 
     return () => {
       Object.values(previewUrls).forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
+        if (url) {
+          URL.revokeObjectURL(url);
+        }
       });
     };
   }, [loadData]);
@@ -188,7 +230,11 @@ export default function AdminJornalPage() {
       const oldItem = images[slot];
       const extension =
         file.name.split(".").pop()?.toLowerCase() ||
-        (file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg");
+        (file.type === "image/png"
+          ? "png"
+          : file.type === "image/webp"
+          ? "webp"
+          : "jpg");
 
       const storagePath = `${slot}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
@@ -324,7 +370,7 @@ export default function AdminJornalPage() {
                 key={slot}
                 className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900"
               >
-                <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.4fr_1fr]">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
                   <div className="flex min-h-[280px] items-center justify-center bg-zinc-950">
                     {preview ? (
                       <img
@@ -347,13 +393,9 @@ export default function AdminJornalPage() {
                       Jornal FriendZone
                     </p>
 
-                    <h2 className="mt-2 text-3xl font-black">
-                      {title}
-                    </h2>
+                    <h2 className="mt-2 text-3xl font-black">{title}</h2>
 
-                    <p className="mt-3 text-zinc-400">
-                      {description}
-                    </p>
+                    <p className="mt-3 text-zinc-400">{description}</p>
 
                     <label className="mt-7 block">
                       <span className="mb-2 block text-sm font-black text-zinc-300">
@@ -374,15 +416,15 @@ export default function AdminJornalPage() {
                       onClick={() => void upload(slot)}
                       className="mt-5 w-full rounded-xl bg-green-600 px-5 py-4 font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {uploading === slot
-                        ? "Enviando..."
-                        : "Atualizar imagem"}
+                      {uploading === slot ? "Enviando..." : "Atualizar imagem"}
                     </button>
 
                     {images[slot]?.updated_at && (
                       <p className="mt-4 text-xs font-bold text-zinc-600">
                         Última atualização:{" "}
-                        {new Date(images[slot]!.updated_at).toLocaleString("pt-BR")}
+                        {new Date(images[slot]!.updated_at).toLocaleString(
+                          "pt-BR"
+                        )}
                       </p>
                     )}
                   </div>
