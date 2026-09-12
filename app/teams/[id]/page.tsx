@@ -763,12 +763,10 @@ export default function TeamPage() {
   async function releaseStaff(member: Coach) {
     if (releasingStaffId !== null) return;
 
-    const refund = Number(member.value || 0) * 0.5;
     const confirmed = window.confirm(
       `Dispensar ${member.name}?\n\n` +
-        `Valor do staff: ${money(member.value)}\n` +
-        `Valor devolvido ao clube (50%): ${money(refund)}\n\n` +
-        "O profissional voltará ao Mercado de Treinadores."
+        `O clube receberá 50% do valor realmente pago por esse profissional.\n\n` +
+        `O staff voltará ao Mercado de Treinadores pelo seu preço normal: ${money(member.value)}.`
     );
 
     if (!confirmed) return;
@@ -801,7 +799,7 @@ export default function TeamPage() {
     const returnedRefund =
       data && typeof data === "object" && "refund" in data
         ? Number((data as { refund?: number }).refund || 0)
-        : refund;
+        : 0;
 
     setSuccessMessage(
       `${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orçamento do clube.`
