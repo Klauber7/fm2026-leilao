@@ -110,6 +110,7 @@ function getPositionGroup(
     normalized === "fw" ||
     normalized === "ata" ||
     normalized === "pl" ||
+    /(^|[\\s,/])pl(?=\\s|\\(|$)/.test(normalized) ||
     normalized.includes("atacante") ||
     normalized.includes("avancado") ||
     normalized.includes("striker") ||
