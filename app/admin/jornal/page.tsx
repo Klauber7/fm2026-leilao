@@ -3,98 +3,18 @@
 import { ChangeEvent, useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
-type JournalSlot =
-  | "highlight"
-  | "tv_matches"
-  | "results"
-  | "next_round"
-  | "table"
-  | "cup"
-  | "champions";
-
 type JournalImage = {
-  slot: JournalSlot;
+  slot: "highlight";
   image_url: string;
   storage_path: string;
   updated_at: string;
 };
 
-const slotConfig: Array<{
-  slot: JournalSlot;
-  title: string;
-  description: string;
-  featured?: boolean;
-}> = [
-  {
-    slot: "highlight",
-    title: "Destaque da Liga",
-    description: "Imagem principal do Jornal FriendZone.",
-  },
-  {
-    slot: "tv_matches",
-    title: "Confrontos Televisionados",
-    description: "Arte especial com os jogos televisionados da rodada.",
-    featured: true,
-  },
-  {
-    slot: "results",
-    title: "Resultados da Rodada",
-    description: "Arte com os resultados da rodada mais recente.",
-  },
-  {
-    slot: "next_round",
-    title: "Próximos Confrontos",
-    description: "Arte com os jogos da próxima rodada.",
-  },
-  {
-    slot: "table",
-    title: "Tabela",
-    description: "Arte com a classificação atual da liga.",
-  },
-  {
-    slot: "cup",
-    title: "Copa",
-    description: "Arte com informações da Copa.",
-  },
-  {
-    slot: "champions",
-    title: "Champions",
-    description: "Arte com informações da Champions.",
-  },
-];
-
 export default function AdminJornalPage() {
-  const [images, setImages] = useState<Record<JournalSlot, JournalImage | null>>({
-    highlight: null,
-    tv_matches: null,
-    results: null,
-    next_round: null,
-    table: null,
-    cup: null,
-    champions: null,
-  });
-
-  const [files, setFiles] = useState<Record<JournalSlot, File | null>>({
-    highlight: null,
-    tv_matches: null,
-    results: null,
-    next_round: null,
-    table: null,
-    cup: null,
-    champions: null,
-  });
-
-  const [previewUrls, setPreviewUrls] = useState<Record<JournalSlot, string | null>>({
-    highlight: null,
-    tv_matches: null,
-    results: null,
-    next_round: null,
-    table: null,
-    cup: null,
-    champions: null,
-  });
-
-  const [uploading, setUploading] = useState<JournalSlot | null>(null);
+  const [image, setImage] = useState<JournalImage | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [message, setMessage] = useState("");
@@ -131,81 +51,46 @@ export default function AdminJornalPage() {
 
     const { data, error } = await supabase
       .from("journal_images")
-      .select("slot, image_url, storage_path, updated_at");
+      .select("slot, image_url, storage_path, updated_at")
+      .eq("slot", "highlight")
+      .maybeSingle();
 
     if (error) {
-      setErrorMessage("Não foi possível carregar as imagens atuais.");
+      setErrorMessage("Não foi possível carregar a imagem atual.");
       setLoading(false);
       return;
     }
 
-    const nextState: Record<JournalSlot, JournalImage | null> = {
-      highlight: null,
-      tv_matches: null,
-      results: null,
-      next_round: null,
-      table: null,
-      cup: null,
-      champions: null,
-    };
-
-    for (const row of (data || []) as JournalImage[]) {
-      if (
-        row.slot === "highlight" ||
-        row.slot === "tv_matches" ||
-        row.slot === "results" ||
-        row.slot === "next_round" ||
-        row.slot === "table" ||
-        row.slot === "cup" ||
-        row.slot === "champions"
-      ) {
-        nextState[row.slot] = row;
-      }
-    }
-
-    setImages(nextState);
+    setImage((data as JournalImage | null) ?? null);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     void loadData();
-
-    return () => {
-      Object.values(previewUrls).forEach((url) => {
-        if (url) URL.revokeObjectURL(url);
-      });
-    };
   }, [loadData]);
 
-  function handleFileChange(
-    slot: JournalSlot,
-    event: ChangeEvent<HTMLInputElement>
-  ) {
-    const file = event.target.files?.[0] || null;
-
-    setFiles((current) => ({
-      ...current,
-      [slot]: file,
-    }));
-
-    setPreviewUrls((current) => {
-      if (current[slot]) {
-        URL.revokeObjectURL(current[slot] as string);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
+    };
+  }, [previewUrl]);
 
-      return {
-        ...current,
-        [slot]: file ? URL.createObjectURL(file) : null,
-      };
-    });
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFile = event.target.files?.[0] || null;
 
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setFile(selectedFile);
+    setPreviewUrl(selectedFile ? URL.createObjectURL(selectedFile) : null);
     setMessage("");
     setErrorMessage("");
   }
 
-  async function upload(slot: JournalSlot) {
-    const file = files[slot];
-
+  async function upload() {
     if (!file) {
       setErrorMessage("Escolha uma imagem antes de atualizar.");
       return;
@@ -221,7 +106,7 @@ export default function AdminJornalPage() {
       return;
     }
 
-    setUploading(slot);
+    setUploading(true);
     setMessage("");
     setErrorMessage("");
 
@@ -234,8 +119,6 @@ export default function AdminJornalPage() {
         throw new Error("Sessão expirada.");
       }
 
-      const oldItem = images[slot];
-
       const extension =
         file.name.split(".").pop()?.toLowerCase() ||
         (file.type === "image/png"
@@ -244,7 +127,7 @@ export default function AdminJornalPage() {
             ? "webp"
             : "jpg");
 
-      const storagePath = `${slot}/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+      const storagePath = `highlight/${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from("journal")
@@ -254,7 +137,9 @@ export default function AdminJornalPage() {
           contentType: file.type,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
       const {
         data: { publicUrl },
@@ -264,7 +149,7 @@ export default function AdminJornalPage() {
         .from("journal_images")
         .upsert(
           {
-            slot,
+            slot: "highlight",
             image_url: publicUrl,
             storage_path: storagePath,
             updated_at: new Date().toISOString(),
@@ -280,25 +165,18 @@ export default function AdminJornalPage() {
         throw saveError;
       }
 
-      if (oldItem?.storage_path && oldItem.storage_path !== storagePath) {
-        await supabase.storage.from("journal").remove([oldItem.storage_path]);
+      if (image?.storage_path && image.storage_path !== storagePath) {
+        await supabase.storage.from("journal").remove([image.storage_path]);
       }
 
-      if (previewUrls[slot]) {
-        URL.revokeObjectURL(previewUrls[slot] as string);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
       }
 
-      setFiles((current) => ({
-        ...current,
-        [slot]: null,
-      }));
+      setFile(null);
+      setPreviewUrl(null);
+      setMessage("Jornal atualizado com sucesso.");
 
-      setPreviewUrls((current) => ({
-        ...current,
-        [slot]: null,
-      }));
-
-      setMessage(`${slotConfig.find((item) => item.slot === slot)?.title || "Imagem"} atualizada com sucesso.`);
       await loadData();
     } catch (error) {
       console.error(error);
@@ -306,10 +184,10 @@ export default function AdminJornalPage() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Não foi possível atualizar a imagem."
+          : "Não foi possível atualizar o Jornal."
       );
     } finally {
-      setUploading(null);
+      setUploading(false);
     }
   }
 
@@ -338,20 +216,22 @@ export default function AdminJornalPage() {
     );
   }
 
+  const preview = previewUrl || image?.image_url || null;
+
   return (
     <main className="min-h-screen bg-[#08090b] px-4 py-8 text-white md:px-8 md:py-10">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-6xl">
         <header className="mb-10">
           <p className="text-sm font-black uppercase tracking-[0.22em] text-green-400">
             Administração
           </p>
 
           <h1 className="mt-2 text-4xl font-black md:text-5xl">
-            📰 Gerenciar Jornal
+            📰 Jornal
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Escolha a arte pronta e clique em Atualizar imagem.
+            Escolha uma foto para publicar no Jornal.
           </p>
         </header>
 
@@ -367,95 +247,69 @@ export default function AdminJornalPage() {
           </div>
         )}
 
-        <div className="space-y-8">
-          {slotConfig.map(({ slot, title, description, featured }) => {
-            const preview = previewUrls[slot] || images[slot]?.image_url || null;
-
-            return (
-              <section
-                key={slot}
-                className={`overflow-hidden rounded-3xl border ${
-                  featured
-                    ? "border-yellow-500/40 bg-yellow-500/[0.04]"
-                    : "border-zinc-800 bg-zinc-900"
-                }`}
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
-                  <div className="flex min-h-[280px] items-center justify-center bg-zinc-950">
-                    {preview ? (
-                      <img
-                        src={preview}
-                        alt={title}
-                        className="h-auto max-h-[560px] w-full object-contain"
-                      />
-                    ) : (
-                      <div className="p-8 text-center text-zinc-500">
-                        <div className="text-5xl">{featured ? "📺" : "🖼️"}</div>
-                        <p className="mt-3 font-bold">
-                          Nenhuma imagem publicada.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-6 md:p-8">
-                    <p
-                      className={`text-sm font-black uppercase tracking-widest ${
-                        featured ? "text-yellow-400" : "text-green-400"
-                      }`}
-                    >
-                      {featured ? "Destaque Especial" : "Jornal FriendZone"}
-                    </p>
-
-                    <h2 className="mt-2 text-3xl font-black">
-                      {featured ? "📺 " : ""}
-                      {title}
-                    </h2>
-
-                    <p className="mt-3 text-zinc-400">
-                      {description}
-                    </p>
-
-                    <label className="mt-7 block">
-                      <span className="mb-2 block text-sm font-black text-zinc-300">
-                        Escolher imagem
-                      </span>
-
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        onChange={(event) => handleFileChange(slot, event)}
-                        className="block w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-green-600 file:px-4 file:py-2 file:font-black file:text-white hover:file:bg-green-500"
-                      />
-                    </label>
-
-                    <button
-                      type="button"
-                      disabled={!files[slot] || uploading !== null}
-                      onClick={() => void upload(slot)}
-                      className={`mt-5 w-full rounded-xl px-5 py-4 font-black text-white transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                        featured
-                          ? "bg-yellow-600 hover:bg-yellow-500"
-                          : "bg-green-600 hover:bg-green-500"
-                      }`}
-                    >
-                      {uploading === slot
-                        ? "Enviando..."
-                        : "Atualizar imagem"}
-                    </button>
-
-                    {images[slot]?.updated_at && (
-                      <p className="mt-4 text-xs font-bold text-zinc-600">
-                        Última atualização:{" "}
-                        {new Date(images[slot]!.updated_at).toLocaleString("pt-BR")}
-                      </p>
-                    )}
-                  </div>
+        <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]">
+            <div className="flex min-h-[320px] items-center justify-center bg-zinc-950">
+              {preview ? (
+                <img
+                  src={preview}
+                  alt="Jornal"
+                  className="h-auto max-h-[720px] w-full object-contain"
+                />
+              ) : (
+                <div className="p-8 text-center text-zinc-500">
+                  <div className="text-5xl">📰</div>
+                  <p className="mt-3 font-bold">
+                    Nenhuma imagem publicada.
+                  </p>
                 </div>
-              </section>
-            );
-          })}
-        </div>
+              )}
+            </div>
+
+            <div className="p-6 md:p-8">
+              <p className="text-sm font-black uppercase tracking-widest text-green-400">
+                Jornal FriendZone
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black">
+                Jornal
+              </h2>
+
+              <p className="mt-3 text-zinc-400">
+                Esta é a única imagem exibida na página do Jornal.
+              </p>
+
+              <label className="mt-7 block">
+                <span className="mb-2 block text-sm font-black text-zinc-300">
+                  Escolher foto
+                </span>
+
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileChange}
+                  className="block w-full rounded-xl border border-zinc-700 bg-zinc-950 p-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-green-600 file:px-4 file:py-2 file:font-black file:text-white hover:file:bg-green-500"
+                />
+              </label>
+
+              <button
+                type="button"
+                disabled={!file || uploading}
+                onClick={() => void upload()}
+                className="mt-5 w-full rounded-xl bg-green-600 px-5 py-4 font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {uploading ? "Enviando..." : "Atualizar Jornal"}
+              </button>
+
+              {image?.updated_at && (
+                <p className="mt-4 text-xs font-bold text-zinc-600">
+                  Última atualização:{" "}
+                  {new Date(image.updated_at).toLocaleString("pt-BR")}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );
