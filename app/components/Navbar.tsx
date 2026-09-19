@@ -39,6 +39,26 @@ const mainMenu: MenuItem[] = [
     icon: "🧥",
   },
   {
+    href: "/premier-league",
+    label: "FriendZone Premier League",
+    icon: "🏆",
+  },
+  {
+    href: "/champions-league",
+    label: "FriendZone Champions League",
+    icon: "⭐",
+  },
+  {
+    href: "/friendzone-cup",
+    label: "FriendZone Cup",
+    icon: "🏆",
+  },
+  {
+    href: "/super-cup",
+    label: "FriendZone Super Cup",
+    icon: "🥇",
+  },
+  {
     href: "/bid",
     label: "BID",
     icon: "📢",
