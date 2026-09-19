@@ -38,6 +38,7 @@ export default function PremierLeaguePage() {
         "Erro ao carregar FriendZone Premier League:",
         error
       );
+
       setLoading(false);
       return;
     }
@@ -80,6 +81,19 @@ export default function PremierLeaguePage() {
     return map;
   }, [images]);
 
+  const rounds = Array.from(
+    { length: 38 },
+    (_, index) => index + 1
+  );
+
+  const publishedRounds = rounds.filter((round) =>
+    imageMap.has(getRoundSlot(round))
+  );
+
+  const publishedAwards = rounds.filter((round) =>
+    imageMap.has(getAwardSlot(round))
+  );
+
   function ImageCard({
     slot,
     title,
@@ -92,6 +106,10 @@ export default function PremierLeaguePage() {
     large?: boolean;
   }) {
     const item = imageMap.get(slot);
+
+    if (!item) {
+      return null;
+    }
 
     return (
       <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
@@ -122,30 +140,15 @@ export default function PremierLeaguePage() {
             large ? "min-h-[360px]" : "min-h-[260px]"
           }`}
         >
-          {item ? (
-            <img
-              src={item.image_url}
-              alt={title}
-              className="h-auto max-h-[900px] w-full object-contain"
-            />
-          ) : (
-            <div className="p-8 text-center text-zinc-600">
-              <div className="text-5xl">🏆</div>
-
-              <p className="mt-4 font-bold">
-                Nenhuma imagem publicada.
-              </p>
-            </div>
-          )}
+          <img
+            src={item.image_url}
+            alt={title}
+            className="h-auto max-h-[900px] w-full object-contain"
+          />
         </div>
       </section>
     );
   }
-
-  const rounds = Array.from(
-    { length: 38 },
-    (_, index) => index + 1
-  );
 
   return (
     <main className="min-h-screen bg-[#08090b] px-4 py-8 text-white md:px-8 md:py-10">
@@ -161,7 +164,7 @@ export default function PremierLeaguePage() {
 
           <p className="mt-3 max-w-3xl text-zinc-400">
             Rodadas, classificação, artilharia,
-            melhor jogador e premiações da competição.
+            melhor jogador e premiações em dinheiro.
           </p>
         </header>
 
@@ -172,94 +175,103 @@ export default function PremierLeaguePage() {
         ) : (
           <div className="space-y-16">
             {/* TABELA */}
-            <section>
-              <div className="mb-6">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
-                  Classificação
-                </p>
+            {imageMap.has("table") && (
+              <section>
+                <div className="mb-6">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
+                    Classificação
+                  </p>
 
-                <h2 className="mt-1 text-3xl font-black md:text-4xl">
-                  📊 Tabela
-                </h2>
-              </div>
+                  <h2 className="mt-1 text-3xl font-black md:text-4xl">
+                    📊 Tabela
+                  </h2>
+                </div>
 
-              <ImageCard
-                slot="table"
-                title="Tabela da Premier League"
-                large
-              />
-            </section>
+                <ImageCard
+                  slot="table"
+                  title="Tabela da Premier League"
+                  large
+                />
+              </section>
+            )}
 
             {/* DESTAQUES */}
-            <section>
-              <div className="mb-6">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
-                  Destaques
-                </p>
+            {(imageMap.has("top_scorer") ||
+              imageMap.has("best_player")) && (
+              <section>
+                <div className="mb-6">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
+                    Destaques
+                  </p>
 
-                <h2 className="mt-1 text-3xl font-black md:text-4xl">
-                  ⭐ Melhores da Competição
-                </h2>
-              </div>
+                  <h2 className="mt-1 text-3xl font-black md:text-4xl">
+                    ⭐ Melhores da Competição
+                  </h2>
+                </div>
 
-              <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-                <ImageCard
-                  slot="top_scorer"
-                  title="⚽ Artilheiro"
-                />
-
-                <ImageCard
-                  slot="best_player"
-                  title="👑 Melhor Jogador"
-                />
-              </div>
-            </section>
-
-            {/* 38 RODADAS */}
-            <section>
-              <div className="mb-6">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
-                  Temporada
-                </p>
-
-                <h2 className="mt-1 text-3xl font-black md:text-4xl">
-                  ⚽ 38 Rodadas
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-                {rounds.map((round) => (
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
                   <ImageCard
-                    key={round}
-                    slot={getRoundSlot(round)}
-                    title={`Rodada ${round}`}
+                    slot="top_scorer"
+                    title="⚽ Artilheiro"
                   />
-                ))}
-              </div>
-            </section>
 
-            {/* 38 PRÊMIOS */}
-            <section>
-              <div className="mb-6">
-                <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-400">
-                  Premiações
-                </p>
-
-                <h2 className="mt-1 text-3xl font-black md:text-4xl">
-                  🏅 Prêmios das Rodadas
-                </h2>
-              </div>
-
-              <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-                {rounds.map((round) => (
                   <ImageCard
-                    key={round}
-                    slot={getAwardSlot(round)}
-                    title={`Prêmio da Rodada ${round}`}
+                    slot="best_player"
+                    title="👑 Melhor Jogador"
                   />
-                ))}
-              </div>
-            </section>
+                </div>
+              </section>
+            )}
+
+            {/* RODADAS */}
+            {publishedRounds.length > 0 && (
+              <section>
+                <div className="mb-6">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-green-400">
+                    Temporada
+                  </p>
+
+                  <h2 className="mt-1 text-3xl font-black md:text-4xl">
+                    ⚽ Rodadas
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+                  {publishedRounds.map((round) => (
+                    <ImageCard
+                      key={round}
+                      slot={getRoundSlot(round)}
+                      title={`Rodada ${round}`}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* PREMIAÇÕES EM DINHEIRO */}
+            {publishedAwards.length > 0 && (
+              <section>
+                <div className="mb-6">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-400">
+                    Premiações
+                  </p>
+
+                  <h2 className="mt-1 text-3xl font-black md:text-4xl">
+                    💰 Premiações em Dinheiro
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
+                  {publishedAwards.map((round) => (
+                    <ImageCard
+                      key={round}
+                      slot={getAwardSlot(round)}
+                      title={`Rodada ${round} — Premiação em Dinheiro`}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </div>
