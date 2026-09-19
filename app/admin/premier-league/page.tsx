@@ -17,12 +17,6 @@ type CompetitionImage = {
   updated_at: string;
 };
 
-type SlotConfig = {
-  slot: string;
-  title: string;
-  group: "main" | "round" | "award";
-};
-
 const COMPETITION = "premier_league";
 
 function getRoundSlot(round: number) {
@@ -43,6 +37,8 @@ export default function AdminPremierLeaguePage() {
   const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [selectedRound, setSelectedRound] = useState(1);
+  const [selectedAwardRound, setSelectedAwardRound] = useState(1);
 
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -52,39 +48,6 @@ export default function AdminPremierLeaguePage() {
     []
   );
 
-  const slots = useMemo<SlotConfig[]>(() => {
-    const mainSlots: SlotConfig[] = [
-      {
-        slot: "table",
-        title: "Tabela",
-        group: "main",
-      },
-      {
-        slot: "top_scorer",
-        title: "Artilheiro",
-        group: "main",
-      },
-      {
-        slot: "best_player",
-        title: "Melhor Jogador",
-        group: "main",
-      },
-    ];
-
-    const roundSlots: SlotConfig[] = rounds.map((round) => ({
-      slot: getRoundSlot(round),
-      title: `Rodada ${round}`,
-      group: "round",
-    }));
-
-    const awardSlots: SlotConfig[] = rounds.map((round) => ({
-      slot: getAwardSlot(round),
-      title: `Prêmio da Rodada ${round}`,
-      group: "award",
-    }));
-
-    return [...mainSlots, ...roundSlots, ...awardSlots];
-  }, [rounds]);
 
   const imageMap = useMemo(() => {
     const map = new Map<string, CompetitionImage>();
@@ -111,13 +74,13 @@ export default function AdminPremierLeaguePage() {
       return;
     }
 
-    const { data: adminRow, error: adminError } = await supabase
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { data: adminRole, error: adminError } =
+      await supabase.rpc("get_my_admin_role");
 
-    if (adminError || !adminRow) {
+    if (
+      adminError ||
+      (adminRole !== "owner" && adminRole !== "master")
+    ) {
       setAuthorized(false);
       setLoading(false);
       return;
@@ -286,7 +249,17 @@ export default function AdminPremierLeaguePage() {
       }));
 
       const title =
-        slots.find((item) => item.slot === slot)?.title || slot;
+        slot === "table"
+          ? "Tabela"
+          : slot === "top_scorer"
+            ? "Artilheiro"
+            : slot === "best_player"
+              ? "Melhor Jogador"
+              : slot.startsWith("round_")
+                ? `Rodada ${Number(slot.replace("round_", ""))}`
+                : slot.startsWith("award_")
+                  ? `Premiação da Rodada ${Number(slot.replace("award_", ""))}`
+                  : slot;
 
       setMessage(`${title} atualizado com sucesso.`);
 
@@ -427,7 +400,7 @@ export default function AdminPremierLeaguePage() {
 
           <p className="mt-3 text-zinc-400">
             Gerencie as 38 rodadas, tabela, artilheiro,
-            melhor jogador e os 38 prêmios da competição.
+            melhor jogador e as premiações em dinheiro da competição.
           </p>
         </header>
 
@@ -484,20 +457,41 @@ export default function AdminPremierLeaguePage() {
               <h2 className="mt-1 text-3xl font-black">
                 ⚽ 38 Rodadas
               </h2>
+
+              <p className="mt-2 text-zinc-400">
+                Escolha a rodada que deseja publicar ou atualizar.
+              </p>
             </div>
 
-            <div className="space-y-8">
-              {rounds.map((round) => (
-                <UploadCard
-                  key={round}
-                  slot={getRoundSlot(round)}
-                  title={`Rodada ${round}`}
-                />
-              ))}
+            <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+              <label className="block">
+                <span className="mb-2 block text-sm font-black text-zinc-300">
+                  Selecionar rodada
+                </span>
+
+                <select
+                  value={selectedRound}
+                  onChange={(event) =>
+                    setSelectedRound(Number(event.target.value))
+                  }
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 font-bold text-white outline-none focus:border-green-500"
+                >
+                  {rounds.map((round) => (
+                    <option key={round} value={round}>
+                      Rodada {round}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
+
+            <UploadCard
+              slot={getRoundSlot(selectedRound)}
+              title={`Rodada ${selectedRound}`}
+            />
           </section>
 
-          {/* PRÊMIOS */}
+          {/* PREMIAÇÕES */}
           <section>
             <div className="mb-6">
               <p className="text-sm font-black uppercase tracking-[0.2em] text-yellow-400">
@@ -505,19 +499,40 @@ export default function AdminPremierLeaguePage() {
               </p>
 
               <h2 className="mt-1 text-3xl font-black">
-                🏅 38 Prêmios
+                💰 Premiação por Rodada
               </h2>
+
+              <p className="mt-2 text-zinc-400">
+                Escolha a rodada e publique a arte com o valor da premiação em dinheiro.
+              </p>
             </div>
 
-            <div className="space-y-8">
-              {rounds.map((round) => (
-                <UploadCard
-                  key={round}
-                  slot={getAwardSlot(round)}
-                  title={`Prêmio da Rodada ${round}`}
-                />
-              ))}
+            <div className="mb-6 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+              <label className="block">
+                <span className="mb-2 block text-sm font-black text-zinc-300">
+                  Selecionar rodada
+                </span>
+
+                <select
+                  value={selectedAwardRound}
+                  onChange={(event) =>
+                    setSelectedAwardRound(Number(event.target.value))
+                  }
+                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 font-bold text-white outline-none focus:border-yellow-500"
+                >
+                  {rounds.map((round) => (
+                    <option key={round} value={round}>
+                      Rodada {round}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
+
+            <UploadCard
+              slot={getAwardSlot(selectedAwardRound)}
+              title={`Premiação em Dinheiro — Rodada ${selectedAwardRound}`}
+            />
           </section>
         </div>
       </div>

@@ -76,25 +76,18 @@ export default function AdminPage() {
       }
 
       const {
-        data: adminData,
+        data: roleData,
         error: adminError,
-      } =
-        await supabase
-          .from("admin_users")
-          .select("user_id")
-          .eq(
-            "user_id",
-            user.id
-          )
-          .maybeSingle();
+      } = await supabase.rpc(
+        "get_my_admin_role"
+      );
 
       if (
         adminError ||
-        !adminData
+        (roleData !== "owner" &&
+          roleData !== "master")
       ) {
-        console.error(
-          adminError
-        );
+        console.error(adminError);
 
         router.replace(
           "/dashboard"
@@ -602,6 +595,17 @@ export default function AdminPage() {
               color="orange"
             />
 
+
+            <AdminCard
+              href="/admin/premier-league"
+              eyebrow="Competição"
+              title="Premier League"
+              icon="🏆"
+              description="Gerencie as 38 rodadas, tabela, artilheiro, melhor jogador e as premiações da FriendZone Premier."
+              action="GERENCIAR PREMIER →"
+              color="yellow"
+            />
+
             <AdminCard
               href="/admin/jornal"
               eyebrow="Comunicação"
@@ -644,6 +648,11 @@ export default function AdminPage() {
             <QuickLink
               href="/auctions"
               text="Leilões públicos"
+            />
+
+            <QuickLink
+              href="/premier-league"
+              text="Premier League"
             />
 
             <QuickLink
