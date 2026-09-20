@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabase";
 
 const COMPETITION = "champions_league";
 
@@ -72,8 +72,7 @@ const SECTIONS: {
   {
     slot: "awards",
     title: "Premiação",
-    description:
-      "Premiações oficiais da Champions Cup.",
+    description: "Premiações oficiais da Champions Cup.",
     icon: "💰",
   },
 ];
@@ -133,7 +132,6 @@ export default function ChampionsLeagueAdminPage() {
       }
 
       setAuthorized(true);
-
       await loadImages();
     } catch (error) {
       console.error("Erro ao verificar acesso:", error);
@@ -159,7 +157,6 @@ export default function ChampionsLeagueAdminPage() {
 
     (data || []).forEach((item) => {
       const record = item as ImageRecord;
-
       mapped[record.slot as Slot] = record;
     });
 
@@ -170,9 +167,7 @@ export default function ChampionsLeagueAdminPage() {
     slot: Slot,
     file: File | undefined
   ) {
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     setFiles((prev) => ({
       ...prev,
@@ -226,11 +221,9 @@ export default function ChampionsLeagueAdminPage() {
 
       if (uploadError) {
         console.error("Erro ao fazer upload:", uploadError);
-
         setMessage(
           `Erro ao enviar imagem: ${uploadError.message}`
         );
-
         return;
       }
 
@@ -266,7 +259,6 @@ export default function ChampionsLeagueAdminPage() {
         setMessage(
           `Erro ao salvar no banco: ${dbError.message}`
         );
-
         return;
       }
 
@@ -274,24 +266,14 @@ export default function ChampionsLeagueAdminPage() {
         oldImage?.storage_path &&
         oldImage.storage_path !== storagePath
       ) {
-        const { error: removeOldError } =
-          await supabase.storage
-            .from("competitions")
-            .remove([oldImage.storage_path]);
-
-        if (removeOldError) {
-          console.warn(
-            "Imagem antiga não foi removida:",
-            removeOldError
-          );
-        }
+        await supabase.storage
+          .from("competitions")
+          .remove([oldImage.storage_path]);
       }
 
       setFiles((prev) => {
         const next = { ...prev };
-
         delete next[slot];
-
         return next;
       });
 
@@ -300,10 +282,7 @@ export default function ChampionsLeagueAdminPage() {
       setMessage("Imagem publicada com sucesso.");
     } catch (error) {
       console.error("Erro inesperado:", error);
-
-      setMessage(
-        "Erro inesperado ao publicar imagem."
-      );
+      setMessage("Erro inesperado ao publicar imagem.");
     } finally {
       setUploading((prev) => ({
         ...prev,
@@ -315,17 +294,13 @@ export default function ChampionsLeagueAdminPage() {
   async function removeImage(slot: Slot) {
     const current = images[slot];
 
-    if (!current) {
-      return;
-    }
+    if (!current) return;
 
     const confirmed = window.confirm(
       "Tem certeza que deseja remover esta imagem?"
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
       setUploading((prev) => ({
@@ -342,41 +317,23 @@ export default function ChampionsLeagueAdminPage() {
         .eq("slot", slot);
 
       if (deleteDbError) {
-        console.error(
-          "Erro ao remover do banco:",
-          deleteDbError
-        );
-
         setMessage(
           `Erro ao remover imagem: ${deleteDbError.message}`
         );
-
         return;
       }
 
       if (current.storage_path) {
-        const { error: storageDeleteError } =
-          await supabase.storage
-            .from("competitions")
-            .remove([current.storage_path]);
-
-        if (storageDeleteError) {
-          console.warn(
-            "Erro ao remover arquivo do Storage:",
-            storageDeleteError
-          );
-        }
+        await supabase.storage
+          .from("competitions")
+          .remove([current.storage_path]);
       }
 
       await loadImages();
 
       setMessage("Imagem removida com sucesso.");
     } catch (error) {
-      console.error(
-        "Erro inesperado ao remover:",
-        error
-      );
-
+      console.error(error);
       setMessage("Erro ao remover imagem.");
     } finally {
       setUploading((prev) => ({
@@ -400,9 +357,7 @@ export default function ChampionsLeagueAdminPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
         <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-red-950/20 p-8 text-center">
-          <div className="mb-4 text-5xl">
-            🚫
-          </div>
+          <div className="mb-4 text-5xl">🚫</div>
 
           <h1 className="mb-2 text-2xl font-bold">
             Acesso negado
@@ -427,9 +382,7 @@ export default function ChampionsLeagueAdminPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-4 py-10">
-
         <div className="mb-10">
-
           <button
             onClick={() => router.push("/admin")}
             className="mb-6 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-500 hover:text-white"
@@ -438,9 +391,7 @@ export default function ChampionsLeagueAdminPage() {
           </button>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-
             <div>
-
               <p className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
                 FriendZone League FM
               </p>
@@ -453,7 +404,6 @@ export default function ChampionsLeagueAdminPage() {
                 Publique todas as fases da Champions Cup,
                 artilharia, melhor jogador e premiações.
               </p>
-
             </div>
 
             <button
@@ -464,7 +414,6 @@ export default function ChampionsLeagueAdminPage() {
             >
               Ver página pública
             </button>
-
           </div>
         </div>
 
@@ -475,15 +424,9 @@ export default function ChampionsLeagueAdminPage() {
         )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-
           {SECTIONS.map((section) => {
-
-            const currentImage =
-              images[section.slot];
-
-            const selectedFile =
-              files[section.slot];
-
+            const currentImage = images[section.slot];
+            const selectedFile = files[section.slot];
             const isUploading =
               uploading[section.slot] === true;
 
@@ -492,17 +435,13 @@ export default function ChampionsLeagueAdminPage() {
                 key={section.slot}
                 className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl"
               >
-
                 <div className="border-b border-slate-800 p-6">
-
                   <div className="flex items-start gap-4">
-
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-2xl">
                       {section.icon}
                     </div>
 
                     <div>
-
                       <h2 className="text-xl font-bold">
                         {section.title}
                       </h2>
@@ -510,28 +449,21 @@ export default function ChampionsLeagueAdminPage() {
                       <p className="mt-1 text-sm text-slate-400">
                         {section.description}
                       </p>
-
                     </div>
-
                   </div>
-
                 </div>
 
                 {currentImage ? (
                   <div className="bg-black">
-
                     <img
                       src={currentImage.image_url}
                       alt={section.title}
                       className="max-h-[500px] w-full object-contain"
                     />
-
                   </div>
                 ) : (
                   <div className="flex h-52 items-center justify-center bg-slate-950/60">
-
                     <div className="text-center">
-
                       <div className="mb-2 text-4xl">
                         🖼️
                       </div>
@@ -539,16 +471,12 @@ export default function ChampionsLeagueAdminPage() {
                       <p className="text-sm text-slate-500">
                         Nenhuma imagem publicada
                       </p>
-
                     </div>
-
                   </div>
                 )}
 
                 <div className="space-y-4 p-6">
-
                   <label className="block">
-
                     <span className="mb-2 block text-sm font-semibold text-slate-300">
                       Selecionar imagem
                     </span>
@@ -564,7 +492,6 @@ export default function ChampionsLeagueAdminPage() {
                       }
                       className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-cyan-400"
                     />
-
                   </label>
 
                   {selectedFile && (
@@ -574,14 +501,12 @@ export default function ChampionsLeagueAdminPage() {
                   )}
 
                   <div className="flex flex-col gap-3 sm:flex-row">
-
                     <button
                       onClick={() =>
                         uploadImage(section.slot)
                       }
                       disabled={
-                        !selectedFile ||
-                        isUploading
+                        !selectedFile || isUploading
                       }
                       className="flex-1 rounded-xl bg-cyan-500 px-4 py-3 font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
                     >
@@ -595,9 +520,7 @@ export default function ChampionsLeagueAdminPage() {
                     {currentImage && (
                       <button
                         onClick={() =>
-                          removeImage(
-                            section.slot
-                          )
+                          removeImage(section.slot)
                         }
                         disabled={isUploading}
                         className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-bold text-red-400 transition hover:bg-red-500/20 disabled:opacity-40"
@@ -605,17 +528,12 @@ export default function ChampionsLeagueAdminPage() {
                         Remover
                       </button>
                     )}
-
                   </div>
-
                 </div>
-
               </section>
             );
           })}
-
         </div>
-
       </div>
     </main>
   );
