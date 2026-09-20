@@ -13,7 +13,10 @@ type Slot =
   | "final"
   | "top_scorer"
   | "best_player"
-  | "money_awards";
+  | "money_first_round"
+  | "money_quarterfinals"
+  | "money_semifinals"
+  | "money_final";
 
 type ImageRecord = {
   competition: string;
@@ -33,8 +36,7 @@ const SECTIONS: {
   {
     slot: "first_round",
     title: "Primeira Eliminatória",
-    description:
-      "Resultados da primeira fase eliminatória da Champions Cup.",
+    description: "Resultados da primeira eliminatória.",
     icon: "⚽",
   },
   {
@@ -52,28 +54,48 @@ const SECTIONS: {
   {
     slot: "final",
     title: "Final",
-    description: "Resultado da grande final da Champions Cup.",
+    description: "Resultado da grande final.",
     icon: "🏆",
   },
   {
     slot: "top_scorer",
     title: "Artilharia",
-    description:
-      "Classificação dos artilheiros da Champions Cup.",
+    description: "Artilheiros da Champions Cup.",
     icon: "⚽",
   },
   {
     slot: "best_player",
     title: "Melhor Jogador",
-    description:
-      "Ranking ou destaque do melhor jogador da Champions Cup.",
+    description: "Melhores jogadores da Champions Cup.",
     icon: "⭐",
   },
+
   {
-    slot: "money_awards",
-    title: "Premiação em Dinheiro",
+    slot: "money_first_round",
+    title: "Premiação — Primeira Eliminatória",
     description:
-      "Valores oficiais pagos por fase e premiações da Champions Cup.",
+      "Premiação em dinheiro referente à primeira eliminatória.",
+    icon: "💰",
+  },
+  {
+    slot: "money_quarterfinals",
+    title: "Premiação — Quartas de Final",
+    description:
+      "Premiação em dinheiro referente às quartas de final.",
+    icon: "💰",
+  },
+  {
+    slot: "money_semifinals",
+    title: "Premiação — Semifinal",
+    description:
+      "Premiação em dinheiro referente às semifinais.",
+    icon: "💰",
+  },
+  {
+    slot: "money_final",
+    title: "Premiação — Final",
+    description:
+      "Premiação em dinheiro referente à final da Champions Cup.",
     icon: "💰",
   },
 ];
@@ -120,7 +142,7 @@ export default function ChampionsLeagueAdminPage() {
         await supabase.rpc("get_my_admin_role");
 
       if (roleError) {
-        console.error("Erro ao verificar permissão:", roleError);
+        console.error(roleError);
         setAuthorized(false);
         return;
       }
@@ -135,7 +157,7 @@ export default function ChampionsLeagueAdminPage() {
       setAuthorized(true);
       await loadImages();
     } catch (error) {
-      console.error("Erro ao verificar acesso:", error);
+      console.error(error);
       setAuthorized(false);
     } finally {
       setLoading(false);
@@ -149,7 +171,7 @@ export default function ChampionsLeagueAdminPage() {
       .eq("competition", COMPETITION);
 
     if (error) {
-      console.error("Erro ao carregar imagens:", error);
+      console.error(error);
       setMessage("Erro ao carregar imagens.");
       return;
     }
@@ -194,10 +216,9 @@ export default function ChampionsLeagueAdminPage() {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (!user) {
         setMessage("Usuário não autenticado.");
         return;
       }
@@ -255,7 +276,7 @@ export default function ChampionsLeagueAdminPage() {
           .remove([storagePath]);
 
         setMessage(
-          `Erro ao salvar no banco: ${dbError.message}`
+          `Erro ao salvar: ${dbError.message}`
         );
         return;
       }
@@ -276,10 +297,11 @@ export default function ChampionsLeagueAdminPage() {
       });
 
       await loadImages();
+
       setMessage("Imagem publicada com sucesso.");
     } catch (error) {
       console.error(error);
-      setMessage("Erro inesperado ao publicar imagem.");
+      setMessage("Erro inesperado ao publicar.");
     } finally {
       setUploading((prev) => ({
         ...prev,
@@ -293,11 +315,13 @@ export default function ChampionsLeagueAdminPage() {
 
     if (!current) return;
 
-    const confirmed = window.confirm(
-      "Tem certeza que deseja remover esta imagem?"
-    );
-
-    if (!confirmed) return;
+    if (
+      !window.confirm(
+        "Tem certeza que deseja remover esta imagem?"
+      )
+    ) {
+      return;
+    }
 
     try {
       setUploading((prev) => ({
@@ -305,16 +329,14 @@ export default function ChampionsLeagueAdminPage() {
         [slot]: true,
       }));
 
-      const { error: deleteDbError } = await supabase
+      const { error } = await supabase
         .from("competition_images")
         .delete()
         .eq("competition", COMPETITION)
         .eq("slot", slot);
 
-      if (deleteDbError) {
-        setMessage(
-          `Erro ao remover imagem: ${deleteDbError.message}`
-        );
+      if (error) {
+        setMessage(error.message);
         return;
       }
 
@@ -325,10 +347,8 @@ export default function ChampionsLeagueAdminPage() {
       }
 
       await loadImages();
-      setMessage("Imagem removida com sucesso.");
-    } catch (error) {
-      console.error(error);
-      setMessage("Erro ao remover imagem.");
+
+      setMessage("Imagem removida.");
     } finally {
       setUploading((prev) => ({
         ...prev,
@@ -347,18 +367,8 @@ export default function ChampionsLeagueAdminPage() {
 
   if (!authorized) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-red-950/20 p-8 text-center">
-          <div className="mb-4 text-5xl">🚫</div>
-
-          <h1 className="text-2xl font-bold">
-            Acesso negado
-          </h1>
-
-          <p className="mt-2 text-slate-400">
-            Apenas Owner ou Master pode administrar a Champions Cup.
-          </p>
-        </div>
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        Acesso negado.
       </main>
     );
   }
@@ -378,17 +388,17 @@ export default function ChampionsLeagueAdminPage() {
         </h1>
 
         <p className="mt-3 text-slate-400">
-          Gerencie todas as fases, artilharia, melhor jogador
-          e premiação em dinheiro.
+          Resultados, estatísticas e premiação em dinheiro
+          por fase.
         </p>
 
         {message && (
-          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4">
+          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4">
             {message}
           </div>
         )}
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {SECTIONS.map((section) => {
             const currentImage = images[section.slot];
             const selectedFile = files[section.slot];
@@ -405,7 +415,7 @@ export default function ChampionsLeagueAdminPage() {
                     {section.icon} {section.title}
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-slate-400">
                     {section.description}
                   </p>
                 </div>
@@ -430,7 +440,7 @@ export default function ChampionsLeagueAdminPage() {
                         e.target.files?.[0]
                       )
                     }
-                    className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
                   />
 
                   <button

@@ -14,7 +14,11 @@ type Slot =
   | "final"
   | "top_scorer"
   | "best_player"
-  | "money_awards";
+  | "money_first_round"
+  | "money_round_of_16"
+  | "money_quarterfinals"
+  | "money_semifinals"
+  | "money_final";
 
 type ImageRecord = {
   competition: string;
@@ -34,8 +38,7 @@ const SECTIONS: {
   {
     slot: "first_round",
     title: "1ª Eliminatória",
-    description:
-      "Resultados da primeira eliminatória da FriendZone Cup.",
+    description: "Resultados da primeira eliminatória.",
     icon: "⚽",
   },
   {
@@ -59,28 +62,55 @@ const SECTIONS: {
   {
     slot: "final",
     title: "Final",
-    description: "Resultado da grande final da FriendZone Cup.",
+    description: "Resultado da grande final.",
     icon: "🏆",
   },
   {
     slot: "top_scorer",
     title: "Artilharia",
-    description:
-      "Classificação dos artilheiros da FriendZone Cup.",
+    description: "Artilheiros da FriendZone Cup.",
     icon: "⚽",
   },
   {
     slot: "best_player",
     title: "Melhor Jogador",
-    description:
-      "Ranking ou destaque do melhor jogador da FriendZone Cup.",
+    description: "Melhores jogadores da FriendZone Cup.",
     icon: "⭐",
   },
+
   {
-    slot: "money_awards",
-    title: "Premiação em Dinheiro",
+    slot: "money_first_round",
+    title: "Premiação — 1ª Eliminatória",
     description:
-      "Valores oficiais pagos por fase e premiações da FriendZone Cup.",
+      "Premiação em dinheiro referente à primeira eliminatória.",
+    icon: "💰",
+  },
+  {
+    slot: "money_round_of_16",
+    title: "Premiação — Oitavas de Final",
+    description:
+      "Premiação em dinheiro referente às oitavas de final.",
+    icon: "💰",
+  },
+  {
+    slot: "money_quarterfinals",
+    title: "Premiação — Quartas de Final",
+    description:
+      "Premiação em dinheiro referente às quartas de final.",
+    icon: "💰",
+  },
+  {
+    slot: "money_semifinals",
+    title: "Premiação — Semifinal",
+    description:
+      "Premiação em dinheiro referente às semifinais.",
+    icon: "💰",
+  },
+  {
+    slot: "money_final",
+    title: "Premiação — Final",
+    description:
+      "Premiação em dinheiro referente à final da FriendZone Cup.",
     icon: "💰",
   },
 ];
@@ -196,6 +226,8 @@ export default function FriendZoneCupAdminPage() {
         [slot]: true,
       }));
 
+      setMessage("");
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -258,8 +290,9 @@ export default function FriendZoneCupAdminPage() {
           .remove([storagePath]);
 
         setMessage(
-          `Erro ao salvar no banco: ${dbError.message}`
+          `Erro ao salvar: ${dbError.message}`
         );
+
         return;
       }
 
@@ -283,7 +316,7 @@ export default function FriendZoneCupAdminPage() {
       setMessage("Imagem publicada com sucesso.");
     } catch (error) {
       console.error(error);
-      setMessage("Erro inesperado ao publicar imagem.");
+      setMessage("Erro inesperado ao publicar.");
     } finally {
       setUploading((prev) => ({
         ...prev,
@@ -297,11 +330,13 @@ export default function FriendZoneCupAdminPage() {
 
     if (!current) return;
 
-    const confirmed = window.confirm(
-      "Tem certeza que deseja remover esta imagem?"
-    );
-
-    if (!confirmed) return;
+    if (
+      !window.confirm(
+        "Tem certeza que deseja remover esta imagem?"
+      )
+    ) {
+      return;
+    }
 
     try {
       setUploading((prev) => ({
@@ -316,9 +351,7 @@ export default function FriendZoneCupAdminPage() {
         .eq("slot", slot);
 
       if (error) {
-        setMessage(
-          `Erro ao remover imagem: ${error.message}`
-        );
+        setMessage(error.message);
         return;
       }
 
@@ -330,10 +363,7 @@ export default function FriendZoneCupAdminPage() {
 
       await loadImages();
 
-      setMessage("Imagem removida com sucesso.");
-    } catch (error) {
-      console.error(error);
-      setMessage("Erro ao remover imagem.");
+      setMessage("Imagem removida.");
     } finally {
       setUploading((prev) => ({
         ...prev,
@@ -352,18 +382,8 @@ export default function FriendZoneCupAdminPage() {
 
   if (!authorized) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-4 text-white">
-        <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-red-950/20 p-8 text-center">
-          <div className="mb-4 text-5xl">🚫</div>
-
-          <h1 className="text-2xl font-bold">
-            Acesso negado
-          </h1>
-
-          <p className="mt-2 text-slate-400">
-            Apenas Owner ou Master pode administrar a FriendZone Cup.
-          </p>
-        </div>
+      <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
+        Acesso negado.
       </main>
     );
   }
@@ -383,17 +403,17 @@ export default function FriendZoneCupAdminPage() {
         </h1>
 
         <p className="mt-3 text-slate-400">
-          Gerencie todas as fases, artilharia, melhor jogador
-          e premiação em dinheiro.
+          Resultados, estatísticas e premiação em dinheiro
+          por fase.
         </p>
 
         {message && (
-          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4">
+          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4">
             {message}
           </div>
         )}
 
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
           {SECTIONS.map((section) => {
             const currentImage = images[section.slot];
             const selectedFile = files[section.slot];
@@ -410,7 +430,7 @@ export default function FriendZoneCupAdminPage() {
                     {section.icon} {section.title}
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-slate-400">
                     {section.description}
                   </p>
                 </div>
@@ -435,7 +455,7 @@ export default function FriendZoneCupAdminPage() {
                         e.target.files?.[0]
                       )
                     }
-                    className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
                   />
 
                   <button
