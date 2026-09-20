@@ -14,7 +14,7 @@ type Slot =
   | "final"
   | "top_scorer"
   | "best_player"
-  | "awards";
+  | "money_awards";
 
 type ImageRecord = {
   competition: string;
@@ -35,7 +35,7 @@ const SECTIONS: {
     slot: "first_round",
     title: "1ª Eliminatória",
     description:
-      "Resultados da primeira fase eliminatória da FriendZone Cup.",
+      "Resultados da primeira eliminatória da FriendZone Cup.",
     icon: "⚽",
   },
   {
@@ -77,9 +77,10 @@ const SECTIONS: {
     icon: "⭐",
   },
   {
-    slot: "awards",
-    title: "Premiação",
-    description: "Premiações oficiais da FriendZone Cup.",
+    slot: "money_awards",
+    title: "Premiação em Dinheiro",
+    description:
+      "Valores oficiais pagos por fase e premiações da FriendZone Cup.",
     icon: "💰",
   },
 ];
@@ -126,7 +127,7 @@ export default function FriendZoneCupAdminPage() {
         await supabase.rpc("get_my_admin_role");
 
       if (roleError) {
-        console.error("Erro ao verificar permissão:", roleError);
+        console.error(roleError);
         setAuthorized(false);
         return;
       }
@@ -141,7 +142,7 @@ export default function FriendZoneCupAdminPage() {
       setAuthorized(true);
       await loadImages();
     } catch (error) {
-      console.error("Erro ao verificar acesso:", error);
+      console.error(error);
       setAuthorized(false);
     } finally {
       setLoading(false);
@@ -155,7 +156,6 @@ export default function FriendZoneCupAdminPage() {
       .eq("competition", COMPETITION);
 
     if (error) {
-      console.error("Erro ao carregar imagens:", error);
       setMessage("Erro ao carregar imagens.");
       return;
     }
@@ -196,14 +196,11 @@ export default function FriendZoneCupAdminPage() {
         [slot]: true,
       }));
 
-      setMessage("");
-
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (!user) {
         setMessage("Usuário não autenticado.");
         return;
       }
@@ -227,7 +224,6 @@ export default function FriendZoneCupAdminPage() {
         });
 
       if (uploadError) {
-        console.error("Erro ao fazer upload:", uploadError);
         setMessage(
           `Erro ao enviar imagem: ${uploadError.message}`
         );
@@ -257,8 +253,6 @@ export default function FriendZoneCupAdminPage() {
         );
 
       if (dbError) {
-        console.error("Erro ao salvar no banco:", dbError);
-
         await supabase.storage
           .from("competitions")
           .remove([storagePath]);
@@ -288,7 +282,7 @@ export default function FriendZoneCupAdminPage() {
 
       setMessage("Imagem publicada com sucesso.");
     } catch (error) {
-      console.error("Erro inesperado:", error);
+      console.error(error);
       setMessage("Erro inesperado ao publicar imagem.");
     } finally {
       setUploading((prev) => ({
@@ -315,17 +309,15 @@ export default function FriendZoneCupAdminPage() {
         [slot]: true,
       }));
 
-      setMessage("");
-
-      const { error: deleteDbError } = await supabase
+      const { error } = await supabase
         .from("competition_images")
         .delete()
         .eq("competition", COMPETITION)
         .eq("slot", slot);
 
-      if (deleteDbError) {
+      if (error) {
         setMessage(
-          `Erro ao remover imagem: ${deleteDbError.message}`
+          `Erro ao remover imagem: ${error.message}`
         );
         return;
       }
@@ -353,9 +345,7 @@ export default function FriendZoneCupAdminPage() {
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
-        <div className="text-lg text-slate-300">
-          Carregando...
-        </div>
+        Carregando...
       </main>
     );
   }
@@ -366,21 +356,13 @@ export default function FriendZoneCupAdminPage() {
         <div className="w-full max-w-md rounded-2xl border border-red-500/30 bg-red-950/20 p-8 text-center">
           <div className="mb-4 text-5xl">🚫</div>
 
-          <h1 className="mb-2 text-2xl font-bold">
+          <h1 className="text-2xl font-bold">
             Acesso negado
           </h1>
 
-          <p className="text-slate-400">
-            Apenas Owner ou Master pode administrar a
-            FriendZone Cup.
+          <p className="mt-2 text-slate-400">
+            Apenas Owner ou Master pode administrar a FriendZone Cup.
           </p>
-
-          <button
-            onClick={() => router.push("/admin")}
-            className="mt-6 rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 font-bold text-white transition hover:border-cyan-500"
-          >
-            Voltar ao Admin
-          </button>
         </div>
       </main>
     );
@@ -389,48 +371,29 @@ export default function FriendZoneCupAdminPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-4 py-10">
-        <div className="mb-10">
-          <button
-            onClick={() => router.push("/admin")}
-            className="mb-6 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-500 hover:text-white"
-          >
-            ← Voltar ao Admin
-          </button>
+        <button
+          onClick={() => router.push("/admin")}
+          className="mb-6 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2"
+        >
+          ← Voltar ao Admin
+        </button>
 
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-cyan-400">
-                FriendZone League FM
-              </p>
+        <h1 className="text-4xl font-black">
+          🏆 FriendZone Cup
+        </h1>
 
-              <h1 className="text-4xl font-black md:text-5xl">
-                🏆 FriendZone Cup
-              </h1>
-
-              <p className="mt-3 max-w-2xl text-slate-400">
-                Publique todas as fases da FriendZone Cup,
-                artilharia, melhor jogador e premiações.
-              </p>
-            </div>
-
-            <button
-              onClick={() =>
-                router.push("/friendzone-cup")
-              }
-              className="rounded-xl bg-cyan-500 px-5 py-3 font-bold text-slate-950 transition hover:bg-cyan-400"
-            >
-              Ver página pública
-            </button>
-          </div>
-        </div>
+        <p className="mt-3 text-slate-400">
+          Gerencie todas as fases, artilharia, melhor jogador
+          e premiação em dinheiro.
+        </p>
 
         {message && (
-          <div className="mb-8 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4 text-cyan-100">
+          <div className="mt-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-5 py-4">
             {message}
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           {SECTIONS.map((section) => {
             const currentImage = images[section.slot];
             const selectedFile = files[section.slot];
@@ -440,27 +403,19 @@ export default function FriendZoneCupAdminPage() {
             return (
               <section
                 key={section.slot}
-                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl"
+                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
               >
-                <div className="border-b border-slate-800 p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-2xl">
-                      {section.icon}
-                    </div>
+                <div className="p-6">
+                  <h2 className="text-xl font-bold">
+                    {section.icon} {section.title}
+                  </h2>
 
-                    <div>
-                      <h2 className="text-xl font-bold">
-                        {section.title}
-                      </h2>
-
-                      <p className="mt-1 text-sm text-slate-400">
-                        {section.description}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {section.description}
+                  </p>
                 </div>
 
-                {currentImage ? (
+                {currentImage && (
                   <div className="bg-black">
                     <img
                       src={currentImage.image_url}
@@ -468,74 +423,45 @@ export default function FriendZoneCupAdminPage() {
                       className="max-h-[500px] w-full object-contain"
                     />
                   </div>
-                ) : (
-                  <div className="flex h-52 items-center justify-center bg-slate-950/60">
-                    <div className="text-center">
-                      <div className="mb-2 text-4xl">
-                        🖼️
-                      </div>
-
-                      <p className="text-sm text-slate-500">
-                        Nenhuma imagem publicada
-                      </p>
-                    </div>
-                  </div>
                 )}
 
                 <div className="space-y-4 p-6">
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-semibold text-slate-300">
-                      Selecionar imagem
-                    </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      handleFileChange(
+                        section.slot,
+                        e.target.files?.[0]
+                      )
+                    }
+                    className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3"
+                  />
 
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) =>
-                        handleFileChange(
-                          section.slot,
-                          e.target.files?.[0]
-                        )
-                      }
-                      className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-4 file:py-2 file:font-bold file:text-slate-950 hover:file:bg-cyan-400"
-                    />
-                  </label>
+                  <button
+                    onClick={() =>
+                      uploadImage(section.slot)
+                    }
+                    disabled={!selectedFile || isUploading}
+                    className="w-full rounded-xl bg-cyan-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-40"
+                  >
+                    {isUploading
+                      ? "Publicando..."
+                      : currentImage
+                      ? "Substituir imagem"
+                      : "Publicar imagem"}
+                  </button>
 
-                  {selectedFile && (
-                    <div className="rounded-lg bg-slate-950 px-3 py-2 text-xs text-slate-400">
-                      Arquivo: {selectedFile.name}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-3 sm:flex-row">
+                  {currentImage && (
                     <button
                       onClick={() =>
-                        uploadImage(section.slot)
+                        removeImage(section.slot)
                       }
-                      disabled={
-                        !selectedFile || isUploading
-                      }
-                      className="flex-1 rounded-xl bg-cyan-500 px-4 py-3 font-bold text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="w-full rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-bold text-red-400"
                     >
-                      {isUploading
-                        ? "Publicando..."
-                        : currentImage
-                        ? "Substituir imagem"
-                        : "Publicar imagem"}
+                      Remover
                     </button>
-
-                    {currentImage && (
-                      <button
-                        onClick={() =>
-                          removeImage(section.slot)
-                        }
-                        disabled={isUploading}
-                        className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 font-bold text-red-400 transition hover:bg-red-500/20 disabled:opacity-40"
-                      >
-                        Remover
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               </section>
             );
