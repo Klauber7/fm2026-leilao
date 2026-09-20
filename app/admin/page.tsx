@@ -404,7 +404,7 @@ export default function AdminPage() {
           <p className="mt-3 max-w-3xl text-lg text-zinc-400">
             Central de controle da liga. Gerencie clubes,
             usuários, mercado, transferências, finanças,
-            leilões e registros oficiais.
+            leilões, competições e registros oficiais.
           </p>
         </header>
 
@@ -595,15 +595,34 @@ export default function AdminPage() {
               color="orange"
             />
 
-
             <AdminCard
               href="/admin/premier-league"
               eyebrow="Competição"
               title="Premier League"
               icon="🏆"
-              description="Gerencie as 38 rodadas, tabela, artilheiro, melhor jogador e as premiações da FriendZone Premier."
+              description="Gerencie as 38 rodadas, classificação, artilharia, melhor jogador e premiações da FriendZone Premier."
               action="GERENCIAR PREMIER →"
               color="yellow"
+            />
+
+            <AdminCard
+              href="/admin/champions-league"
+              eyebrow="Competição"
+              title="Champions Cup"
+              icon="🏆"
+              description="Gerencie primeira eliminatória, quartas de final, semifinal, final, artilharia, melhor jogador e premiações da Champions Cup."
+              action="GERENCIAR CHAMPIONS →"
+              color="blue"
+            />
+
+            <AdminCard
+              href="/admin/friendzone-cup"
+              eyebrow="Competição"
+              title="FriendZone Cup"
+              icon="🏆"
+              description="Gerencie 1ª eliminatória, oitavas de final, quartas, semifinal, final, artilharia, melhor jogador e premiações da FriendZone Cup."
+              action="GERENCIAR FRIENDZONE CUP →"
+              color="purple"
             />
 
             <AdminCard
@@ -653,6 +672,16 @@ export default function AdminPage() {
             <QuickLink
               href="/premier-league"
               text="Premier League"
+            />
+
+            <QuickLink
+              href="/champions-league"
+              text="Champions Cup"
+            />
+
+            <QuickLink
+              href="/friendzone-cup"
+              text="FriendZone Cup"
             />
 
             <QuickLink
