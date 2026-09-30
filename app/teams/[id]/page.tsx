@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -244,7 +244,7 @@ function getErrorMessage(error: unknown) {
     );
   }
 
-  return "NÃ£o foi possÃ­vel carregar as informaÃ§Ãµes do clube.";
+  return "Não foi possível carregar as informações do clube.";
 }
 
 function getInitials(name: string) {
@@ -302,7 +302,7 @@ function BestPlayerCard({
 
       {!player ? (
         <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
-          Nenhum jogador disponÃ­vel.
+          Nenhum jogador disponível.
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -316,7 +316,7 @@ function BestPlayerCard({
                 />
               ) : (
                 <span className="text-xl font-black text-yellow-400">
-                  â˜…
+                  ★
                 </span>
               )}
             </div>
@@ -331,9 +331,9 @@ function BestPlayerCard({
               </h2>
 
               <p className="mt-1 text-sm text-zinc-400">
-                {player.position || "Sem posiÃ§Ã£o"}
-                {player.age !== null ? ` Â· ${player.age} anos` : ""}
-                {player.nationality ? ` Â· ${player.nationality}` : ""}
+                {player.position || "Sem posição"}
+                {player.age !== null ? ` · ${player.age} anos` : ""}
+                {player.nationality ? ` · ${player.nationality}` : ""}
               </p>
             </div>
           </div>
@@ -388,7 +388,7 @@ function PlayerCardCompact({
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-black uppercase tracking-wide text-green-400">
-              {player.position || "Sem posiÃ§Ã£o"}
+              {player.position || "Sem posição"}
             </p>
 
             <h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
@@ -398,11 +398,11 @@ function PlayerCardCompact({
             <p className="mt-1 text-base text-zinc-300">
               {player.age !== null
                 ? `${player.age} anos`
-                : "Idade nÃ£o informada"}
+                : "Idade não informada"}
             </p>
 
             <p className="text-base text-zinc-500">
-              {player.nationality || "Nacionalidade nÃ£o informada"}
+              {player.nationality || "Nacionalidade não informada"}
             </p>
           </div>
 
@@ -470,11 +470,11 @@ function StaffCardCompact({
             <p className="mt-1 text-base text-zinc-300">
               {member.age !== null
                 ? `${member.age} anos`
-                : "Idade nÃ£o informada"}
+                : "Idade não informada"}
             </p>
 
             <p className="text-base text-zinc-500">
-              {member.nationality || "Nacionalidade nÃ£o informada"}
+              {member.nationality || "Nacionalidade não informada"}
             </p>
           </div>
 
@@ -504,7 +504,7 @@ function StaffCardCompact({
             Dispensa
           </p>
           <p className="mt-1 text-sm text-zinc-300">
-            VocÃª recebe 50%
+            Você recebe 50%
           </p>
           <div className="mt-1 flex items-center justify-between gap-3">
             <p className="text-2xl font-black text-yellow-400">
@@ -549,7 +549,7 @@ export default function TeamPage() {
       setTeam(null);
       setPlayers([]);
       setStaff([]);
-      setErrorMessage("Identificador do clube invÃ¡lido.");
+      setErrorMessage("Identificador do clube inválido.");
       setLoading(false);
       return;
     }
@@ -709,8 +709,8 @@ export default function TeamPage() {
 
     const confirmed = window.confirm(
       `Dispensar ${member.name}?\n\n` +
-        `O clube receberÃ¡ 50% do valor realmente pago por esse profissional.\n\n` +
-        `O staff voltarÃ¡ ao Mercado de Treinadores pelo seu preÃ§o normal: ${money(member.value)}.`
+        `O clube receberá 50% do valor realmente pago por esse profissional.\n\n` +
+        `O staff voltará ao Mercado de Treinadores pelo seu preço normal: ${money(member.value)}.`
     );
 
     if (!confirmed) {
@@ -729,15 +729,15 @@ export default function TeamPage() {
       const message = String(error.message || "");
 
       if (message.includes("STAFF_NOT_OWNED")) {
-        setErrorMessage("Esse profissional nÃ£o pertence ao seu clube.");
+        setErrorMessage("Esse profissional não pertence ao seu clube.");
       } else if (message.includes("TEAM_NOT_FOUND")) {
-        setErrorMessage("NÃ£o foi possÃ­vel localizar seu clube.");
+        setErrorMessage("Não foi possível localizar seu clube.");
       } else if (message.includes("STAFF_NOT_FOUND")) {
-        setErrorMessage("Profissional nÃ£o encontrado.");
+        setErrorMessage("Profissional não encontrado.");
       } else if (message.includes("NOT_AUTHENTICATED")) {
-        setErrorMessage("Sua sessÃ£o expirou. Entre novamente.");
+        setErrorMessage("Sua sessão expirou. Entre novamente.");
       } else {
-        setErrorMessage("NÃ£o foi possÃ­vel dispensar o profissional.");
+        setErrorMessage("Não foi possível dispensar o profissional.");
       }
 
       setReleasingStaffId(null);
@@ -750,7 +750,7 @@ export default function TeamPage() {
         : 0;
 
     setSuccessMessage(
-      `${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orÃ§amento do clube.`
+      `${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orçamento do clube.`
     );
 
     await loadTeam();
@@ -872,10 +872,10 @@ export default function TeamPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
         <div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-          <div className="text-6xl">ðŸŸï¸</div>
-          <h1 className="mt-5 text-4xl font-black">Clube nÃ£o encontrado</h1>
+          <div className="text-6xl">🏟️</div>
+          <h1 className="mt-5 text-4xl font-black">Clube não encontrado</h1>
           <p className="mt-3 text-zinc-400">
-            O clube solicitado nÃ£o existe ou nÃ£o estÃ¡ disponÃ­vel.
+            O clube solicitado não existe ou não está disponível.
           </p>
 
           {errorMessage && (
@@ -902,7 +902,7 @@ export default function TeamPage() {
           href="/teams"
           className="font-bold text-green-400 transition hover:text-green-300"
         >
-          â† Voltar para clubes
+          ← Voltar para clubes
         </Link>
 
         <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
@@ -963,23 +963,23 @@ export default function TeamPage() {
           />
 
           <StatCard
-            label="ComissÃ£o tÃ©cnica"
+            label="Comissão técnica"
             value={staff.length}
             description="Profissionais contratados"
             accent="text-purple-400"
           />
 
           <StatCard
-            label="CA mÃ©dio"
+            label="CA médio"
             value={averageCa || "-"}
-            description={averageAge ? `Idade mÃ©dia: ${averageAge} anos` : "Idade mÃ©dia nÃ£o disponÃ­vel"}
+            description={averageAge ? `Idade média: ${averageAge} anos` : "Idade média não disponível"}
             accent="text-green-400"
           />
 
           <StatCard
-            label="PatrimÃ´nio esportivo"
+            label="Patrimônio esportivo"
             value={money(totalSquadValue + totalStaffValue)}
-            description="Elenco e comissÃ£o"
+            description="Elenco e comissão"
             accent="text-green-400"
           />
         </section>
@@ -989,7 +989,7 @@ export default function TeamPage() {
             href="#elenco"
             className="rounded-2xl border border-blue-700 bg-blue-600 p-6 transition hover:-translate-y-1 hover:bg-blue-500"
           >
-            <span className="text-3xl">ðŸ‘¥</span>
+            <span className="text-3xl">👥</span>
             <h2 className="mt-4 text-xl font-black">Ver time</h2>
             <p className="mt-2 text-sm text-blue-100">
               Visualizar jogadores do clube.
@@ -1000,8 +1000,8 @@ export default function TeamPage() {
             href="#staff"
             className="rounded-2xl border border-purple-700 bg-purple-600 p-6 transition hover:-translate-y-1 hover:bg-purple-500"
           >
-            <span className="text-3xl">ðŸ“‹</span>
-            <h2 className="mt-4 text-xl font-black">ComissÃ£o tÃ©cnica</h2>
+            <span className="text-3xl">📋</span>
+            <h2 className="mt-4 text-xl font-black">Comissão técnica</h2>
             <p className="mt-2 text-sm text-purple-100">
               Visualizar os profissionais.
             </p>
@@ -1018,10 +1018,10 @@ export default function TeamPage() {
 
           {players.length === 0 ? (
             <div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-              <div className="text-6xl">âš½</div>
+              <div className="text-6xl">⚽</div>
               <h3 className="mt-5 text-3xl font-black">Elenco vazio</h3>
               <p className="mt-3 text-zinc-400">
-                Este clube ainda nÃ£o contratou jogadores.
+                Este clube ainda não contratou jogadores.
               </p>
             </div>
           ) : (
@@ -1056,15 +1056,15 @@ export default function TeamPage() {
             <p className="font-bold uppercase tracking-widest text-purple-400">
               Staff
             </p>
-            <h2 className="mt-2 text-4xl font-black">ComissÃ£o tÃ©cnica</h2>
+            <h2 className="mt-2 text-4xl font-black">Comissão técnica</h2>
           </div>
 
           {staff.length === 0 ? (
             <div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
-              <div className="text-6xl">ðŸ‘”</div>
-              <h3 className="mt-5 text-3xl font-black">ComissÃ£o vazia</h3>
+              <div className="text-6xl">👔</div>
+              <h3 className="mt-5 text-3xl font-black">Comissão vazia</h3>
               <p className="mt-3 text-zinc-400">
-                Este clube ainda nÃ£o contratou profissionais.
+                Este clube ainda não contratou profissionais.
               </p>
             </div>
           ) : (
@@ -1085,4 +1085,3 @@ export default function TeamPage() {
     </main>
   );
 }
-
