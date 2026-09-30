@@ -159,6 +159,7 @@ function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
 
   if (parts.length === 0) return "?";
+
   if (parts.length === 1) {
     return parts[0].charAt(0).toUpperCase();
   }
@@ -339,6 +340,7 @@ export default function TeamPage() {
   const params = useParams();
 
   const rawId = params?.id;
+
   const teamId = Array.isArray(rawId)
     ? Number(rawId[0])
     : Number(rawId);
@@ -377,30 +379,28 @@ export default function TeamPage() {
 
       setTeam(teamData as Team);
 
-      const [
-        playersResult,
-        staffResult,
-      ] = await Promise.all([
-        supabase
-          .from("players")
-          .select(
-            "id,name,age,position,nationality,ca,value,image_url,team_id"
-          )
-          .eq("team_id", teamId)
-          .order("ca", {
-            ascending: false,
-          }),
+      const [playersResult, staffResult] =
+        await Promise.all([
+          supabase
+            .from("players")
+            .select(
+              "id,name,age,position,nationality,ca,value,image_url,team_id"
+            )
+            .eq("team_id", teamId)
+            .order("ca", {
+              ascending: false,
+            }),
 
-        supabase
-          .from("coaches")
-          .select(
-            "id,unique_id,name,age,role,nationality,ca,cp,value,image_url,team_id,hired_at"
-          )
-          .eq("team_id", teamId)
-          .order("ca", {
-            ascending: false,
-          }),
-      ]);
+          supabase
+            .from("coaches")
+            .select(
+              "id,unique_id,name,age,role,nationality,ca,cp,value,image_url,team_id,hired_at"
+            )
+            .eq("team_id", teamId)
+            .order("ca", {
+              ascending: false,
+            }),
+        ]);
 
       if (playersResult.error) {
         throw playersResult.error;
@@ -476,61 +476,61 @@ export default function TeamPage() {
     );
   }, [players]);
 
-  const playerSections =
-    useMemo<PlayerSection[]>(() => {
-      const grouped: Record<
-        PositionGroup,
-        Player[]
-      > = {
-        goalkeepers: [],
-        defenders: [],
-        midfielders: [],
-        attackers: [],
-        others: [],
-      };
+  const playerSections = useMemo(() => {
+    const grouped: Record<
+      PositionGroup,
+      Player[]
+    > = {
+      goalkeepers: [],
+      defenders: [],
+      midfielders: [],
+      attackers: [],
+      others: [],
+    };
 
-      players.forEach((player) => {
-        grouped[
-          getPositionGroup(player.position)
-        ].push(player);
-      });
+    players.forEach((player) => {
+      grouped[
+        getPositionGroup(player.position)
+      ].push(player);
+    });
 
-      return [
-        {
-          key: "goalkeepers",
-          title: "Goleiros",
-          abbreviation: "GK",
-          players: grouped.goalkeepers,
-        },
-        {
-          key: "defenders",
-          title: "Defensores",
-          abbreviation: "DEF",
-          players: grouped.defenders,
-        },
-        {
-          key: "midfielders",
-          title: "Meio-campistas",
-          abbreviation: "MID",
-          players: grouped.midfielders,
-        },
-        {
-          key: "attackers",
-          title: "Atacantes",
-          abbreviation: "ATA",
-          players: grouped.attackers,
-        },
-        {
-          key: "others",
-          title: "Outros jogadores",
-          abbreviation: "OUT",
-          players: grouped.others,
-        },
-      ].filter(
-        (section) =>
-          section.players.length > 0
-      );
-    }, [players]);
+    const sections: PlayerSection[] = [
+      {
+        key: "goalkeepers",
+        title: "Goleiros",
+        abbreviation: "GK",
+        players: grouped.goalkeepers,
+      },
+      {
+        key: "defenders",
+        title: "Defensores",
+        abbreviation: "DEF",
+        players: grouped.defenders,
+      },
+      {
+        key: "midfielders",
+        title: "Meio-campistas",
+        abbreviation: "MID",
+        players: grouped.midfielders,
+      },
+      {
+        key: "attackers",
+        title: "Atacantes",
+        abbreviation: "ATA",
+        players: grouped.attackers,
+      },
+      {
+        key: "others",
+        title: "Outros jogadores",
+        abbreviation: "OUT",
+        players: grouped.others,
+      },
+    ];
+
+    return sections.filter(
+      (section) => section.players.length > 0
+    );
+  }, [players]);
 
   if (loading) {
     return (
@@ -681,8 +681,7 @@ export default function TeamPage() {
 
           {players.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center text-zinc-400">
-              Este clube ainda não possui
-              jogadores.
+              Este clube ainda não possui jogadores.
             </div>
           ) : (
             <div className="mt-10 space-y-12">
@@ -699,10 +698,7 @@ export default function TeamPage() {
                       </h3>
 
                       <span className="font-bold text-zinc-500">
-                        {
-                          section.players
-                            .length
-                        }
+                        {section.players.length}
                       </span>
                     </div>
 
@@ -737,8 +733,7 @@ export default function TeamPage() {
 
           {staff.length === 0 ? (
             <div className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center text-zinc-400">
-              Este clube ainda não possui
-              profissionais.
+              Este clube ainda não possui profissionais.
             </div>
           ) : (
             <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
