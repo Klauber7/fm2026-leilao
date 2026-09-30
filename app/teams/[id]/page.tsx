@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 
 
@@ -8,13 +8,13 @@ import { useParams } from "next/navigation";
 
 import {
 
-  useCallback,
+Â  useCallback,
 
-  useEffect,
+Â  useEffect,
 
-  useMemo,
+Â  useMemo,
 
-  useState,
+Â  useState,
 
 } from "react";
 
@@ -24,21 +24,21 @@ import { supabase } from "@/lib/supabase";
 
 type Team = {
 
-  id: number;
+Â  id: number;
 
-  name: string;
+Â  name: string;
 
-  city: string | null;
+Â  city: string | null;
 
-  stadium: string | null;
+Â  stadium: string | null;
 
-  budget: number | null;
+Â  budget: number | null;
 
-  manager_id: string | null;
+Â  manager_id: string | null;
 
-  manager_name: string | null;
+Â  manager_name: string | null;
 
-  logo_url: string | null;
+Â  logo_url: string | null;
 
 };
 
@@ -46,23 +46,23 @@ type Team = {
 
 type Player = {
 
-  id: number;
+Â  id: number;
 
-  name: string;
+Â  name: string;
 
-  age: number | null;
+Â  age: number | null;
 
-  position: string | null;
+Â  position: string | null;
 
-  nationality: string | null;
+Â  nationality: string | null;
 
-  ca: number | null;
+Â  ca: number | null;
 
-  value: number | null;
+Â  value: number | null;
 
-  image_url: string | null;
+Â  image_url: string | null;
 
-  team_id: number | null;
+Â  team_id: number | null;
 
 };
 
@@ -70,29 +70,29 @@ type Player = {
 
 type Coach = {
 
-  id: number;
+Â  id: number;
 
-  unique_id: string | null;
+Â  unique_id: string | null;
 
-  name: string;
+Â  name: string;
 
-  age: number | null;
+Â  age: number | null;
 
-  role: string | null;
+Â  role: string | null;
 
-  nationality: string | null;
+Â  nationality: string | null;
 
-  ca: number | null;
+Â  ca: number | null;
 
-  cp: number | null;
+Â  cp: number | null;
 
-  value: number | null;
+Â  value: number | null;
 
-  image_url: string | null;
+Â  image_url: string | null;
 
-  team_id: number | null;
+Â  team_id: number | null;
 
-  hired_at: string | null;
+Â  hired_at: string | null;
 
 };
 
@@ -100,27 +100,27 @@ type Coach = {
 
 type PositionGroup =
 
-  | "goalkeepers"
+Â  | "goalkeepers"
 
-  | "defenders"
+Â  | "defenders"
 
-  | "midfielders"
+Â  | "midfielders"
 
-  | "attackers"
+Â  | "attackers"
 
-  | "others";
+Â  | "others";
 
 
 
 type PlayerSection = {
 
-  key: PositionGroup;
+Â  key: PositionGroup;
 
-  title: string;
+Â  title: string;
 
-  abbreviation: string;
+Â  abbreviation: string;
 
-  players: Player[];
+Â  players: Player[];
 
 };
 
@@ -128,15 +128,15 @@ type PlayerSection = {
 
 function money(value: number | null | undefined) {
 
-  return Number(value || 0).toLocaleString("pt-BR", {
+Â  return Number(value || 0).toLocaleString("pt-BR", {
 
-    style: "currency",
+Â  Â  style: "currency",
 
-    currency: "BRL",
+Â  Â  currency: "BRL",
 
-    maximumFractionDigits: 0,
+Â  Â  maximumFractionDigits: 0,
 
-  });
+Â  });
 
 }
 
@@ -144,15 +144,15 @@ function money(value: number | null | undefined) {
 
 function normalizeText(value: string | null | undefined) {
 
-  return (value || "")
+Â  return (value || "")
 
-    .trim()
+Â  Â  .trim()
 
-    .toLowerCase()
+Â  Â  .toLowerCase()
 
-    .normalize("NFD")
+Â  Â  .normalize("NFD")
 
-    .replace(/[\u0300-\u036f]/g, "");
+Â  Â  .replace(/[\u0300-\u036f]/g, "");
 
 }
 
@@ -160,251 +160,251 @@ function normalizeText(value: string | null | undefined) {
 
 function getPositionGroup(
 
-  position: string | null
+Â  position: string | null
 
 ): PositionGroup {
 
-  const normalized = normalizeText(position)
+Â  const normalized = normalizeText(position)
 
-    .replace(/\s+/g, " ")
+Â  Â  .replace(/\s+/g, " ")
 
-    .replace(/\s\*,\s\*/g, ",")
+Â  Â  .replace(/\s\*,\s\*/g, ",")
 
-    .trim();
+Â  Â  .trim();
 
 
 
-  if (!normalized) {
+Â  if (!normalized) {
 
-    return "others";
+Â  Â  return "others";
 
-  }
+Â  }
 
 
 
-  // Goleiros
+Â  // Goleiros
 
-  if (
+Â  if (
 
-    normalized === "gk" ||
+Â  Â  normalized === "gk" ||
 
-    normalized === "gr" ||
+Â  Â  normalized === "gr" ||
 
-    normalized === "gol" ||
+Â  Â  normalized === "gol" ||
 
-    normalized.includes("goleiro") ||
+Â  Â  normalized.includes("goleiro") ||
 
-    normalized.includes("goalkeeper") ||
+Â  Â  normalized.includes("goalkeeper") ||
 
-    normalized.includes("guarda-redes") ||
+Â  Â  normalized.includes("guarda-redes") ||
 
-    normalized.includes("guarda redes")
+Â  Â  normalized.includes("guarda redes")
 
-  ) {
+Â  ) {
 
-    return "goalkeepers";
+Â  Â  return "goalkeepers";
 
-  }
+Â  }
 
 
 
-  // Atacantes / pontas
+Â  // Atacantes / pontas
 
-  if (
+Â  if (
 
-    normalized === "st" ||
+Â  Â  normalized === "st" ||
 
-    normalized === "cf" ||
+Â  Â  normalized === "cf" ||
 
-    normalized === "fw" ||
+Â  Â  normalized === "fw" ||
 
-    normalized === "ata" ||
+Â  Â  normalized === "ata" ||
 
-    normalized === "pl" ||
+Â  Â  normalized === "pl" ||
 
-    normalized.startsWith("pl ") ||
+Â  Â  normalized.startsWith("pl ") ||
 
-    normalized.includes(" pl ") ||
+Â  Â  normalized.includes(" pl ") ||
 
-    normalized.includes("/pl") ||
+Â  Â  normalized.includes("/pl") ||
 
-    normalized.includes("/ pl") ||
+Â  Â  normalized.includes("/ pl") ||
 
-    normalized.includes("atacante") ||
+Â  Â  normalized.includes("atacante") ||
 
-    normalized.includes("avancado") ||
+Â  Â  normalized.includes("avancado") ||
 
-    normalized.includes("striker") ||
+Â  Â  normalized.includes("striker") ||
 
-    normalized.includes("forward") ||
+Â  Â  normalized.includes("forward") ||
 
-    normalized.includes("centroavante") ||
+Â  Â  normalized.includes("centroavante") ||
 
-    normalized.includes("ponta") ||
+Â  Â  normalized.includes("ponta") ||
 
-    normalized.includes("winger") ||
+Â  Â  normalized.includes("winger") ||
 
-    normalized === "rw" ||
+Â  Â  normalized === "rw" ||
 
-    normalized === "lw" ||
+Â  Â  normalized === "lw" ||
 
-    normalized === "pd" ||
+Â  Â  normalized === "pd" ||
 
-    normalized === "pe" ||
+Â  Â  normalized === "pe" ||
 
-    normalized.includes("amr") ||
+Â  Â  normalized.includes("amr") ||
 
-    normalized.includes("aml") ||
+Â  Â  normalized.includes("aml") ||
 
-    normalized.includes("mo (d)") ||
+Â  Â  normalized.includes("mo (d)") ||
 
-    normalized.includes("mo (e)") ||
+Â  Â  normalized.includes("mo (e)") ||
 
-    normalized.includes("mo (de)") ||
+Â  Â  normalized.includes("mo (de)") ||
 
-    normalized.includes("mo (ed)")
+Â  Â  normalized.includes("mo (ed)")
 
-  ) {
+Â  ) {
 
-    return "attackers";
+Â  Â  return "attackers";
 
-  }
+Â  }
 
 
 
-  // Meio-campistas
+Â  // Meio-campistas
 
-  if (
+Â  if (
 
-    normalized === "dm" ||
+Â  Â  normalized === "dm" ||
 
-    normalized === "dmc" ||
+Â  Â  normalized === "dmc" ||
 
-    normalized === "md" ||
+Â  Â  normalized === "md" ||
 
-    normalized === "mc" ||
+Â  Â  normalized === "mc" ||
 
-    normalized === "cm" ||
+Â  Â  normalized === "cm" ||
 
-    normalized === "am" ||
+Â  Â  normalized === "am" ||
 
-    normalized === "amc" ||
+Â  Â  normalized === "amc" ||
 
-    normalized.includes("volante") ||
+Â  Â  normalized.includes("volante") ||
 
-    normalized.includes("meio") ||
+Â  Â  normalized.includes("meio") ||
 
-    normalized.includes("midfielder") ||
+Â  Â  normalized.includes("midfielder") ||
 
-    normalized.includes("meia") ||
+Â  Â  normalized.includes("meia") ||
 
-    normalized.includes("attacking midfielder") ||
+Â  Â  normalized.includes("attacking midfielder") ||
 
-    normalized.includes("m (c)") ||
+Â  Â  normalized.includes("m (c)") ||
 
-    normalized.includes("m (d)") ||
+Â  Â  normalized.includes("m (d)") ||
 
-    normalized.includes("m (e)") ||
+Â  Â  normalized.includes("m (e)") ||
 
-    normalized.includes("m (dc)") ||
+Â  Â  normalized.includes("m (dc)") ||
 
-    normalized.includes("m (ec)") ||
+Â  Â  normalized.includes("m (ec)") ||
 
-    normalized.includes("m (dec)") ||
+Â  Â  normalized.includes("m (dec)") ||
 
-    normalized.includes("m/mo") ||
+Â  Â  normalized.includes("m/mo") ||
 
-    normalized.includes("mo (c)") ||
+Â  Â  normalized.includes("mo (c)") ||
 
-    normalized.includes("mo (dc)") ||
+Â  Â  normalized.includes("mo (dc)") ||
 
-    normalized.includes("mo (ec)") ||
+Â  Â  normalized.includes("mo (ec)") ||
 
-    normalized.includes("mo (dec)") ||
+Â  Â  normalized.includes("mo (dec)") ||
 
-    normalized.includes("mo (de)") ||
+Â  Â  normalized.includes("mo (de)") ||
 
-    normalized.includes("mo (ed)")
+Â  Â  normalized.includes("mo (ed)")
 
-  ) {
+Â  ) {
 
-    return "midfielders";
+Â  Â  return "midfielders";
 
-  }
+Â  }
 
 
 
-  // Defensores / laterais
+Â  // Defensores / laterais
 
-  if (
+Â  if (
 
-    normalized === "dc" ||
+Â  Â  normalized === "dc" ||
 
-    normalized === "cb" ||
+Â  Â  normalized === "cb" ||
 
-    normalized === "dl" ||
+Â  Â  normalized === "dl" ||
 
-    normalized === "dr" ||
+Â  Â  normalized === "dr" ||
 
-    normalized === "ld" ||
+Â  Â  normalized === "ld" ||
 
-    normalized === "le" ||
+Â  Â  normalized === "le" ||
 
-    normalized === "lb" ||
+Â  Â  normalized === "lb" ||
 
-    normalized === "rb" ||
+Â  Â  normalized === "rb" ||
 
-    normalized.includes("zag") ||
+Â  Â  normalized.includes("zag") ||
 
-    normalized.includes("zagueiro") ||
+Â  Â  normalized.includes("zagueiro") ||
 
-    normalized.includes("defensor") ||
+Â  Â  normalized.includes("defensor") ||
 
-    normalized.includes("defender") ||
+Â  Â  normalized.includes("defender") ||
 
-    normalized.includes("lateral") ||
+Â  Â  normalized.includes("lateral") ||
 
-    normalized.includes("left back") ||
+Â  Â  normalized.includes("left back") ||
 
-    normalized.includes("right back") ||
+Â  Â  normalized.includes("right back") ||
 
-    normalized.includes("wing back") ||
+Â  Â  normalized.includes("wing back") ||
 
-    normalized.includes("d (c)") ||
+Â  Â  normalized.includes("d (c)") ||
 
-    normalized.includes("d (d)") ||
+Â  Â  normalized.includes("d (d)") ||
 
-    normalized.includes("d (e)") ||
+Â  Â  normalized.includes("d (e)") ||
 
-    normalized.includes("d (dc)") ||
+Â  Â  normalized.includes("d (dc)") ||
 
-    normalized.includes("d (ec)") ||
+Â  Â  normalized.includes("d (ec)") ||
 
-    normalized.includes("d (dec)") ||
+Â  Â  normalized.includes("d (dec)") ||
 
-    normalized.includes("d (de)") ||
+Â  Â  normalized.includes("d (de)") ||
 
-    normalized.includes("d (ed)") ||
+Â  Â  normalized.includes("d (ed)") ||
 
-    normalized.includes("d/da") ||
+Â  Â  normalized.includes("d/da") ||
 
-    normalized.includes("da (d)") ||
+Â  Â  normalized.includes("da (d)") ||
 
-    normalized.includes("da (e)") ||
+Â  Â  normalized.includes("da (e)") ||
 
-    normalized.includes("da (de)") ||
+Â  Â  normalized.includes("da (de)") ||
 
-    normalized.includes("da (ed)")
+Â  Â  normalized.includes("da (ed)")
 
-  ) {
+Â  ) {
 
-    return "defenders";
+Â  Â  return "defenders";
 
-  }
+Â  }
 
 
 
-  return "others";
+Â  return "others";
 
 }
 
@@ -412,57 +412,57 @@ function getPositionGroup(
 
 function getPositionBadge(position: string | null) {
 
-  const group = getPositionGroup(position);
+Â  const group = getPositionGroup(position);
 
 
 
-  if (group === "goalkeepers") return "GK";
+Â  if (group === "goalkeepers") return "GK";
 
-  if (group === "defenders") return "DEF";
+Â  if (group === "defenders") return "DEF";
 
-  if (group === "midfielders") return "MID";
+Â  if (group === "midfielders") return "MID";
 
-  if (group === "attackers") return "ATA";
-
-
-
-  const normalized = normalizeText(position);
+Â  if (group === "attackers") return "ATA";
 
 
 
-  if (normalized.includes("d/da") || normalized.includes("da (")) {
-
-    return "LAT";
-
-  }
+Â  const normalized = normalizeText(position);
 
 
 
-  if (
+Â  if (normalized.includes("d/da") || normalized.includes("da (")) {
 
-    normalized.includes("mo (d)") ||
+Â  Â  return "LAT";
 
-    normalized.includes("mo (e)") ||
-
-    normalized.includes("ponta") ||
-
-    normalized === "rw" ||
-
-    normalized === "lw" ||
-
-    normalized === "pd" ||
-
-    normalized === "pe"
-
-  ) {
-
-    return "EXT";
-
-  }
+Â  }
 
 
 
-  return "OUT";
+Â  if (
+
+Â  Â  normalized.includes("mo (d)") ||
+
+Â  Â  normalized.includes("mo (e)") ||
+
+Â  Â  normalized.includes("ponta") ||
+
+Â  Â  normalized === "rw" ||
+
+Â  Â  normalized === "lw" ||
+
+Â  Â  normalized === "pd" ||
+
+Â  Â  normalized === "pe"
+
+Â  ) {
+
+Â  Â  return "EXT";
+
+Â  }
+
+
+
+Â  return "OUT";
 
 }
 
@@ -470,27 +470,27 @@ function getPositionBadge(position: string | null) {
 
 function getErrorMessage(error: unknown) {
 
-  if (
+Â  if (
 
-    typeof error === "object" &&
+Â  Â  typeof error === "object" &&
 
-    error !== null &&
+Â  Â  error !== null &&
 
-    "message" in error
+Â  Â  "message" in error
 
-  ) {
+Â  ) {
 
-    return String(
+Â  Â  return String(
 
-      (error as { message: unknown }).message
+Â  Â  Â  (error as { message: unknown }).message
 
-    );
+Â  Â  );
 
-  }
+Â  }
 
 
 
-  return "Não foi possível carregar as informações do clube.";
+Â  return "NÃ£o foi possÃ­vel carregar as informaÃ§Ãµes do clube.";
 
 }
 
@@ -498,27 +498,27 @@ function getErrorMessage(error: unknown) {
 
 function getInitials(name: string) {
 
-  const parts = name.trim().split(/\s+/).filter(Boolean);
+Â  const parts = name.trim().split(/\s+/).filter(Boolean);
 
 
 
-  if (parts.length === 0) {
+Â  if (parts.length === 0) {
 
-    return "?";
+Â  Â  return "?";
 
-  }
-
-
-
-  if (parts.length === 1) {
-
-    return parts[0].charAt(0).toUpperCase();
-
-  }
+Â  }
 
 
 
-  return \`${parts[0].charAt(0)}${parts[1].charAt(0)}\`.toUpperCase();
+Â  if (parts.length === 1) {
+
+Â  Â  return parts[0].charAt(0).toUpperCase();
+
+Â  }
+
+
+
+Â  return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
 
 }
 
@@ -526,55 +526,55 @@ function getInitials(name: string) {
 
 function StatCard({
 
-  label,
+Â  label,
 
-  value,
+Â  value,
 
-  description,
+Â  description,
 
-  accent = "text-white",
+Â  accent = "text-white",
 
 }: {
 
-  label: string;
+Â  label: string;
 
-  value: string | number;
+Â  value: string | number;
 
-  description: string;
+Â  description: string;
 
-  accent?: string;
+Â  accent?: string;
 
 }) {
 
-  return (
+Â  return (
 
-    \<div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
+Â  Â  \<div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
 
-      \<p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+Â  Â  Â  \<p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
 
-        {label}
+Â  Â  Â  Â  {label}
 
-      \</p>
-
-
-
-      \<p className={\`mt-3 text-4xl font-black ${accent}\`}>
-
-        {value}
-
-      \</p>
+Â  Â  Â  \</p>
 
 
 
-      \<p className="mt-2 text-sm text-zinc-500">
+Â  Â  Â  \<p className={\`mt-3 text-4xl font-black ${accent}\`}>
 
-        {description}
+Â  Â  Â  Â  {value}
 
-      \</p>
+Â  Â  Â  \</p>
 
-    \</div>
 
-  );
+
+Â  Â  Â  \<p className="mt-2 text-sm text-zinc-500">
+
+Â  Â  Â  Â  {description}
+
+Â  Â  Â  \</p>
+
+Â  Â  \</div>
+
+Â  );
 
 }
 
@@ -582,147 +582,147 @@ function StatCard({
 
 function BestPlayerCard({
 
-  player,
+Â  player,
 
 }: {
 
-  player: Player | null;
+Â  player: Player | null;
 
 }) {
 
-  return (
+Â  return (
 
-    \<div className="rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-zinc-900 to-zinc-950 p-5">
+Â  Â  \<div className="rounded-2xl border border-yellow-500/20 bg-gradient-to-r from-zinc-900 to-zinc-950 p-5">
 
-      \<p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-400">
+Â  Â  Â  \<p className="text-xs font-black uppercase tracking-[0.2em] text-yellow-400">
 
-        Melhor jogador do elenco
+Â  Â  Â  Â  Melhor jogador do elenco
 
-      \</p>
+Â  Â  Â  \</p>
 
 
 
-      {!player ? (
+Â  Â  Â  {!player ? (
 
-        \<div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
+Â  Â  Â  Â  \<div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/70 p-4 text-sm text-zinc-400">
 
-          Nenhum jogador disponível.
+Â  Â  Â  Â  Â  Nenhum jogador disponÃ­vel.
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      ) : (
+Â  Â  Â  ) : (
 
-        \<div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+Â  Â  Â  Â  \<div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 
-          \<div className="flex min-w-0 items-center gap-4">
+Â  Â  Â  Â  Â  \<div className="flex min-w-0 items-center gap-4">
 
-            \<div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-500/20 bg-zinc-800">
+Â  Â  Â  Â  Â  Â  \<div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-500/20 bg-zinc-800">
 
-              {player.image_url ? (
+Â  Â  Â  Â  Â  Â  Â  {player.image_url ? (
 
-                \<img
+Â  Â  Â  Â  Â  Â  Â  Â  \<img
 
-                  src={player.image_url}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  src={player.image_url}
 
-                  alt={player.name}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  alt={player.name}
 
-                  className="h-full w-full object-cover"
+Â  Â  Â  Â  Â  Â  Â  Â  Â  className="h-full w-full object-cover"
 
-                />
+Â  Â  Â  Â  Â  Â  Â  Â  />
 
-              ) : (
+Â  Â  Â  Â  Â  Â  Â  ) : (
 
-                \<span className="text-xl font-black text-yellow-400">
+Â  Â  Â  Â  Â  Â  Â  Â  \<span className="text-xl font-black text-yellow-400">
 
-                  ★
+Â  Â  Â  Â  Â  Â  Â  Â  Â  â˜…
 
-                \</span>
+Â  Â  Â  Â  Â  Â  Â  Â  \</span>
 
-              )}
+Â  Â  Â  Â  Â  Â  Â  )}
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
 
 
-            \<div className="min-w-0">
+Â  Â  Â  Â  Â  Â  \<div className="min-w-0">
 
-              \<p className="text-[11px] font-black uppercase tracking-[0.18em] text-yellow-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="text-[11px] font-black uppercase tracking-[0.18em] text-yellow-400">
 
-                Maior CA do elenco
+Â  Â  Â  Â  Â  Â  Â  Â  Maior CA do elenco
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
 
 
-              \<h2 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
+Â  Â  Â  Â  Â  Â  Â  \<h2 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
 
-                {player.name}
+Â  Â  Â  Â  Â  Â  Â  Â  {player.name}
 
-              \</h2>
+Â  Â  Â  Â  Â  Â  Â  \</h2>
 
 
 
-              \<p className="mt-1 text-sm text-zinc-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="mt-1 text-sm text-zinc-400">
 
-                {player.position || "Sem posição"}
+Â  Â  Â  Â  Â  Â  Â  Â  {player.position || "Sem posiÃ§Ã£o"}
 
-                {player.age !== null ? \` · ${player.age} anos\` : ""}
+Â  Â  Â  Â  Â  Â  Â  Â  {player.age !== null ? \` Â· ${player.age} anos\` : ""}
 
-                {player.nationality ? \` · ${player.nationality}\` : ""}
+Â  Â  Â  Â  Â  Â  Â  Â  {player.nationality ? \` Â· ${player.nationality}\` : ""}
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          \<div className="grid grid-cols-2 gap-3 lg:min-w-[260px]">
+Â  Â  Â  Â  Â  \<div className="grid grid-cols-2 gap-3 lg:min-w-[260px]">
 
-            \<div className="rounded-2xl border border-yellow-500/20 bg-black/30 px-4 py-3 text-center">
+Â  Â  Â  Â  Â  Â  \<div className="rounded-2xl border border-yellow-500/20 bg-black/30 px-4 py-3 text-center">
 
-              \<p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+Â  Â  Â  Â  Â  Â  Â  \<p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
 
-                CA
+Â  Â  Â  Â  Â  Â  Â  Â  CA
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-              \<p className="mt-1 text-3xl font-black text-yellow-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="mt-1 text-3xl font-black text-yellow-400">
 
-                {player.ca ?? "-"}
+Â  Â  Â  Â  Â  Â  Â  Â  {player.ca ?? "-"}
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
 
 
-            \<div className="rounded-2xl border border-green-500/20 bg-black/30 px-4 py-3 text-center">
+Â  Â  Â  Â  Â  Â  \<div className="rounded-2xl border border-green-500/20 bg-black/30 px-4 py-3 text-center">
 
-              \<p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
+Â  Â  Â  Â  Â  Â  Â  \<p className="text-[11px] font-black uppercase tracking-widest text-zinc-500">
 
-                Valor
+Â  Â  Â  Â  Â  Â  Â  Â  Valor
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-              \<p className="mt-1 text-xl font-black text-green-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="mt-1 text-xl font-black text-green-400">
 
-                {money(player.value)}
+Â  Â  Â  Â  Â  Â  Â  Â  {money(player.value)}
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      )}
+Â  Â  Â  )}
 
-    \</div>
+Â  Â  \</div>
 
-  );
+Â  );
 
 }
 
@@ -756,7 +756,7 @@ function PlayerCardCompact({
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-black uppercase tracking-wide text-green-400">
-              {player.position || "Sem posição"}
+              {player.position || "Sem posiÃ§Ã£o"}
             </p>
 
             <h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
@@ -766,11 +766,11 @@ function PlayerCardCompact({
             <p className="mt-1 text-base text-zinc-300">
               {player.age !== null
                 ? `${player.age} anos`
-                : "Idade não informada"}
+                : "Idade nÃ£o informada"}
             </p>
 
             <p className="text-base text-zinc-500">
-              {player.nationality || "Nacionalidade não informada"}
+              {player.nationality || "Nacionalidade nÃ£o informada"}
             </p>
           </div>
 
@@ -795,7 +795,7 @@ function PlayerCardCompact({
           </p>
 
           <p className="mt-3 text-sm font-black text-blue-400">
-            Ver perfil completo e atributos →
+            Ver perfil completo e atributos â†’
           </p>
         </div>
       </Link>
@@ -805,193 +805,193 @@ function PlayerCardCompact({
 
 function StaffCardCompact({
 
-  member,
+Â  member,
 
-  onRelease,
+Â  onRelease,
 
-  releasing,
+Â  releasing,
 
-  canRelease,
+Â  canRelease,
 
 }: {
 
-  member: Coach;
+Â  member: Coach;
 
-  onRelease: (member: Coach) => void;
+Â  onRelease: (member: Coach) => void;
 
-  releasing: boolean;
+Â  releasing: boolean;
 
-  canRelease: boolean;
+Â  canRelease: boolean;
 
 }) {
 
-  const refundPreview = Number(member.value || 0) \* 0.5;
+Â  const refundPreview = Number(member.value || 0) \* 0.5;
 
 
 
-  return (
+Â  return (
 
-    \<article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95">
+Â  Â  \<article className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/95">
 
-      \<div className="p-4">
+Â  Â  Â  \<div className="p-4">
 
-        \<div className="flex items-start gap-3">
+Â  Â  Â  Â  \<div className="flex items-start gap-3">
 
-          \<div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 text-2xl font-black text-zinc-400">
+Â  Â  Â  Â  Â  \<div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800 text-2xl font-black text-zinc-400">
 
-            {member.image_url ? (
+Â  Â  Â  Â  Â  Â  {member.image_url ? (
 
-              \<img
+Â  Â  Â  Â  Â  Â  Â  \<img
 
-                src={member.image_url}
+Â  Â  Â  Â  Â  Â  Â  Â  src={member.image_url}
 
-                alt={member.name}
+Â  Â  Â  Â  Â  Â  Â  Â  alt={member.name}
 
-                className="h-full w-full object-cover"
+Â  Â  Â  Â  Â  Â  Â  Â  className="h-full w-full object-cover"
 
-              />
+Â  Â  Â  Â  Â  Â  Â  />
 
-            ) : (
+Â  Â  Â  Â  Â  Â  ) : (
 
-              getInitials(member.name)
+Â  Â  Â  Â  Â  Â  Â  getInitials(member.name)
 
-            )}
+Â  Â  Â  Â  Â  Â  )}
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          \<div className="min-w-0 flex-1">
+Â  Â  Â  Â  Â  \<div className="min-w-0 flex-1">
 
-            \<p className="text-sm font-black uppercase tracking-wide text-purple-400">
+Â  Â  Â  Â  Â  Â  \<p className="text-sm font-black uppercase tracking-wide text-purple-400">
 
-              {member.role || "Staff"}
+Â  Â  Â  Â  Â  Â  Â  {member.role || "Staff"}
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
 
 
-            \<h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
+Â  Â  Â  Â  Â  Â  \<h3 className="mt-1 line-clamp-2 text-2xl font-black leading-tight text-white">
 
-              {member.name}
+Â  Â  Â  Â  Â  Â  Â  {member.name}
 
-            \</h3>
+Â  Â  Â  Â  Â  Â  \</h3>
 
 
 
-            \<p className="mt-1 text-base text-zinc-300">
+Â  Â  Â  Â  Â  Â  \<p className="mt-1 text-base text-zinc-300">
 
-              {member.age !== null
+Â  Â  Â  Â  Â  Â  Â  {member.age !== null
 
-                ? \`${member.age} anos\`
+Â  Â  Â  Â  Â  Â  Â  Â  ? \`${member.age} anos\`
 
-                : "Idade não informada"}
+Â  Â  Â  Â  Â  Â  Â  Â  : "Idade nÃ£o informada"}
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
 
 
-            \<p className="text-base text-zinc-500">
+Â  Â  Â  Â  Â  Â  \<p className="text-base text-zinc-500">
 
-              {member.nationality || "Nacionalidade não informada"}
+Â  Â  Â  Â  Â  Â  Â  {member.nationality || "Nacionalidade nÃ£o informada"}
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          \<div className="shrink-0 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-center">
+Â  Â  Â  Â  Â  \<div className="shrink-0 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-2 text-center">
 
-            \<p className="text-[11px] font-black uppercase tracking-wide text-zinc-400">
+Â  Â  Â  Â  Â  Â  \<p className="text-[11px] font-black uppercase tracking-wide text-zinc-400">
 
-              CA
+Â  Â  Â  Â  Â  Â  Â  CA
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-            \<p className="text-4xl font-black leading-none text-green-400">
+Â  Â  Â  Â  Â  Â  \<p className="text-4xl font-black leading-none text-green-400">
 
-              {member.ca ?? "-"}
+Â  Â  Â  Â  Â  Â  Â  {member.ca ?? "-"}
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
 
 
-        \<div className="mt-5 border-t border-zinc-800 pt-4">
+Â  Â  Â  Â  \<div className="mt-5 border-t border-zinc-800 pt-4">
 
-          \<p className="text-sm text-zinc-500">
+Â  Â  Â  Â  Â  \<p className="text-sm text-zinc-500">
 
-            Valor estimado
+Â  Â  Â  Â  Â  Â  Valor estimado
 
-          \</p>
+Â  Â  Â  Â  Â  \</p>
 
-          \<p className="mt-1 text-3xl font-black text-green-400">
+Â  Â  Â  Â  Â  \<p className="mt-1 text-3xl font-black text-green-400">
 
-            {money(member.value)}
+Â  Â  Â  Â  Â  Â  {money(member.value)}
 
-          \</p>
+Â  Â  Â  Â  Â  \</p>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      \</div>
+Â  Â  Â  \</div>
 
 
 
-      {canRelease && (
+Â  Â  Â  {canRelease && (
 
-        \<div className="border-t border-red-500/30 bg-red-500/5 px-4 py-3">
+Â  Â  Â  Â  \<div className="border-t border-red-500/30 bg-red-500/5 px-4 py-3">
 
-          \<p className="text-sm font-black uppercase tracking-wide text-red-400">
+Â  Â  Â  Â  Â  \<p className="text-sm font-black uppercase tracking-wide text-red-400">
 
-            Dispensa
+Â  Â  Â  Â  Â  Â  Dispensa
 
-          \</p>
+Â  Â  Â  Â  Â  \</p>
 
-          \<p className="mt-1 text-sm text-zinc-300">
+Â  Â  Â  Â  Â  \<p className="mt-1 text-sm text-zinc-300">
 
-            Você recebe 50%
+Â  Â  Â  Â  Â  Â  VocÃª recebe 50%
 
-          \</p>
+Â  Â  Â  Â  Â  \</p>
 
-          \<div className="mt-1 flex items-center justify-between gap-3">
+Â  Â  Â  Â  Â  \<div className="mt-1 flex items-center justify-between gap-3">
 
-            \<p className="text-2xl font-black text-yellow-400">
+Â  Â  Â  Â  Â  Â  \<p className="text-2xl font-black text-yellow-400">
 
-              {money(refundPreview)}
+Â  Â  Â  Â  Â  Â  Â  {money(refundPreview)}
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
 
 
-            \<button
+Â  Â  Â  Â  Â  Â  \<button
 
-              type="button"
+Â  Â  Â  Â  Â  Â  Â  type="button"
 
-              disabled={releasing}
+Â  Â  Â  Â  Â  Â  Â  disabled={releasing}
 
-              onClick={() => onRelease(member)}
+Â  Â  Â  Â  Â  Â  Â  onClick={() => onRelease(member)}
 
-              className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-black text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+Â  Â  Â  Â  Â  Â  Â  className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 font-black text-red-200 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
 
-            >
+Â  Â  Â  Â  Â  Â  >
 
-              {releasing ? "Dispensando..." : "Dispensar"}
+Â  Â  Â  Â  Â  Â  Â  {releasing ? "Dispensando..." : "Dispensar"}
 
-            \</button>
+Â  Â  Â  Â  Â  Â  \</button>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      )}
+Â  Â  Â  )}
 
-    \</article>
+Â  Â  \</article>
 
-  );
+Â  );
 
 }
 
@@ -999,1118 +999,1119 @@ function StaffCardCompact({
 
 export default function TeamPage() {
 
-  const params = useParams();
+Â  const params = useParams();
 
 
 
-  const rawTeamId = Array.isArray(params.id)
+Â  const rawTeamId = Array.isArray(params.id)
 
-    ? params.id[0]
+Â  Â  ? params.id[0]
 
-    : params.id;
+Â  Â  : params.id;
 
 
 
-  const teamId = Number(rawTeamId);
+Â  const teamId = Number(rawTeamId);
 
 
 
-  const [team, setTeam] = useState\<Team | null>(null);
+Â  const [team, setTeam] = useState\<Team | null>(null);
 
-  const [players, setPlayers] = useState\<Player[]>([]);
+Â  const [players, setPlayers] = useState\<Player[]>([]);
 
-  const [staff, setStaff] = useState\<Coach[]>([]);
+Â  const [staff, setStaff] = useState\<Coach[]>([]);
 
-  const [loading, setLoading] = useState(true);
+Â  const [loading, setLoading] = useState(true);
 
-  const [errorMessage, setErrorMessage] = useState("");
+Â  const [errorMessage, setErrorMessage] = useState("");
 
-  const [successMessage, setSuccessMessage] = useState("");
+Â  const [successMessage, setSuccessMessage] = useState("");
 
-  const [releasingStaffId, setReleasingStaffId] = useState\<number | null>(null);
+Â  const [releasingStaffId, setReleasingStaffId] = useState\<number | null>(null);
 
-  const [currentUserId, setCurrentUserId] = useState\<string | null>(null);
+Â  const [currentUserId, setCurrentUserId] = useState\<string | null>(null);
 
 
 
-  const loadTeam = useCallback(async () => {
+Â  const loadTeam = useCallback(async () => {
 
-    if (!Number.isInteger(teamId) || teamId <= 0) {
+Â  Â  if (!Number.isInteger(teamId) || teamId <= 0) {
 
-      setTeam(null);
+Â  Â  Â  setTeam(null);
 
-      setPlayers([]);
+Â  Â  Â  setPlayers([]);
 
-      setStaff([]);
+Â  Â  Â  setStaff([]);
 
-      setErrorMessage("Identificador do clube inválido.");
+Â  Â  Â  setErrorMessage("Identificador do clube invÃ¡lido.");
 
-      setLoading(false);
+Â  Â  Â  setLoading(false);
 
-      return;
+Â  Â  Â  return;
 
-    }
+Â  Â  }
 
 
 
-    try {
+Â  Â  try {
 
-      setLoading(true);
+Â  Â  Â  setLoading(true);
 
-      setErrorMessage("");
+Â  Â  Â  setErrorMessage("");
 
 
 
-      const { data: authData } = await supabase.auth.getUser();
+Â  Â  Â  const { data: authData } = await supabase.auth.getUser();
 
-      setCurrentUserId(authData.user?.id ?? null);
+Â  Â  Â  setCurrentUserId(authData.user?.id ?? null);
 
 
 
-      const { data: teamData, error: teamError } = await supabase
+Â  Â  Â  const { data: teamData, error: teamError } = await supabase
 
-        .from("teams")
+Â  Â  Â  Â  .from("teams")
 
-        .select(\`
+Â  Â  Â  Â  .select(\`
 
-          id,
+Â  Â  Â  Â  Â  id,
 
-          name,
+Â  Â  Â  Â  Â  name,
 
-          city,
+Â  Â  Â  Â  Â  city,
 
-          stadium,
+Â  Â  Â  Â  Â  stadium,
 
-          budget,
+Â  Â  Â  Â  Â  budget,
 
-          manager_id,
+Â  Â  Â  Â  Â  manager_id,
 
-          manager_name,
+Â  Â  Â  Â  Â  manager_name,
 
-          logo_url
+Â  Â  Â  Â  Â  logo_url
 
-        \`)
+Â  Â  Â  Â  \`)
 
-        .eq("id", teamId)
+Â  Â  Â  Â  .eq("id", teamId)
 
-        .maybeSingle();
+Â  Â  Â  Â  .maybeSingle();
 
 
 
-      if (teamError) {
+Â  Â  Â  if (teamError) {
 
-        throw teamError;
+Â  Â  Â  Â  throw teamError;
 
-      }
+Â  Â  Â  }
 
 
 
-      if (!teamData) {
+Â  Â  Â  if (!teamData) {
 
-        setTeam(null);
+Â  Â  Â  Â  setTeam(null);
 
-        setPlayers([]);
+Â  Â  Â  Â  setPlayers([]);
 
-        setStaff([]);
+Â  Â  Â  Â  setStaff([]);
 
-        setLoading(false);
+Â  Â  Â  Â  setLoading(false);
 
-        return;
+Â  Â  Â  Â  return;
 
-      }
+Â  Â  Â  }
 
 
 
-      const loadedTeam = teamData as Team;
+Â  Â  Â  const loadedTeam = teamData as Team;
 
-      setTeam(loadedTeam);
+Â  Â  Â  setTeam(loadedTeam);
 
 
 
-      const [playersResult, staffResult] = await Promise.all([
+Â  Â  Â  const [playersResult, staffResult] = await Promise.all([
 
-        supabase
+Â  Â  Â  Â  supabase
 
-          .from("players")
+Â  Â  Â  Â  Â  .from("players")
 
-          .select(\`
+Â  Â  Â  Â  Â  .select(\`
 
-            id,
+Â  Â  Â  Â  Â  Â  id,
 
-            name,
+Â  Â  Â  Â  Â  Â  name,
 
-            age,
+Â  Â  Â  Â  Â  Â  age,
 
-            position,
+Â  Â  Â  Â  Â  Â  position,
 
-            nationality,
+Â  Â  Â  Â  Â  Â  nationality,
 
-            ca,
+Â  Â  Â  Â  Â  Â  ca,
 
-            value,
+Â  Â  Â  Â  Â  Â  value,
 
-            image_url,
+Â  Â  Â  Â  Â  Â  image_url,
 
-            team_id
+Â  Â  Â  Â  Â  Â  team_id
 
-          \`)
+Â  Â  Â  Â  Â  \`)
 
-          .eq("team_id", loadedTeam.id)
+Â  Â  Â  Â  Â  .eq("team_id", loadedTeam.id)
 
-          .order("ca", {
+Â  Â  Â  Â  Â  .order("ca", {
 
-            ascending: false,
+Â  Â  Â  Â  Â  Â  ascending: false,
 
-            nullsFirst: false,
+Â  Â  Â  Â  Â  Â  nullsFirst: false,
 
-          })
+Â  Â  Â  Â  Â  })
 
-          .order("name", { ascending: true }),
+Â  Â  Â  Â  Â  .order("name", { ascending: true }),
 
 
 
-        supabase
+Â  Â  Â  Â  supabase
 
-          .from("coaches")
+Â  Â  Â  Â  Â  .from("coaches")
 
-          .select(\`
+Â  Â  Â  Â  Â  .select(\`
 
-            id,
+Â  Â  Â  Â  Â  Â  id,
 
-            unique_id,
+Â  Â  Â  Â  Â  Â  unique_id,
 
-            name,
+Â  Â  Â  Â  Â  Â  name,
 
-            age,
+Â  Â  Â  Â  Â  Â  age,
 
-            role,
+Â  Â  Â  Â  Â  Â  role,
 
-            nationality,
+Â  Â  Â  Â  Â  Â  nationality,
 
-            ca,
+Â  Â  Â  Â  Â  Â  ca,
 
-            cp,
+Â  Â  Â  Â  Â  Â  cp,
 
-            value,
+Â  Â  Â  Â  Â  Â  value,
 
-            image_url,
+Â  Â  Â  Â  Â  Â  image_url,
 
-            team_id,
+Â  Â  Â  Â  Â  Â  team_id,
 
-            hired_at
+Â  Â  Â  Â  Â  Â  hired_at
 
-          \`)
+Â  Â  Â  Â  Â  \`)
 
-          .eq("team_id", loadedTeam.id)
+Â  Â  Â  Â  Â  .eq("team_id", loadedTeam.id)
 
-          .order("ca", {
+Â  Â  Â  Â  Â  .order("ca", {
 
-            ascending: false,
+Â  Â  Â  Â  Â  Â  ascending: false,
 
-            nullsFirst: false,
+Â  Â  Â  Â  Â  Â  nullsFirst: false,
 
-          })
+Â  Â  Â  Â  Â  })
 
-          .order("name", { ascending: true }),
+Â  Â  Â  Â  Â  .order("name", { ascending: true }),
 
-      ]);
+Â  Â  Â  ]);
 
 
 
-      if (playersResult.error) {
+Â  Â  Â  if (playersResult.error) {
 
-        throw playersResult.error;
+Â  Â  Â  Â  throw playersResult.error;
 
-      }
+Â  Â  Â  }
 
 
 
-      if (staffResult.error) {
+Â  Â  Â  if (staffResult.error) {
 
-        throw staffResult.error;
+Â  Â  Â  Â  throw staffResult.error;
 
-      }
+Â  Â  Â  }
 
 
 
-      setPlayers((playersResult.data || []) as Player[]);
+Â  Â  Â  setPlayers((playersResult.data || []) as Player[]);
 
-      setStaff((staffResult.data || []) as Coach[]);
+Â  Â  Â  setStaff((staffResult.data || []) as Coach[]);
 
-    } catch (error) {
+Â  Â  } catch (error) {
 
-      console.error(error);
+Â  Â  Â  console.error(error);
 
-      setErrorMessage(getErrorMessage(error));
+Â  Â  Â  setErrorMessage(getErrorMessage(error));
 
-      setTeam(null);
+Â  Â  Â  setTeam(null);
 
-      setPlayers([]);
+Â  Â  Â  setPlayers([]);
 
-      setStaff([]);
+Â  Â  Â  setStaff([]);
 
-    } finally {
+Â  Â  } finally {
 
-      setLoading(false);
+Â  Â  Â  setLoading(false);
 
-    }
+Â  Â  }
 
-  }, [teamId]);
+Â  }, [teamId]);
 
 
 
-  useEffect(() => {
+Â  useEffect(() => {
 
-    void loadTeam();
+Â  Â  void loadTeam();
 
 
 
-    const channel = supabase
+Â  Â  const channel = supabase
 
-      .channel(\`team-page-${teamId}\`)
+Â  Â  Â  .channel(\`team-page-${teamId}\`)
 
-      .on(
+Â  Â  Â  .on(
 
-        "postgres_changes",
+Â  Â  Â  Â  "postgres_changes",
 
-        {
+Â  Â  Â  Â  {
 
-          event: "\*",
+Â  Â  Â  Â  Â  event: "\*",
 
-          schema: "public",
+Â  Â  Â  Â  Â  schema: "public",
 
-          table: "teams",
+Â  Â  Â  Â  Â  table: "teams",
 
-        },
+Â  Â  Â  Â  },
 
-        () => {
+Â  Â  Â  Â  () => {
 
-          void loadTeam();
+Â  Â  Â  Â  Â  void loadTeam();
 
-        }
+Â  Â  Â  Â  }
 
-      )
+Â  Â  Â  )
 
-      .on(
+Â  Â  Â  .on(
 
-        "postgres_changes",
+Â  Â  Â  Â  "postgres_changes",
 
-        {
+Â  Â  Â  Â  {
 
-          event: "\*",
+Â  Â  Â  Â  Â  event: "\*",
 
-          schema: "public",
+Â  Â  Â  Â  Â  schema: "public",
 
-          table: "players",
+Â  Â  Â  Â  Â  table: "players",
 
-        },
+Â  Â  Â  Â  },
 
-        () => {
+Â  Â  Â  Â  () => {
 
-          void loadTeam();
+Â  Â  Â  Â  Â  void loadTeam();
 
-        }
+Â  Â  Â  Â  }
 
-      )
+Â  Â  Â  )
 
-      .on(
+Â  Â  Â  .on(
 
-        "postgres_changes",
+Â  Â  Â  Â  "postgres_changes",
 
-        {
+Â  Â  Â  Â  {
 
-          event: "\*",
+Â  Â  Â  Â  Â  event: "\*",
 
-          schema: "public",
+Â  Â  Â  Â  Â  schema: "public",
 
-          table: "coaches",
+Â  Â  Â  Â  Â  table: "coaches",
 
-        },
+Â  Â  Â  Â  },
 
-        () => {
+Â  Â  Â  Â  () => {
 
-          void loadTeam();
+Â  Â  Â  Â  Â  void loadTeam();
 
-        }
+Â  Â  Â  Â  }
 
-      )
+Â  Â  Â  )
 
-      .subscribe();
+Â  Â  Â  .subscribe();
 
 
 
-    return () => {
+Â  Â  return () => {
 
-      supabase.removeChannel(channel);
+Â  Â  Â  supabase.removeChannel(channel);
 
-    };
+Â  Â  };
 
-  }, [loadTeam, teamId]);
+Â  }, [loadTeam, teamId]);
 
 
 
-  async function releaseStaff(member: Coach) {
+Â  async function releaseStaff(member: Coach) {
 
-    if (releasingStaffId !== null) {
+Â  Â  if (releasingStaffId !== null) {
 
-      return;
+Â  Â  Â  return;
 
-    }
+Â  Â  }
 
 
 
-    const confirmed = window\.confirm(
+Â  Â  const confirmed = window\.confirm(
 
-      \`Dispensar ${member.name}?\n\n\` +
+Â  Â  Â  \`Dispensar ${member.name}?\n\n\` +
 
-        \`O clube receberá 50% do valor realmente pago por esse profissional.\n\n\` +
+Â  Â  Â  Â  \`O clube receberÃ¡ 50% do valor realmente pago por esse profissional.\n\n\` +
 
-        \`O staff voltará ao Mercado de Treinadores pelo seu preço normal: ${money(member.value)}.\`
+Â  Â  Â  Â  \`O staff voltarÃ¡ ao Mercado de Treinadores pelo seu preÃ§o normal: ${money(member.value)}.\`
 
-    );
+Â  Â  );
 
 
 
-    if (!confirmed) {
+Â  Â  if (!confirmed) {
 
-      return;
+Â  Â  Â  return;
 
-    }
+Â  Â  }
 
 
 
-    setReleasingStaffId(member.id);
+Â  Â  setReleasingStaffId(member.id);
 
-    setErrorMessage("");
+Â  Â  setErrorMessage("");
 
-    setSuccessMessage("");
+Â  Â  setSuccessMessage("");
 
 
 
-    const { data, error } = await supabase.rpc("release_staff", {
+Â  Â  const { data, error } = await supabase.rpc("release_staff", {
 
-      p_coach_id: member.id,
+Â  Â  Â  p_coach_id: member.id,
 
-    });
+Â  Â  });
 
 
 
-    if (error) {
+Â  Â  if (error) {
 
-      const message = String(error.message || "");
+Â  Â  Â  const message = String(error.message || "");
 
 
 
-      if (message.includes("STAFF_NOT_OWNED")) {
+Â  Â  Â  if (message.includes("STAFF_NOT_OWNED")) {
 
-        setErrorMessage("Esse profissional não pertence ao seu clube.");
+Â  Â  Â  Â  setErrorMessage("Esse profissional nÃ£o pertence ao seu clube.");
 
-      } else if (message.includes("TEAM_NOT_FOUND")) {
+Â  Â  Â  } else if (message.includes("TEAM_NOT_FOUND")) {
 
-        setErrorMessage("Não foi possível localizar seu clube.");
+Â  Â  Â  Â  setErrorMessage("NÃ£o foi possÃ­vel localizar seu clube.");
 
-      } else if (message.includes("STAFF_NOT_FOUND")) {
+Â  Â  Â  } else if (message.includes("STAFF_NOT_FOUND")) {
 
-        setErrorMessage("Profissional não encontrado.");
+Â  Â  Â  Â  setErrorMessage("Profissional nÃ£o encontrado.");
 
-      } else if (message.includes("NOT_AUTHENTICATED")) {
+Â  Â  Â  } else if (message.includes("NOT_AUTHENTICATED")) {
 
-        setErrorMessage("Sua sessão expirou. Entre novamente.");
+Â  Â  Â  Â  setErrorMessage("Sua sessÃ£o expirou. Entre novamente.");
 
-      } else {
+Â  Â  Â  } else {
 
-        setErrorMessage("Não foi possível dispensar o profissional.");
+Â  Â  Â  Â  setErrorMessage("NÃ£o foi possÃ­vel dispensar o profissional.");
 
-      }
+Â  Â  Â  }
 
 
 
-      setReleasingStaffId(null);
+Â  Â  Â  setReleasingStaffId(null);
 
-      return;
+Â  Â  Â  return;
 
-    }
+Â  Â  }
 
 
 
-    const returnedRefund =
+Â  Â  const returnedRefund =
 
-      data && typeof data === "object" && "refund" in data
+Â  Â  Â  data && typeof data === "object" && "refund" in data
 
-        ? Number((data as { refund?: number }).refund || 0)
+Â  Â  Â  Â  ? Number((data as { refund?: number }).refund || 0)
 
-        : 0;
+Â  Â  Â  Â  : 0;
 
 
 
-    setSuccessMessage(
+Â  Â  setSuccessMessage(
 
-      \`${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orçamento do clube.\`
+Â  Â  Â  \`${member.name} foi dispensado. ${money(returnedRefund)} foram devolvidos ao orÃ§amento do clube.\`
 
-    );
+Â  Â  );
 
 
 
-    await loadTeam();
+Â  Â  await loadTeam();
 
-    setReleasingStaffId(null);
+Â  Â  setReleasingStaffId(null);
 
-  }
+Â  }
 
 
 
-  const totalSquadValue = useMemo(
+Â  const totalSquadValue = useMemo(
 
-    () => players.reduce((total, player) => total + Number(player.value || 0), 0),
+Â  Â  () => players.reduce((total, player) => total + Number(player.value || 0), 0),
 
-    [players]
+Â  Â  [players]
 
-  );
+Â  );
 
 
 
-  const totalStaffValue = useMemo(
+Â  const totalStaffValue = useMemo(
 
-    () => staff.reduce((total, member) => total + Number(member.value || 0), 0),
+Â  Â  () => staff.reduce((total, member) => total + Number(member.value || 0), 0),
 
-    [staff]
+Â  Â  [staff]
 
-  );
+Â  );
 
 
 
-  const averageCa = useMemo(() => {
+Â  const averageCa = useMemo(() => {
 
-    const validPlayers = players.filter((player) => player.ca !== null);
+Â  Â  const validPlayers = players.filter((player) => player.ca !== null);
 
 
 
-    if (validPlayers.length === 0) {
+Â  Â  if (validPlayers.length === 0) {
 
-      return 0;
+Â  Â  Â  return 0;
 
-    }
+Â  Â  }
 
 
 
-    return Math.round(
+Â  Â  return Math.round(
 
-      validPlayers.reduce((total, player) => total + Number(player.ca || 0), 0) /
+Â  Â  Â  validPlayers.reduce((total, player) => total + Number(player.ca || 0), 0) /
 
-        validPlayers.length
+Â  Â  Â  Â  validPlayers.length
 
-    );
+Â  Â  );
 
-  }, [players]);
+Â  }, [players]);
 
 
 
-  const averageAge = useMemo(() => {
+Â  const averageAge = useMemo(() => {
 
-    const validPlayers = players.filter((player) => player.age !== null);
+Â  Â  const validPlayers = players.filter((player) => player.age !== null);
 
 
 
-    if (validPlayers.length === 0) {
+Â  Â  if (validPlayers.length === 0) {
 
-      return 0;
+Â  Â  Â  return 0;
 
-    }
+Â  Â  }
 
 
 
-    return Math.round(
+Â  Â  return Math.round(
 
-      validPlayers.reduce((total, player) => total + Number(player.age || 0), 0) /
+Â  Â  Â  validPlayers.reduce((total, player) => total + Number(player.age || 0), 0) /
 
-        validPlayers.length
+Â  Â  Â  Â  validPlayers.length
 
-    );
+Â  Â  );
 
-  }, [players]);
+Â  }, [players]);
 
 
 
-  const bestPlayer = useMemo(() => {
+Â  const bestPlayer = useMemo(() => {
 
-    if (players.length === 0) {
+Â  Â  if (players.length === 0) {
 
-      return null;
+Â  Â  Â  return null;
 
-    }
+Â  Â  }
 
 
 
-    return [...players].sort((a, b) => {
+Â  Â  return [...players].sort((a, b) => {
 
-      const caDifference = Number(b.ca || 0) - Number(a.ca || 0);
+Â  Â  Â  const caDifference = Number(b.ca || 0) - Number(a.ca || 0);
 
-      if (caDifference !== 0) {
+Â  Â  Â  if (caDifference !== 0) {
 
-        return caDifference;
+Â  Â  Â  Â  return caDifference;
 
-      }
+Â  Â  Â  }
 
 
 
-      return Number(b.value || 0) - Number(a.value || 0);
+Â  Â  Â  return Number(b.value || 0) - Number(a.value || 0);
 
-    })[0];
+Â  Â  })[0];
 
-  }, [players]);
+Â  }, [players]);
 
 
 
-  const playerSections = useMemo\<PlayerSection[]>(() => {
+Â  const playerSections = useMemo\<PlayerSection[]>(() => {
 
-    const grouped: Record\<PositionGroup, Player[]> = {
+Â  Â  const grouped: Record\<PositionGroup, Player[]> = {
 
-      goalkeepers: [],
+Â  Â  Â  goalkeepers: [],
 
-      defenders: [],
+Â  Â  Â  defenders: [],
 
-      midfielders: [],
+Â  Â  Â  midfielders: [],
 
-      attackers: [],
+Â  Â  Â  attackers: [],
 
-      others: [],
+Â  Â  Â  others: [],
 
-    };
+Â  Â  };
 
 
 
-    players.forEach((player) => {
+Â  Â  players.forEach((player) => {
 
-      grouped[getPositionGroup(player.position)].push(player);
+Â  Â  Â  grouped[getPositionGroup(player.position)].push(player);
 
-    });
+Â  Â  });
 
 
 
-    const sections: PlayerSection[] = [
+Â  Â  const sections: PlayerSection[] = [
 
-      {
+Â  Â  Â  {
 
-        key: "goalkeepers",
+Â  Â  Â  Â  key: "goalkeepers",
 
-        title: "Goleiros",
+Â  Â  Â  Â  title: "Goleiros",
 
-        abbreviation: "GK",
+Â  Â  Â  Â  abbreviation: "GK",
 
-        players: grouped.goalkeepers,
+Â  Â  Â  Â  players: grouped.goalkeepers,
 
-      },
+Â  Â  Â  },
 
-      {
+Â  Â  Â  {
 
-        key: "defenders",
+Â  Â  Â  Â  key: "defenders",
 
-        title: "Defensores",
+Â  Â  Â  Â  title: "Defensores",
 
-        abbreviation: "DEF",
+Â  Â  Â  Â  abbreviation: "DEF",
 
-        players: grouped.defenders,
+Â  Â  Â  Â  players: grouped.defenders,
 
-      },
+Â  Â  Â  },
 
-      {
+Â  Â  Â  {
 
-        key: "midfielders",
+Â  Â  Â  Â  key: "midfielders",
 
-        title: "Meio-campistas",
+Â  Â  Â  Â  title: "Meio-campistas",
 
-        abbreviation: "MID",
+Â  Â  Â  Â  abbreviation: "MID",
 
-        players: grouped.midfielders,
+Â  Â  Â  Â  players: grouped.midfielders,
 
-      },
+Â  Â  Â  },
 
-      {
+Â  Â  Â  {
 
-        key: "attackers",
+Â  Â  Â  Â  key: "attackers",
 
-        title: "Atacantes",
+Â  Â  Â  Â  title: "Atacantes",
 
-        abbreviation: "ATA",
+Â  Â  Â  Â  abbreviation: "ATA",
 
-        players: grouped.attackers,
+Â  Â  Â  Â  players: grouped.attackers,
 
-      },
+Â  Â  Â  },
 
-      {
+Â  Â  Â  {
 
-        key: "others",
+Â  Â  Â  Â  key: "others",
 
-        title: "Outros jogadores",
+Â  Â  Â  Â  title: "Outros jogadores",
 
-        abbreviation: "OUT",
+Â  Â  Â  Â  abbreviation: "OUT",
 
-        players: grouped.others,
+Â  Â  Â  Â  players: grouped.others,
 
-      },
+Â  Â  Â  },
 
-    ];
+Â  Â  ];
 
 
 
-    return sections.filter((section) => section.players.length > 0);
+Â  Â  return sections.filter((section) => section.players.length > 0);
 
-  }, [players]);
+Â  }, [players]);
 
 
 
-  if (loading) {
+Â  if (loading) {
 
-    return (
+Â  Â  return (
 
-      \<main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+Â  Â  Â  \<main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
 
-        \<div className="text-center">
+Â  Â  Â  Â  \<div className="text-center">
 
-          \<div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-zinc-700 border-t-green-400" />
+Â  Â  Â  Â  Â  \<div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-zinc-700 border-t-green-400" />
 
-          \<p className="mt-4 font-semibold text-zinc-400">Carregando clube...\</p>
+Â  Â  Â  Â  Â  \<p className="mt-4 font-semibold text-zinc-400">Carregando clube...\</p>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      \</main>
+Â  Â  Â  \</main>
 
-    );
+Â  Â  );
 
-  }
+Â  }
 
 
 
-  if (!team) {
+Â  if (!team) {
 
-    return (
+Â  Â  return (
 
-      \<main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
+Â  Â  Â  \<main className="flex min-h-screen items-center justify-center bg-zinc-950 px-6 text-white">
 
-        \<div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
+Â  Â  Â  Â  \<div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
 
-          \<div className="text-6xl">🏟️\</div>
+Â  Â  Â  Â  Â  \<div className="text-6xl">ðŸŸï¸\</div>
 
-          \<h1 className="mt-5 text-4xl font-black">Clube não encontrado\</h1>
+Â  Â  Â  Â  Â  \<h1 className="mt-5 text-4xl font-black">Clube nÃ£o encontrado\</h1>
 
-          \<p className="mt-3 text-zinc-400">
+Â  Â  Â  Â  Â  \<p className="mt-3 text-zinc-400">
 
-            O clube solicitado não existe ou não está disponível.
+Â  Â  Â  Â  Â  Â  O clube solicitado nÃ£o existe ou nÃ£o estÃ¡ disponÃ­vel.
 
-          \</p>
+Â  Â  Â  Â  Â  \</p>
 
 
 
-          {errorMessage && (
+Â  Â  Â  Â  Â  {errorMessage && (
 
-            \<div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
+Â  Â  Â  Â  Â  Â  \<div className="mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
 
-              {errorMessage}
+Â  Â  Â  Â  Â  Â  Â  {errorMessage}
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          )}
+Â  Â  Â  Â  Â  )}
 
 
 
-          \<Link
+Â  Â  Â  Â  Â  \<Link
 
-            href="/teams"
+Â  Â  Â  Â  Â  Â  href="/teams"
 
-            className="mt-8 inline-block rounded-xl bg-green-600 px-7 py-4 font-black transition hover:bg-green-500"
+Â  Â  Â  Â  Â  Â  className="mt-8 inline-block rounded-xl bg-green-600 px-7 py-4 font-black transition hover:bg-green-500"
 
-          >
+Â  Â  Â  Â  Â  >
 
-            Voltar para clubes
+Â  Â  Â  Â  Â  Â  Voltar para clubes
 
-          \</Link>
+Â  Â  Â  Â  Â  \</Link>
 
-        \</div>
+Â  Â  Â  Â  \</div>
 
-      \</main>
+Â  Â  Â  \</main>
 
-    );
+Â  Â  );
 
-  }
+Â  }
 
 
 
-  return (
+Â  return (
 
-    \<main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
+Â  Â  \<main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
 
-      \<div className="mx-auto max-w-7xl">
+Â  Â  Â  \<div className="mx-auto max-w-7xl">
 
-        \<Link
+Â  Â  Â  Â  \<Link
 
-          href="/teams"
+Â  Â  Â  Â  Â  href="/teams"
 
-          className="font-bold text-green-400 transition hover:text-green-300"
+Â  Â  Â  Â  Â  className="font-bold text-green-400 transition hover:text-green-300"
 
-        >
+Â  Â  Â  Â  >
 
-          ← Voltar para clubes
+Â  Â  Â  Â  Â  â† Voltar para clubes
 
-        \</Link>
+Â  Â  Â  Â  \</Link>
 
 
 
-        \<section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
+Â  Â  Â  Â  \<section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
 
-          \<div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-7">
+Â  Â  Â  Â  Â  \<div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-7">
 
-            \<div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+Â  Â  Â  Â  Â  Â  \<div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
-              \<div className="flex min-w-0 items-center gap-5">
+Â  Â  Â  Â  Â  Â  Â  \<div className="flex min-w-0 items-center gap-5">
 
-                \<div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 p-3">
+Â  Â  Â  Â  Â  Â  Â  Â  \<div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 p-3">
 
-                  {team.logo_url ? (
+Â  Â  Â  Â  Â  Â  Â  Â  Â  {team.logo_url ? (
 
-                    \<img
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<img
 
-                      src={team.logo_url}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  src={team.logo_url}
 
-                      alt={team.name}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  alt={team.name}
 
-                      className="h-full w-full object-contain"
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  className="h-full w-full object-contain"
 
-                    />
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  />
 
-                  ) : (
+Â  Â  Â  Â  Â  Â  Â  Â  Â  ) : (
 
-                    \<span className="text-4xl font-black text-zinc-500">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<span className="text-4xl font-black text-zinc-500">
 
-                      {getInitials(team.name)}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  {getInitials(team.name)}
 
-                    \</span>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \</span>
 
-                  )}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  )}
 
-                \</div>
+Â  Â  Â  Â  Â  Â  Â  Â  \</div>
 
 
 
-                \<div className="min-w-0">
+Â  Â  Â  Â  Â  Â  Â  Â  \<div className="min-w-0">
 
-                  \<p className="text-xl font-black uppercase tracking-[0.18em] text-green-400">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \<p className="text-xl font-black uppercase tracking-[0.18em] text-green-400">
 
-                    Perfil do clube
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Perfil do clube
 
-                  \</p>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \</p>
 
 
 
-                  \<h1 className="mt-2 text-5xl font-black leading-none md:text-6xl">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \<h1 className="mt-2 text-5xl font-black leading-none md:text-6xl">
 
-                    {team.name}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  {team.name}
 
-                  \</h1>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \</h1>
 
 
 
-                  \<p className="mt-4 text-3xl text-zinc-300">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \<p className="mt-4 text-3xl text-zinc-300">
 
-                    Manager: \<span className="font-black text-white">{team.manager_name || "Sem presidente"}\</span>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Manager: \<span className="font-black text-white">{team.manager_name || "Sem presidente"}\</span>
 
-                  \</p>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \</p>
 
-                \</div>
+Â  Â  Â  Â  Â  Â  Â  Â  \</div>
 
-              \</div>
+Â  Â  Â  Â  Â  Â  Â  \</div>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          \<BestPlayerCard player={bestPlayer} />
+Â  Â  Â  Â  Â  \<BestPlayerCard player={bestPlayer} />
 
-        \</section>
+Â  Â  Â  Â  \</section>
 
 
 
-        {errorMessage && (
+Â  Â  Â  Â  {errorMessage && (
 
-          \<div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
+Â  Â  Â  Â  Â  \<div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
 
-            {errorMessage}
+Â  Â  Â  Â  Â  Â  {errorMessage}
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
-        )}
+Â  Â  Â  Â  )}
 
 
 
-        {successMessage && (
+Â  Â  Â  Â  {successMessage && (
 
-          \<div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
+Â  Â  Â  Â  Â  \<div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
 
-            {successMessage}
+Â  Â  Â  Â  Â  Â  {successMessage}
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
-        )}
+Â  Â  Â  Â  )}
 
 
 
-        \<section className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+Â  Â  Â  Â  \<section className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
 
-          \<StatCard
+Â  Â  Â  Â  Â  \<StatCard
 
-            label="Jogadores"
+Â  Â  Â  Â  Â  Â  label="Jogadores"
 
-            value={players.length}
+Â  Â  Â  Â  Â  Â  value={players.length}
 
-            description="Atletas no elenco"
+Â  Â  Â  Â  Â  Â  description="Atletas no elenco"
 
-          />
+Â  Â  Â  Â  Â  />
 
 
 
-          \<StatCard
+Â  Â  Â  Â  Â  \<StatCard
 
-            label="Comissão técnica"
+Â  Â  Â  Â  Â  Â  label="ComissÃ£o tÃ©cnica"
 
-            value={staff.length}
+Â  Â  Â  Â  Â  Â  value={staff.length}
 
-            description="Profissionais contratados"
+Â  Â  Â  Â  Â  Â  description="Profissionais contratados"
 
-            accent="text-purple-400"
+Â  Â  Â  Â  Â  Â  accent="text-purple-400"
 
-          />
+Â  Â  Â  Â  Â  />
 
 
 
-          \<StatCard
+Â  Â  Â  Â  Â  \<StatCard
 
-            label="CA médio"
+Â  Â  Â  Â  Â  Â  label="CA mÃ©dio"
 
-            value={averageCa || "-"}
+Â  Â  Â  Â  Â  Â  value={averageCa || "-"}
 
-            description={averageAge ? \`Idade média: ${averageAge} anos\` : "Idade média não disponível"}
+Â  Â  Â  Â  Â  Â  description={averageAge ? \`Idade mÃ©dia: ${averageAge} anos\` : "Idade mÃ©dia nÃ£o disponÃ­vel"}
 
-            accent="text-green-400"
+Â  Â  Â  Â  Â  Â  accent="text-green-400"
 
-          />
+Â  Â  Â  Â  Â  />
 
 
 
-          \<StatCard
+Â  Â  Â  Â  Â  \<StatCard
 
-            label="Patrimônio esportivo"
+Â  Â  Â  Â  Â  Â  label="PatrimÃ´nio esportivo"
 
-            value={money(totalSquadValue + totalStaffValue)}
+Â  Â  Â  Â  Â  Â  value={money(totalSquadValue + totalStaffValue)}
 
-            description="Elenco e comissão"
+Â  Â  Â  Â  Â  Â  description="Elenco e comissÃ£o"
 
-            accent="text-green-400"
+Â  Â  Â  Â  Â  Â  accent="text-green-400"
 
-          />
+Â  Â  Â  Â  Â  />
 
-        \</section>
+Â  Â  Â  Â  \</section>
 
 
 
-        \<section className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
+Â  Â  Â  Â  \<section className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2">
 
-          \<a
+Â  Â  Â  Â  Â  \<a
 
-            href="#elenco"
+Â  Â  Â  Â  Â  Â  href="#elenco"
 
-            className="rounded-2xl border border-blue-700 bg-blue-600 p-6 transition hover:-translate-y-1 hover:bg-blue-500"
+Â  Â  Â  Â  Â  Â  className="rounded-2xl border border-blue-700 bg-blue-600 p-6 transition hover:-translate-y-1 hover:bg-blue-500"
 
-          >
+Â  Â  Â  Â  Â  >
 
-            \<span className="text-3xl">👥\</span>
+Â  Â  Â  Â  Â  Â  \<span className="text-3xl">ðŸ‘¥\</span>
 
-            \<h2 className="mt-4 text-xl font-black">Ver time\</h2>
+Â  Â  Â  Â  Â  Â  \<h2 className="mt-4 text-xl font-black">Ver time\</h2>
 
-            \<p className="mt-2 text-sm text-blue-100">
+Â  Â  Â  Â  Â  Â  \<p className="mt-2 text-sm text-blue-100">
 
-              Visualizar jogadores do clube.
+Â  Â  Â  Â  Â  Â  Â  Visualizar jogadores do clube.
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-          \</a>
+Â  Â  Â  Â  Â  \</a>
 
 
 
-          \<a
+Â  Â  Â  Â  Â  \<a
 
-            href="#staff"
+Â  Â  Â  Â  Â  Â  href="#staff"
 
-            className="rounded-2xl border border-purple-700 bg-purple-600 p-6 transition hover:-translate-y-1 hover:bg-purple-500"
+Â  Â  Â  Â  Â  Â  className="rounded-2xl border border-purple-700 bg-purple-600 p-6 transition hover:-translate-y-1 hover:bg-purple-500"
 
-          >
+Â  Â  Â  Â  Â  >
 
-            \<span className="text-3xl">📋\</span>
+Â  Â  Â  Â  Â  Â  \<span className="text-3xl">ðŸ“‹\</span>
 
-            \<h2 className="mt-4 text-xl font-black">Comissão técnica\</h2>
+Â  Â  Â  Â  Â  Â  \<h2 className="mt-4 text-xl font-black">ComissÃ£o tÃ©cnica\</h2>
 
-            \<p className="mt-2 text-sm text-purple-100">
+Â  Â  Â  Â  Â  Â  \<p className="mt-2 text-sm text-purple-100">
 
-              Visualizar os profissionais.
+Â  Â  Â  Â  Â  Â  Â  Visualizar os profissionais.
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-          \</a>
+Â  Â  Â  Â  Â  \</a>
 
-        \</section>
+Â  Â  Â  Â  \</section>
 
 
 
-        \<section id="elenco" className="mt-16 scroll-mt-24">
+Â  Â  Â  Â  \<section id="elenco" className="mt-16 scroll-mt-24">
 
-          \<div>
+Â  Â  Â  Â  Â  \<div>
 
-            \<p className="font-bold uppercase tracking-widest text-blue-400">
+Â  Â  Â  Â  Â  Â  \<p className="font-bold uppercase tracking-widest text-blue-400">
 
-              Elenco principal
+Â  Â  Â  Â  Â  Â  Â  Elenco principal
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-            \<h2 className="mt-2 text-4xl font-black">Jogadores do clube\</h2>
+Â  Â  Â  Â  Â  Â  \<h2 className="mt-2 text-4xl font-black">Jogadores do clube\</h2>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          {players.length === 0 ? (
+Â  Â  Â  Â  Â  {players.length === 0 ? (
 
-            \<div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
+Â  Â  Â  Â  Â  Â  \<div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
 
-              \<div className="text-6xl">⚽\</div>
+Â  Â  Â  Â  Â  Â  Â  \<div className="text-6xl">âš½\</div>
 
-              \<h3 className="mt-5 text-3xl font-black">Elenco vazio\</h3>
+Â  Â  Â  Â  Â  Â  Â  \<h3 className="mt-5 text-3xl font-black">Elenco vazio\</h3>
 
-              \<p className="mt-3 text-zinc-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="mt-3 text-zinc-400">
 
-                Este clube ainda não contratou jogadores.
+Â  Â  Â  Â  Â  Â  Â  Â  Este clube ainda nÃ£o contratou jogadores.
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          ) : (
+Â  Â  Â  Â  Â  ) : (
 
-            \<div className="mt-10 space-y-14">
+Â  Â  Â  Â  Â  Â  \<div className="mt-10 space-y-14">
 
-              {playerSections.map((section) => (
+Â  Â  Â  Â  Â  Â  Â  {playerSections.map((section) => (
 
-                \<section key={section.key}>
+Â  Â  Â  Â  Â  Â  Â  Â  \<section key={section.key}>
 
-                  \<div className="mb-6 flex items-center gap-4">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \<div className="mb-6 flex items-center gap-4">
 
-                    \<span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-black text-blue-400">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<span className="rounded-xl border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-sm font-black text-blue-400">
 
-                      {section.abbreviation}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  {section.abbreviation}
 
-                    \</span>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \</span>
 
 
 
-                    \<h3 className="text-3xl font-black">{section.title}\</h3>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<h3 className="text-3xl font-black">{section.title}\</h3>
 
 
 
-                    \<span className="font-bold text-zinc-500">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<span className="font-bold text-zinc-500">
 
-                      {section.players.length}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  {section.players.length}
 
-                    \</span>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \</span>
 
-                  \</div>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \</div>
 
 
 
-                  \<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \<div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
 
-                    {section.players.map((player) => (
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  {section.players.map((player) => (
 
-                      \<PlayerCardCompact key={player.id} player={player} />
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  \<PlayerCardCompact key={player.id} player={player} />
 
-                    ))}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  Â  ))}
 
-                  \</div>
+Â  Â  Â  Â  Â  Â  Â  Â  Â  \</div>
 
-                \</section>
+Â  Â  Â  Â  Â  Â  Â  Â  \</section>
 
-              ))}
+Â  Â  Â  Â  Â  Â  Â  ))}
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          )}
+Â  Â  Â  Â  Â  )}
 
-        \</section>
+Â  Â  Â  Â  \</section>
 
 
 
-        \<section id="staff" className="mt-16 scroll-mt-24">
+Â  Â  Â  Â  \<section id="staff" className="mt-16 scroll-mt-24">
 
-          \<div>
+Â  Â  Â  Â  Â  \<div>
 
-            \<p className="font-bold uppercase tracking-widest text-purple-400">
+Â  Â  Â  Â  Â  Â  \<p className="font-bold uppercase tracking-widest text-purple-400">
 
-              Staff
+Â  Â  Â  Â  Â  Â  Â  Staff
 
-            \</p>
+Â  Â  Â  Â  Â  Â  \</p>
 
-            \<h2 className="mt-2 text-4xl font-black">Comissão técnica\</h2>
+Â  Â  Â  Â  Â  Â  \<h2 className="mt-2 text-4xl font-black">ComissÃ£o tÃ©cnica\</h2>
 
-          \</div>
+Â  Â  Â  Â  Â  \</div>
 
 
 
-          {staff.length === 0 ? (
+Â  Â  Â  Â  Â  {staff.length === 0 ? (
 
-            \<div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
+Â  Â  Â  Â  Â  Â  \<div className="mt-7 rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
 
-              \<div className="text-6xl">👔\</div>
+Â  Â  Â  Â  Â  Â  Â  \<div className="text-6xl">ðŸ‘”\</div>
 
-              \<h3 className="mt-5 text-3xl font-black">Comissão vazia\</h3>
+Â  Â  Â  Â  Â  Â  Â  \<h3 className="mt-5 text-3xl font-black">ComissÃ£o vazia\</h3>
 
-              \<p className="mt-3 text-zinc-400">
+Â  Â  Â  Â  Â  Â  Â  \<p className="mt-3 text-zinc-400">
 
-                Este clube ainda não contratou profissionais.
+Â  Â  Â  Â  Â  Â  Â  Â  Este clube ainda nÃ£o contratou profissionais.
 
-              \</p>
+Â  Â  Â  Â  Â  Â  Â  \</p>
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          ) : (
+Â  Â  Â  Â  Â  ) : (
 
-            \<div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
+Â  Â  Â  Â  Â  Â  \<div className="mt-7 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-2">
 
-              {staff.map((member) => (
+Â  Â  Â  Â  Â  Â  Â  {staff.map((member) => (
 
-                \<StaffCardCompact
+Â  Â  Â  Â  Â  Â  Â  Â  \<StaffCardCompact
 
-                  key={member.id}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  key={member.id}
 
-                  member={member}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  member={member}
 
-                  onRelease={releaseStaff}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  onRelease={releaseStaff}
 
-                  releasing={releasingStaffId === member.id}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  releasing={releasingStaffId === member.id}
 
-                  canRelease={Boolean(currentUserId && team.manager_id === currentUserId)}
+Â  Â  Â  Â  Â  Â  Â  Â  Â  canRelease={Boolean(currentUserId && team.manager_id === currentUserId)}
 
-                />
+Â  Â  Â  Â  Â  Â  Â  Â  />
 
-              ))}
+Â  Â  Â  Â  Â  Â  Â  ))}
 
-            \</div>
+Â  Â  Â  Â  Â  Â  \</div>
 
-          )}
+Â  Â  Â  Â  Â  )}
 
-        \</section>
+Â  Â  Â  Â  \</section>
 
-      \</div>
+Â  Â  Â  \</div>
 
-    \</main>
+Â  Â  \</main>
 
-  );
+Â  );
 
 }
+
