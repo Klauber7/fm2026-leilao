@@ -1,16 +1,12 @@
 "use client";
-
 import {
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-
 import Link from "next/link";
-
 import { supabase } from "@/lib/supabase";
-
 type Player = {
   id: number;
   unique_id: string;
@@ -25,30 +21,26 @@ type Player = {
   category: string[] | null;
   team_id: number | null;
 };
-
 type Team = {
   id: number;
   name: string;
   manager_id: string | null;
 };
-
 type TransferWindow = {
   id: number;
   window_number: number;
   name: string;
   status: string;
 };
-
 type AttributeFilter = {
   attribute: string;
   min: string;
   max: string;
 };
-
 const PAGE_SIZE = 50;
 const MAX_ATTRIBUTE_FILTERS = 6;
 const PLAYER_MARKET_STATE_KEY = "friendzone-player-market-state";
-
+const PLAYER_MARKET_RETURN_KEY = "friendzone-player-market-return";
 type PlayerMarketState = {
   search: string;
   selectedCategory: string;
@@ -65,7 +57,6 @@ type PlayerMarketState = {
   page: number;
   scrollY: number;
 };
-
 function normalizeSearch(value: string) {
   return value
     .normalize("NFD")
@@ -75,7 +66,6 @@ function normalizeSearch(value: string) {
     .replace(/\s+/g, " ")
     .trim();
 }
-
 const ATTRIBUTE_OPTIONS = [
   "(Tendência) para Saídas da Baliza",
   "Aceleração",
@@ -125,8 +115,6 @@ const ATTRIBUTE_OPTIONS = [
   "Velocidade",
   "Visão de Jogo",
 ] as const;
-
-
 const categories = [
   "Todos",
   "Goleiro",
@@ -137,7 +125,6 @@ const categories = [
   "Ponta",
   "Atacante",
 ];
-
 function formatMoney(
   value: number | null
 ) {
@@ -147,7 +134,6 @@ function formatMoney(
   ) {
     return "R$ 0,00";
   }
-
   return new Intl.NumberFormat(
     "pt-BR",
     {
@@ -158,75 +144,58 @@ function formatMoney(
     }
   ).format(value);
 }
-
 function getCategoryLabel(
   category: string
 ) {
   switch (category) {
     case "Todos":
       return "Todos";
-
     case "Goleiro":
       return "Goleiros";
-
     case "Zagueiro":
       return "Zagueiros";
-
     case "Lateral":
       return "Laterais";
-
     case "Volante":
       return "Volantes";
-
     case "Meia Atacante":
       return "Meia Atacante";
-
     case "Ponta":
       return "Pontas";
-
     case "Atacante":
       return "Atacantes";
-
     default:
       return category;
   }
 }
-
 function getCAColor(
   ca: number | null
 ) {
   if (!ca) {
     return "text-zinc-300";
   }
-
   if (ca >= 170) {
     return "text-emerald-400";
   }
-
   if (ca >= 150) {
     return "text-lime-400";
   }
-
   if (ca >= 130) {
     return "text-yellow-300";
   }
-
   return "text-zinc-200";
 }
-
 export default function PlayersPage() {
   const [
     players,
     setPlayers,
   ] =
     useState<Player[]>([]);
-
   const [
     loading,
     setLoading,
   ] =
     useState(true);
-
   const [
     currentWindow,
     setCurrentWindow,
@@ -234,67 +203,56 @@ export default function PlayersPage() {
     useState<TransferWindow | null>(
       null
     );
-
   const [
     search,
     setSearch,
   ] =
     useState("");
-
   const [
     selectedCategory,
     setSelectedCategory,
   ] =
     useState("Todos");
-
   const [
     minCA,
     setMinCA,
   ] =
     useState("");
-
   const [
     maxCA,
     setMaxCA,
   ] =
     useState("");
-
   const [
     minCP,
     setMinCP,
   ] =
     useState("");
-
   const [
     maxCP,
     setMaxCP,
   ] =
     useState("");
-
   const [
     minAge,
     setMinAge,
   ] =
     useState("");
-
   const [
     maxAge,
     setMaxAge,
   ] =
     useState("");
-
   const [
     minValue,
     setMinValue,
   ] =
     useState("");
-
   const [
     maxValue,
     setMaxValue,
   ] =
     useState("");
-
   const [
     attributeFilters,
     setAttributeFilters,
@@ -306,31 +264,26 @@ export default function PlayersPage() {
         max: "",
       },
     ]);
-
   const [
     nationality,
     setNationality,
   ] =
     useState("");
-
   const [
     page,
     setPage,
   ] =
     useState(1);
-
   const [
     total,
     setTotal,
   ] =
     useState(0);
-
   const [
     myTeam,
     setMyTeam,
   ] =
     useState<Team | null>(null);
-
   const [
     shoppingListIds,
     setShoppingListIds,
@@ -338,7 +291,6 @@ export default function PlayersPage() {
     useState<Set<number>>(
       new Set()
     );
-
   const [
     shoppingLoadingId,
     setShoppingLoadingId,
@@ -346,38 +298,33 @@ export default function PlayersPage() {
     useState<number | null>(
       null
     );
-
   const [
     shoppingMessage,
     setShoppingMessage,
   ] =
     useState("");
-
   const [
     marketStateReady,
     setMarketStateReady,
   ] =
     useState(false);
-
   const restoreScrollYRef =
     useRef(0);
-
+  const shouldRestoreScrollRef = useRef(false);
   const restoreScrollDoneRef =
     useRef(false);
-
   const skipNextStateSaveRef =
     useRef(true);
-
   const saveMarketState =
     useCallback(() => {
       if (
         typeof window ===
           "undefined" ||
-        !marketStateReady
+        !marketStateReady ||
+        !restoreScrollDoneRef.current
       ) {
         return;
       }
-
       const state:
         PlayerMarketState = {
         search,
@@ -396,15 +343,12 @@ export default function PlayersPage() {
         scrollY:
           window.scrollY,
       };
-
       const serialized =
         JSON.stringify(state);
-
       sessionStorage.setItem(
         PLAYER_MARKET_STATE_KEY,
         serialized
       );
-
       localStorage.setItem(
         PLAYER_MARKET_STATE_KEY,
         serialized
@@ -425,12 +369,10 @@ export default function PlayersPage() {
       attributeFilters,
       page,
     ]);
-
   /*
     RESTAURA PESQUISA, FILTROS,
     PÁGINA E POSIÇÃO DA TELA
   */
-
   useEffect(() => {
     if (
       typeof window ===
@@ -438,22 +380,20 @@ export default function PlayersPage() {
     ) {
       return;
     }
-
     try {
+      shouldRestoreScrollRef.current = sessionStorage.getItem(PLAYER_MARKET_RETURN_KEY) === "1";
       const raw =
-        localStorage.getItem(
-          PLAYER_MARKET_STATE_KEY
-        ) ||
         sessionStorage.getItem(
           PLAYER_MARKET_STATE_KEY
+        ) ||
+        localStorage.getItem(
+          PLAYER_MARKET_STATE_KEY
         );
-
       if (raw) {
         const saved =
           JSON.parse(
             raw
           ) as Partial<PlayerMarketState>;
-
         if (
           typeof saved.search ===
           "string"
@@ -462,7 +402,6 @@ export default function PlayersPage() {
             saved.search
           );
         }
-
         if (
           typeof saved.selectedCategory ===
           "string"
@@ -471,35 +410,30 @@ export default function PlayersPage() {
             saved.selectedCategory
           );
         }
-
         if (
           typeof saved.minCA ===
           "string"
         ) {
           setMinCA(saved.minCA);
         }
-
         if (
           typeof saved.maxCA ===
           "string"
         ) {
           setMaxCA(saved.maxCA);
         }
-
         if (
           typeof saved.minCP ===
           "string"
         ) {
           setMinCP(saved.minCP);
         }
-
         if (
           typeof saved.maxCP ===
           "string"
         ) {
           setMaxCP(saved.maxCP);
         }
-
         if (
           typeof saved.minAge ===
           "string"
@@ -508,7 +442,6 @@ export default function PlayersPage() {
             saved.minAge
           );
         }
-
         if (
           typeof saved.maxAge ===
           "string"
@@ -517,7 +450,6 @@ export default function PlayersPage() {
             saved.maxAge
           );
         }
-
         if (
           typeof saved.minValue ===
           "string"
@@ -526,7 +458,6 @@ export default function PlayersPage() {
             saved.minValue
           );
         }
-
         if (
           typeof saved.maxValue ===
           "string"
@@ -535,7 +466,6 @@ export default function PlayersPage() {
             saved.maxValue
           );
         }
-
         if (
           typeof saved.nationality ===
           "string"
@@ -544,7 +474,6 @@ export default function PlayersPage() {
             saved.nationality
           );
         }
-
         if (
           Array.isArray(
             saved.attributeFilters
@@ -554,7 +483,6 @@ export default function PlayersPage() {
             saved.attributeFilters
           );
         }
-
         if (
           typeof saved.page ===
             "number" &&
@@ -567,7 +495,6 @@ export default function PlayersPage() {
             saved.page
           );
         }
-
         if (
           typeof saved.scrollY ===
             "number" &&
@@ -587,17 +514,14 @@ export default function PlayersPage() {
     } finally {
       skipNextStateSaveRef.current =
         true;
-
       setMarketStateReady(
         true
       );
     }
   }, []);
-
   /*
     SALVA O ESTADO DO MERCADO
   */
-
   useEffect(() => {
     if (
       !marketStateReady ||
@@ -606,7 +530,6 @@ export default function PlayersPage() {
     ) {
       return;
     }
-
     if (
       skipNextStateSaveRef.current
     ) {
@@ -615,34 +538,28 @@ export default function PlayersPage() {
     } else {
       saveMarketState();
     }
-
     const handleScroll =
       () => {
         saveMarketState();
       };
-
     const handlePageHide =
       () => {
         saveMarketState();
       };
-
     window.addEventListener(
       "scroll",
       handleScroll,
       { passive: true }
     );
-
     window.addEventListener(
       "pagehide",
       handlePageHide
     );
-
     return () => {
       window.removeEventListener(
         "scroll",
         handleScroll
       );
-
       window.removeEventListener(
         "pagehide",
         handlePageHide
@@ -652,53 +569,60 @@ export default function PlayersPage() {
     marketStateReady,
     saveMarketState,
   ]);
-
   /*
-    RESTAURA O SCROLL SÓ
-    DEPOIS DOS CARDS CARREGAREM
+    RESTAURA POSIÇÃO DA PESQUISA.
+    Espera os cards renderizarem e a página atingir
+    a altura necessária, sem sobrescrever scrollY com zero.
   */
-
   useEffect(() => {
     if (
       !marketStateReady ||
       loading ||
       restoreScrollDoneRef.current ||
-      typeof window ===
-        "undefined"
+      typeof window === "undefined"
     ) {
       return;
     }
 
-    const targetY =
-      restoreScrollYRef.current;
+    if (!shouldRestoreScrollRef.current) {
+      restoreScrollDoneRef.current = true;
+      return;
+    }
+    const targetY = Math.max(0, restoreScrollYRef.current);
+    let frame = 0;
+    let attempts = 0;
 
-    requestAnimationFrame(
-      () => {
-        requestAnimationFrame(
-          () => {
-            window.scrollTo({
-              top: targetY,
-              behavior:
-                "auto",
-            });
+    const restorePosition = () => {
+      const maxY = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
 
-            restoreScrollDoneRef.current =
-              true;
-          }
-        );
+      // A lista paginada pode precisar de alguns frames para
+      // recuperar sua altura depois da navegação.
+      if (maxY < targetY && attempts < 60) {
+        attempts += 1;
+        frame = window.requestAnimationFrame(restorePosition);
+        return;
       }
-    );
-  }, [
-    marketStateReady,
-    loading,
-    players.length,
-  ]);
+
+      window.scrollTo({
+        top: Math.min(targetY, maxY),
+        behavior: "auto",
+      });
+      restoreScrollDoneRef.current = true;
+      shouldRestoreScrollRef.current = false;
+      sessionStorage.removeItem(PLAYER_MARKET_RETURN_KEY);
+    };
+
+    frame = window.requestAnimationFrame(restorePosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [marketStateReady, loading, players.length]);
 
   /*
     CARREGA CLUBE DO PRESIDENTE
     E LISTA DE COMPRAS
   */
-
   const loadShoppingList =
     useCallback(async () => {
       const {
@@ -706,7 +630,6 @@ export default function PlayersPage() {
         error: authError,
       } =
         await supabase.auth.getUser();
-
       if (
         authError ||
         !user
@@ -717,7 +640,6 @@ export default function PlayersPage() {
         );
         return;
       }
-
       const {
         data: teamData,
         error: teamError,
@@ -734,7 +656,6 @@ export default function PlayersPage() {
             user.id
           )
           .maybeSingle();
-
       if (
         teamError ||
         !teamData
@@ -745,18 +666,15 @@ export default function PlayersPage() {
             teamError
           );
         }
-
         setMyTeam(null);
         setShoppingListIds(
           new Set()
         );
         return;
       }
-
       setMyTeam(
         teamData as Team
       );
-
       const {
         data: listData,
         error: listError,
@@ -772,19 +690,16 @@ export default function PlayersPage() {
             "team_id",
             teamData.id
           );
-
       if (listError) {
         console.error(
           "Erro ao carregar lista de compras:",
           listError
         );
-
         setShoppingListIds(
           new Set()
         );
         return;
       }
-
       setShoppingListIds(
         new Set(
           (listData || []).map(
@@ -796,24 +711,20 @@ export default function PlayersPage() {
         )
       );
     }, []);
-
   async function toggleShoppingList(
     player: Player
   ) {
     let team = myTeam;
-
     setShoppingLoadingId(
       player.id
     );
     setShoppingMessage("");
-
     if (!team) {
       const {
         data: { user },
         error: authError,
       } =
         await supabase.auth.getUser();
-
       if (
         authError ||
         !user
@@ -826,7 +737,6 @@ export default function PlayersPage() {
         );
         return;
       }
-
       const {
         data: teamData,
         error: teamError,
@@ -844,7 +754,6 @@ export default function PlayersPage() {
           )
           .limit(1)
           .maybeSingle();
-
       if (
         teamError ||
         !teamData
@@ -853,7 +762,6 @@ export default function PlayersPage() {
           "Erro ao identificar clube:",
           teamError
         );
-
         setShoppingMessage(
           "Não foi possível identificar o seu clube."
         );
@@ -862,16 +770,13 @@ export default function PlayersPage() {
         );
         return;
       }
-
       team = teamData as Team;
       setMyTeam(team);
     }
-
     const isSaved =
       shoppingListIds.has(
         player.id
       );
-
     if (isSaved) {
       const { error } =
         await supabase
@@ -887,13 +792,11 @@ export default function PlayersPage() {
             "player_id",
             player.id
           );
-
       if (error) {
         console.error(
           "Erro ao remover da lista:",
           error
         );
-
         setShoppingMessage(
           `Erro ao remover: ${error.message}`
         );
@@ -902,20 +805,16 @@ export default function PlayersPage() {
         );
         return;
       }
-
       setShoppingListIds(
         (current) => {
           const next =
             new Set(current);
-
           next.delete(
             player.id
           );
-
           return next;
         }
       );
-
       setShoppingMessage(
         `${player.name} foi removido da sua lista de compras.`
       );
@@ -928,17 +827,14 @@ export default function PlayersPage() {
           .insert({
             team_id:
               team.id,
-
             player_id:
               player.id,
           });
-
       if (error) {
         console.error(
           "Erro ao adicionar à lista:",
           error
         );
-
         if (
           error.code === "23505" ||
           String(
@@ -950,7 +846,6 @@ export default function PlayersPage() {
             )
         ) {
           await loadShoppingList();
-
           setShoppingMessage(
             `${player.name} já está na sua lista de compras.`
           );
@@ -959,41 +854,33 @@ export default function PlayersPage() {
             `Erro ao adicionar: ${error.message}`
           );
         }
-
         setShoppingLoadingId(
           null
         );
         return;
       }
-
       setShoppingListIds(
         (current) => {
           const next =
             new Set(current);
-
           next.add(
             player.id
           );
-
           return next;
         }
       );
-
       setShoppingMessage(
         `${player.name} foi adicionado à sua lista de compras.`
       );
     }
-
     setShoppingLoadingId(
       null
     );
   }
-
   /*
     CARREGA STATUS
     DA JANELA
   */
-
   const loadTransferWindow =
     useCallback(async () => {
       const {
@@ -1022,61 +909,48 @@ export default function PlayersPage() {
           )
           .limit(1)
           .maybeSingle();
-
       if (error) {
         console.error(
           "Erro ao carregar janela:",
           error
         );
-
         setCurrentWindow(
           null
         );
-
         return;
       }
-
       setCurrentWindow(
         data
           ? (data as TransferWindow)
           : null
       );
     }, []);
-
   /*
     CARREGA JOGADORES
   */
-
   const loadPlayers =
     useCallback(
       async (
         resetPage = false
       ) => {
         setLoading(true);
-
         const currentPage =
           resetPage
             ? 1
             : page;
-
         if (
           resetPage &&
           page !== 1
         ) {
           setPage(1);
-
           setLoading(false);
-
           return;
         }
-
         const from =
           (currentPage - 1) *
           PAGE_SIZE;
-
         /*
           FILTRO UNIFICADO NO POSTGRESQL
-
           Todos os filtros agora são processados juntos:
           - categoria
           - nome
@@ -1086,12 +960,10 @@ export default function PlayersPage() {
           - idade
           - preço
           - até 6 atributos
-
           Isso evita a antiga lista gigante de IDs usada pelo
           filter_player_ids_by_attributes e corrige o problema
           de preço + atributo retornar zero resultados.
         */
-
         const activeAttributeFilters =
           attributeFilters.filter(
             (filter) =>
@@ -1101,12 +973,10 @@ export default function PlayersPage() {
                 filter.max
               )
           );
-
         const normalizedSearch =
           normalizeSearch(
             search
           );
-
         try {
           const {
             data,
@@ -1121,14 +991,12 @@ export default function PlayersPage() {
                     (filter) => ({
                       attribute:
                         filter.attribute,
-
                       min:
                         filter.min
                           ? Number(
                               filter.min
                             )
                           : null,
-
                       max:
                         filter.max
                           ? Number(
@@ -1137,85 +1005,71 @@ export default function PlayersPage() {
                           : null,
                     })
                   ),
-
                 p_category:
                   selectedCategory !==
                   "Todos"
                     ? selectedCategory
                     : null,
-
                 p_search:
                   normalizedSearch ||
                   null,
-
                 p_nationality:
                   nationality.trim() ||
                   null,
-
                 p_min_ca:
                   minCA
                     ? Number(
                         minCA
                       )
                     : null,
-
                 p_max_ca:
                   maxCA
                     ? Number(
                         maxCA
                       )
                     : null,
-
                 p_min_cp:
                   minCP
                     ? Number(
                         minCP
                       )
                     : null,
-
                 p_max_cp:
                   maxCP
                     ? Number(
                         maxCP
                       )
                     : null,
-
                 p_min_age:
                   minAge
                     ? Number(
                         minAge
                       )
                     : null,
-
                 p_max_age:
                   maxAge
                     ? Number(
                         maxAge
                       )
                     : null,
-
                 p_min_value:
                   minValue
                     ? Number(
                         minValue
                       )
                     : null,
-
                 p_max_value:
                   maxValue
                     ? Number(
                         maxValue
                       )
                     : null,
-
                 p_offset:
                   from,
-
                 p_limit:
                   PAGE_SIZE,
               }
             );
-
           if (
             searchError
           ) {
@@ -1223,14 +1077,11 @@ export default function PlayersPage() {
               "Erro ao carregar jogadores:",
               searchError
             );
-
             setPlayers([]);
             setTotal(0);
             setLoading(false);
-
             return;
           }
-
           const result =
             (
               data ||
@@ -1239,7 +1090,6 @@ export default function PlayersPage() {
               items?: Player[];
               total?: number;
             };
-
           setPlayers(
             Array.isArray(
               result.items
@@ -1247,7 +1097,6 @@ export default function PlayersPage() {
               ? result.items
               : []
           );
-
           setTotal(
             Number(
               result.total ||
@@ -1261,11 +1110,9 @@ export default function PlayersPage() {
             "Erro ao carregar jogadores:",
             error
           );
-
           setPlayers([]);
           setTotal(0);
         }
-
         setLoading(false);
       },
       [
@@ -1284,35 +1131,27 @@ export default function PlayersPage() {
         attributeFilters,
       ]
     );
-
   /*
     LOAD INICIAL
   */
-
   useEffect(() => {
     if (
       !marketStateReady
     ) {
       return;
     }
-
     loadTransferWindow();
-
     loadPlayers();
-
     loadShoppingList();
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     marketStateReady,
     page,
     selectedCategory,
   ]);
-
   /*
     REALTIME DA JANELA
   */
-
   useEffect(() => {
     const channel =
       supabase
@@ -1333,7 +1172,6 @@ export default function PlayersPage() {
           }
         )
         .subscribe();
-
     return () => {
       supabase.removeChannel(
         channel
@@ -1342,45 +1180,36 @@ export default function PlayersPage() {
   }, [
     loadTransferWindow,
   ]);
-
   /*
     CATEGORIA
   */
-
   function handleCategory(
     category: string
   ) {
     setSelectedCategory(
       category
     );
-
     if (
       page !== 1
     ) {
       setPage(1);
     }
   }
-
   /*
     BUSCAR
   */
-
   async function handleSearch() {
     if (
       page !== 1
     ) {
       setPage(1);
-
       return;
     }
-
     await loadPlayers();
   }
-
   /*
     FILTROS DE ATRIBUTOS
   */
-
   function updateAttributeFilter(
     index: number,
     field: keyof AttributeFilter,
@@ -1406,7 +1235,6 @@ export default function PlayersPage() {
         )
     );
   }
-
   function addAttributeFilter() {
     setAttributeFilters(
       (current) => {
@@ -1416,7 +1244,6 @@ export default function PlayersPage() {
         ) {
           return current;
         }
-
         return [
           ...current,
           {
@@ -1428,7 +1255,6 @@ export default function PlayersPage() {
       }
     );
   }
-
   function removeAttributeFilter(
     index: number
   ) {
@@ -1443,7 +1269,6 @@ export default function PlayersPage() {
             },
           ];
         }
-
         return current.filter(
           (_, filterIndex) =>
             filterIndex !== index
@@ -1451,11 +1276,9 @@ export default function PlayersPage() {
       }
     );
   }
-
   /*
     LIMPAR
   */
-
   function clearFilters() {
     if (
       typeof window !==
@@ -1464,32 +1287,23 @@ export default function PlayersPage() {
       sessionStorage.removeItem(
         PLAYER_MARKET_STATE_KEY
       );
-
+      localStorage.removeItem(PLAYER_MARKET_STATE_KEY);
+      sessionStorage.removeItem(PLAYER_MARKET_RETURN_KEY);
+      localStorage.removeItem(PLAYER_MARKET_STATE_KEY);
       restoreScrollYRef.current =
         0;
-
       restoreScrollDoneRef.current =
         true;
     }
-
     setSearch("");
-
     setMinCA("");
-
     setMaxCA("");
-
     setMinCP("");
-
     setMaxCP("");
-
     setMinAge("");
-
     setMaxAge("");
-
     setMinValue("");
-
     setMaxValue("");
-
     setAttributeFilters([
       {
         attribute: "",
@@ -1497,15 +1311,11 @@ export default function PlayersPage() {
         max: "",
       },
     ]);
-
     setNationality("");
-
     setSelectedCategory(
       "Todos"
     );
-
     setPage(1);
-
     setTimeout(
       () => {
         loadPlayers(
@@ -1515,7 +1325,6 @@ export default function PlayersPage() {
       100
     );
   }
-
   const totalPages =
     Math.max(
       1,
@@ -1524,68 +1333,47 @@ export default function PlayersPage() {
           PAGE_SIZE
       )
     );
-
   const marketOpen =
     Boolean(
       currentWindow
     );
-
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-
       <div className="mx-auto max-w-[1550px] px-4 py-5">
-
         {/* CABEÇALHO */}
-
         <div className="mb-5">
-
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
             <div>
-
               <h1 className="text-4xl font-black text-white">
                 Jogadores
               </h1>
-
               <p className="mt-1 text-sm text-zinc-400">
                 {total.toLocaleString(
                   "pt-BR"
                 )}{" "}
                 jogadores encontrados
               </p>
-
             </div>
-
             <Link
               href="/transfers/shopping-list"
               className="inline-flex items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-5 py-3 text-sm font-black text-indigo-300 transition hover:bg-indigo-500/20"
             >
               🛒 Minha Lista ({shoppingListIds.size})
             </Link>
-
           </div>
-
         </div>
-
         {/* STATUS DO MERCADO */}
-
         {marketOpen ? (
           <div className="mb-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4">
-
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
               <div>
-
                 <p className="font-black text-green-400">
                   🟢 LEILÕES DE JOGADORES ABERTOS
                 </p>
-
                 <p className="mt-1 text-xs text-zinc-300">
                   Jogadores disponíveis no Mercado podem receber o primeiro lance.
                 </p>
-
               </div>
-
               <span className="rounded-lg border border-green-500/30 px-3 py-1 text-xs font-black text-green-400">
                 JANELA{" "}
                 {
@@ -1593,48 +1381,33 @@ export default function PlayersPage() {
                     ?.window_number
                 }
               </span>
-
             </div>
-
           </div>
         ) : (
           <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 p-4">
-
             <div className="flex items-start gap-3">
-
               <span className="text-2xl">
                 🔒
               </span>
-
               <div>
-
                 <p className="font-black text-red-400">
                   MERCADO FECHADO
                 </p>
-
                 <p className="mt-1 text-xs text-zinc-300">
                   A janela de transferências está fechada. Nenhum jogador pode receber lance neste momento.
                 </p>
-
               </div>
-
             </div>
-
           </div>
         )}
-
         {shoppingMessage && (
           <div className="mb-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-sm font-bold text-indigo-200">
             {shoppingMessage}
           </div>
         )}
-
         {/* CATEGORIAS */}
-
         <div className="mb-4 overflow-x-auto">
-
           <div className="flex min-w-max gap-2">
-
             {categories.map(
               (
                 category
@@ -1642,7 +1415,6 @@ export default function PlayersPage() {
                 const active =
                   selectedCategory ===
                   category;
-
                 return (
                   <button
                     key={
@@ -1667,17 +1439,11 @@ export default function PlayersPage() {
                 );
               }
             )}
-
           </div>
-
         </div>
-
         {/* FILTROS */}
-
         <div className="mb-5 rounded-2xl border border-zinc-800 bg-zinc-900 p-4 shadow-lg">
-
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-
             <input
               type="text"
               placeholder="Buscar jogador..."
@@ -1703,7 +1469,6 @@ export default function PlayersPage() {
               }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="text"
               placeholder="Nacionalidade"
@@ -1729,7 +1494,6 @@ export default function PlayersPage() {
               }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="Preço mínimo"
@@ -1755,7 +1519,6 @@ export default function PlayersPage() {
               }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="Preço máximo"
@@ -1781,7 +1544,6 @@ export default function PlayersPage() {
               }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="CA mínimo"
@@ -1797,7 +1559,6 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="CA máximo"
@@ -1813,7 +1574,6 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="CP mínimo"
@@ -1829,7 +1589,6 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="CP máximo"
@@ -1845,7 +1604,6 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="Idade mínima"
@@ -1861,7 +1619,6 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
             <input
               type="number"
               placeholder="Idade máxima"
@@ -1877,26 +1634,21 @@ export default function PlayersPage() {
               }
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500"
             />
-
           </div>
-
           <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="text-xs font-black uppercase tracking-wider text-indigo-300">
                   Filtros por atributos
                 </div>
-
                 <div className="mt-1 text-xs text-zinc-500">
                   Combine até 6 atributos. Todos os filtros serão aplicados juntos.
                 </div>
               </div>
-
               <div className="text-xs font-bold text-zinc-400">
                 {attributeFilters.length}/{MAX_ATTRIBUTE_FILTERS}
               </div>
             </div>
-
             <div className="space-y-3">
               {attributeFilters.map(
                 (filter, index) => (
@@ -1920,7 +1672,6 @@ export default function PlayersPage() {
                       <option value="">
                         Atributo {index + 1}
                       </option>
-
                       {ATTRIBUTE_OPTIONS.map(
                         (attribute) => (
                           <option
@@ -1946,7 +1697,6 @@ export default function PlayersPage() {
                         )
                       )}
                     </select>
-
                     <input
                       type="number"
                       min="1"
@@ -1973,7 +1723,6 @@ export default function PlayersPage() {
                       }}
                       className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
                     />
-
                     <input
                       type="number"
                       min="1"
@@ -2000,7 +1749,6 @@ export default function PlayersPage() {
                       }}
                       className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
                     />
-
                     <button
                       type="button"
                       onClick={() =>
@@ -2017,7 +1765,6 @@ export default function PlayersPage() {
                 )
               )}
             </div>
-
             <div className="mt-3">
               <button
                 type="button"
@@ -2034,9 +1781,7 @@ export default function PlayersPage() {
               </button>
             </div>
           </div>
-
           <div className="mt-3 flex gap-2">
-
             <button
               type="button"
               onClick={
@@ -2046,7 +1791,6 @@ export default function PlayersPage() {
             >
               Buscar
             </button>
-
             <button
               type="button"
               onClick={
@@ -2056,13 +1800,9 @@ export default function PlayersPage() {
             >
               Limpar
             </button>
-
           </div>
-
         </div>
-
         {/* CARDS */}
-
         {loading ? (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-12 text-center text-zinc-400 shadow-lg">
             Carregando jogadores...
@@ -2074,7 +1814,6 @@ export default function PlayersPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-
             {players.map(
               (
                 player
@@ -2085,33 +1824,25 @@ export default function PlayersPage() {
                   }
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
                 >
-
                   {/* ID */}
-
                   <div className="mb-3 text-[12px] font-bold text-zinc-400">
-
                     ID do jogador -{" "}
-
                     <span className="font-black text-zinc-200">
                       {
                         player.unique_id
                       }
                     </span>
-
                   </div>
-
                   <Link
                     href={`/players/${player.id}`}
-                    onClick={
-                      saveMarketState
-                    }
+                    onClick={() => {
+                      saveMarketState();
+                      sessionStorage.setItem(PLAYER_MARKET_RETURN_KEY, "1");
+                    }}
                     className="block"
                   >
-
                     {/* NOME */}
-
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
-
                       {
                         player.name
                       }{" "}
@@ -2121,24 +1852,17 @@ export default function PlayersPage() {
                         "-"
                       }{" "}
                       anos
-
                     </div>
-
                     {/* NACIONALIDADE */}
-
                     <div className="mt-3 text-sm font-medium text-zinc-300">
                       {
                         player.nationality ||
                         "-"
                       }
                     </div>
-
                     {/* CA */}
-
                     <div className="mt-3 text-sm font-black text-zinc-200">
-
                       CA -{" "}
-
                       <span
                         className={getCAColor(
                           player.ca
@@ -2149,52 +1873,40 @@ export default function PlayersPage() {
                           "-"
                         }
                       </span>
-
                     </div>
-
                     {/* CP */}
-
                     <div className="mt-2 text-sm font-black text-zinc-200">
-
                       CP -{" "}
-
                       <span className="text-sky-400">
                         {
                           player.cp ??
                           "-"
                         }
                       </span>
-
                     </div>
-
                     {/* CLUBE */}
-
                     <div className="mt-3 truncate text-[14px] font-semibold text-zinc-200">
                       {
                         player.club ||
                         "-"
                       }
                     </div>
-
                     {/* POSIÇÃO */}
-
                     <div className="mt-2 truncate text-[13px] font-medium text-zinc-400">
                       {
                         player.position ||
                         "-"
                       }
                     </div>
-
                   </Link>
-
                   {/* BOTÃO DE LANCE */}
-
                   {marketOpen ? (
                     <Link
                       href={`/players/${player.id}`}
-                      onClick={
-                        saveMarketState
-                      }
+                      onClick={() => {
+                        saveMarketState();
+                        sessionStorage.setItem(PLAYER_MARKET_RETURN_KEY, "1");
+                      }}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
                       DAR LANCE —{" "}
@@ -2211,9 +1923,7 @@ export default function PlayersPage() {
                       🔒 MERCADO FECHADO
                     </button>
                   )}
-
                   {/* LISTA DE COMPRAS */}
-
                   <button
                     type="button"
                     disabled={
@@ -2242,34 +1952,24 @@ export default function PlayersPage() {
                       ? "✓ NA LISTA — REMOVER"
                       : "🛒 ADICIONAR À LISTA"}
                   </button>
-
                   {/* VALOR */}
-
                   <div className="mt-4 border-t border-zinc-800 pt-3">
-
                     <div className="text-[12px] font-black uppercase text-red-400">
                       Valor
                     </div>
-
                     <div className="mt-1 text-[13px] font-medium text-red-300">
                       {formatMoney(
                         player.value
                       )}
                     </div>
-
                   </div>
-
                 </div>
               )
             )}
-
           </div>
         )}
-
         {/* PAGINAÇÃO */}
-
         <div className="mt-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900 p-3 shadow-lg">
-
           <button
             type="button"
             disabled={
@@ -2292,25 +1992,18 @@ export default function PlayersPage() {
           >
             Anterior
           </button>
-
           <div className="text-sm font-semibold text-zinc-400">
-
             Página{" "}
-
             <span className="font-black text-white">
               {page}
             </span>
-
             {" "}de{" "}
-
             <span className="font-black text-white">
               {
                 totalPages
               }
             </span>
-
           </div>
-
           <button
             type="button"
             disabled={
@@ -2331,11 +2024,8 @@ export default function PlayersPage() {
           >
             Próxima
           </button>
-
         </div>
-
       </div>
-
     </main>
   );
 }
