@@ -1943,7 +1943,7 @@ export default function PlayersPage() {
                     <Link
                       href={`/players/${player.id}`}
                       onClick={() => {
-                        saveMarketState();
+                        saveMarketState(player.id);
                         sessionStorage.setItem(PLAYER_MARKET_RETURN_KEY, "1");
                       }}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
