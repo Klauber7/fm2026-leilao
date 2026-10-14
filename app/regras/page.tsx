@@ -207,8 +207,9 @@ export default function RegrasDaLigaPage() {
         <div className="mt-8 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-6 text-sm leading-7 text-zinc-300">
           <p className="font-black text-amber-300">Importante para os presidentes</p>
           Este resumo reúne as regras gerais da liga. Janelas extraordinárias,
-          alterações de premiação e decisões disciplinares serão regidas pelos
-          comunicados oficiais mais recentes da administração.
+          alterações de regras vigentes, alterações de premiação e decisões
+          disciplinares serão regidas pelos comunicados oficiais mais recentes
+          da administração.
         </div>
       </div>
     </main>
