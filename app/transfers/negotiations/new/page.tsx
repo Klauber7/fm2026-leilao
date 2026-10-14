@@ -140,6 +140,10 @@ export default function NewNegotiationPage() {
     setOfferedPlayer2,
   ] = useState("");
 
+  // Na contraproposta: 2 jogadores próprios + 1 adicional do adversário.
+  const [requestedOtherPlayer, setRequestedOtherPlayer] = useState("");
+  const [counterOtherPlayers, setCounterOtherPlayers] = useState<Player[]>([]);
+
   const [loading, setLoading] =
     useState(true);
 
@@ -623,9 +627,26 @@ export default function NewNegotiationPage() {
       return;
     }
 
-    setOriginalNegotiation(
-      data
-    );
+    if (data.created_by_team_id === currentTeamId) {
+      setError("Você não pode fazer contraproposta para sua própria oferta.");
+      return;
+    }
+
+    setOriginalNegotiation(data);
+
+    const opponentTeamId = data.buyer_team_id === currentTeamId
+      ? data.seller_team_id : data.buyer_team_id;
+    const { data: opponentPlayers, error: opponentError } = await supabase
+      .from("players")
+      .select("id,name,position,age,nationality,ca,value,team_id")
+      .eq("team_id", opponentTeamId)
+      .order("name", { ascending: true });
+
+    if (opponentError) {
+      setError("Não foi possível carregar os jogadores do clube adversário.");
+      return;
+    }
+    setCounterOtherPlayers(opponentPlayers || []);
 
     setSellerTeamId(
       String(
@@ -697,13 +718,8 @@ export default function NewNegotiationPage() {
         .from(
           "negotiation_players"
         )
-        .select(
-          "player_id"
-        )
-        .eq(
-          "negotiation_id",
-          negotiationId
-        );
+        .select("player_id,from_team_id")
+        .eq("negotiation_id", negotiationId);
 
     if (offeredError) {
       console.error(
@@ -713,40 +729,18 @@ export default function NewNegotiationPage() {
       return;
     }
 
-    /*
-      SE QUEM ESTÁ FAZENDO
-      A CONTRAPROPOSTA É
-      O COMPRADOR ORIGINAL,
-      REAPROVEITA OS JOGADORES
-      DA PROPOSTA ANTERIOR.
-    */
-
-    if (
-      data.buyer_team_id ===
-      currentTeamId
-    ) {
-      const ids =
-        (
-          offeredRows || []
-        ).map(
-          (row) =>
-            String(
-              row.player_id
-            )
-        );
-
-      if (ids[0]) {
-        setOfferedPlayer1(
-          ids[0]
-        );
-      }
-
-      if (ids[1]) {
-        setOfferedPlayer2(
-          ids[1]
-        );
-      }
-    }
+    // Mantém o sentido de cada jogador ao reaproveitar a proposta.
+    const ownIds = (offeredRows || [])
+      .filter(row => Number(row.from_team_id) === currentTeamId)
+      .map(row => String(row.player_id));
+    const otherIds = (offeredRows || [])
+      .filter(row => Number(row.from_team_id) === opponentTeamId)
+      .map(row => String(row.player_id));
+    setOfferedPlayer1(ownIds[0] || "");
+    setOfferedPlayer2(ownIds[1] || "");
+    setRequestedOtherPlayer(
+      otherIds.find(id => id !== String(data.player_id)) || ""
+    );
   }
 
   async function loadTargetPlayers(
@@ -876,6 +870,11 @@ export default function NewNegotiationPage() {
       offeredPlayer2,
     ]);
 
+  const selectedRequestedOtherPlayer = useMemo(() =>
+    counterOtherPlayers.find(player => player.id === Number(requestedOtherPlayer)) || null,
+    [counterOtherPlayers, requestedOtherPlayer]
+  );
+
   async function handleSubmit(
     event: React.FormEvent
   ) {
@@ -937,15 +936,9 @@ export default function NewNegotiationPage() {
       return;
     }
 
-    if (!windowCheck) {
-      setMarketOpen(false);
-
-      setError(
-        "Mercado de transferências fechado. Aguarde a próxima janela."
-      );
-
-      return;
-    }
+    // A negociação é permitida com janela fechada. Nesse caso,
+    // a aceitação registra uma transferência futura, sem mover jogadores.
+    setMarketOpen(Boolean(windowCheck));
 
     if (!myTeam) {
       setError(
@@ -1006,7 +999,8 @@ export default function NewNegotiationPage() {
     if (
       totalAmount === 0 &&
       !offeredPlayer1 &&
-      !offeredPlayer2
+      !offeredPlayer2 &&
+      !requestedOtherPlayer
     ) {
       setError(
         "A proposta precisa ter dinheiro, jogadores ou ambos."
@@ -1025,6 +1019,32 @@ export default function NewNegotiationPage() {
         "Você não pode selecionar o mesmo jogador duas vezes."
       );
 
+      return;
+    }
+
+    if (isCounterOffer && !originalNegotiation) {
+      setError("A contraproposta original não foi carregada.");
+      return;
+    }
+    if (requestedOtherPlayer && !isCounterOffer) {
+      setError("Jogador adicional do adversário só é permitido na contraproposta.");
+      return;
+    }
+    const selectedIds = [playerId, offeredPlayer1, offeredPlayer2, requestedOtherPlayer].filter(Boolean);
+    if (new Set(selectedIds).size !== selectedIds.length) {
+      setError("O mesmo jogador não pode ser selecionado duas vezes.");
+      return;
+    }
+    if ([offeredPlayer1, offeredPlayer2].filter(Boolean).some(id =>
+      !myPlayers.some(player => player.id === Number(id))
+    )) {
+      setError("Um dos jogadores oferecidos não pertence ao seu clube.");
+      return;
+    }
+    if (requestedOtherPlayer && !counterOtherPlayers.some(
+      player => player.id === Number(requestedOtherPlayer)
+    )) {
+      setError("O jogador adicional não pertence ao clube adversário.");
       return;
     }
 
@@ -1056,11 +1076,8 @@ export default function NewNegotiationPage() {
       POR DIREÇÃO / POR JANELA
     */
 
-    if (!windowCheck.opened_at) {
-      setError(
-        "A janela atual não possui data de abertura registrada."
-      );
-
+    if (windowCheck && !windowCheck.opened_at) {
+      setError("A janela atual não possui data de abertura registrada.");
       return;
     }
 
@@ -1147,10 +1164,14 @@ export default function NewNegotiationPage() {
         otherTeamId,
         offeredCount
       );
+      // O adversário pode enviar somente um jogador adicional.
+      addMovement(otherTeamId, myTeam.id, requestedOtherPlayer ? 1 : 0);
 
+      // Com janela fechada, limites serão verificados quando
+      // a transferência futura for executada.
       for (
         const movement of
-        additions.values()
+        windowCheck?.opened_at ? additions.values() : []
       ) {
         const used =
           await getTransferredCountInWindow(
@@ -1532,6 +1553,15 @@ export default function NewNegotiationPage() {
       });
     }
 
+    if (requestedOtherPlayer) {
+      exchangePlayers.push({
+        negotiation_id: negotiationId,
+        player_id: Number(requestedOtherPlayer),
+        from_team_id: otherTeamId,
+        to_team_id: myTeam.id,
+      });
+    }
+
     if (
       exchangePlayers.length >
       0
@@ -1641,60 +1671,6 @@ export default function NewNegotiationPage() {
   }
 
   /*
-    MERCADO FECHADO
-  */
-
-  if (!marketOpen) {
-    return (
-      <main className="min-h-screen bg-[#08090b] px-6 py-10 text-white md:px-10">
-
-        <div className="mx-auto max-w-5xl">
-
-          <Link
-            href="/transfers/negotiations"
-            className="text-sm font-bold text-zinc-400 hover:text-white"
-          >
-            ← Voltar para negociações
-          </Link>
-
-          <div className="mt-16 rounded-3xl border border-red-500/30 bg-red-500/5 p-10 text-center">
-
-            <div className="text-6xl">
-              🔒
-            </div>
-
-            <p className="mt-6 text-sm font-bold uppercase tracking-[0.25em] text-red-400">
-              Mercado fechado
-            </p>
-
-            <h1 className="mt-3 text-4xl font-black md:text-5xl">
-              Janela de transferências fechada
-            </h1>
-
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-zinc-400">
-              Nenhuma nova proposta ou contraproposta pode ser enviada enquanto o mercado estiver fechado.
-            </p>
-
-            <p className="mt-3 text-zinc-500">
-              Aguarde o administrador abrir a próxima janela de transferências.
-            </p>
-
-            <Link
-              href="/transfers/negotiations"
-              className="mt-8 inline-block rounded-xl bg-zinc-800 px-6 py-4 font-black transition hover:bg-zinc-700"
-            >
-              Voltar para negociações
-            </Link>
-
-          </div>
-
-        </div>
-
-      </main>
-    );
-  }
-
-  /*
     MERCADO ABERTO
   */
 
@@ -1719,7 +1695,7 @@ export default function NewNegotiationPage() {
             <span className="h-2 w-2 rounded-full bg-green-400" />
 
             <span className="text-sm font-black text-green-400">
-              MERCADO ABERTO
+              {marketOpen ? "MERCADO ABERTO" : "NEGOCIAÇÕES ABERTAS • TRANSFERÊNCIAS FUTURAS"}
             </span>
 
             {currentWindow && (
@@ -1750,7 +1726,7 @@ export default function NewNegotiationPage() {
             <span className="font-black">
               REGRA DA JANELA:
             </span>{" "}
-            cada clube pode transferir no máximo 2 jogadores para o mesmo clube por janela. Jogadores incluídos em troca também contam para o limite.
+            cada clube pode transferir no máximo 2 jogadores para o mesmo clube por janela. Jogadores de troca também contam. Negociações feitas com a janela fechada serão transferências futuras.
           </div>
 
         </div>
@@ -2034,7 +2010,9 @@ export default function NewNegotiationPage() {
               </h2>
 
               <p className="mt-1 text-sm text-zinc-500">
-                Você pode incluir no máximo 2 jogadores do seu clube.
+                Até 2 jogadores do seu clube{isCounterOffer
+                  ? " e 1 jogador adicional do adversário (além do jogador principal)."
+                  : "."}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -2064,10 +2042,8 @@ export default function NewNegotiationPage() {
                     {myPlayers
                       .filter(
                         (player) =>
-                          String(
-                            player.id
-                          ) !==
-                          offeredPlayer2
+                          String(player.id) !== offeredPlayer2 &&
+                          String(player.id) !== playerId
                       )
                       .map(
                         (player) => (
@@ -2124,10 +2100,8 @@ export default function NewNegotiationPage() {
                     {myPlayers
                       .filter(
                         (player) =>
-                          String(
-                            player.id
-                          ) !==
-                          offeredPlayer1
+                          String(player.id) !== offeredPlayer1 &&
+                          String(player.id) !== playerId
                       )
                       .map(
                         (player) => (
@@ -2161,16 +2135,40 @@ export default function NewNegotiationPage() {
 
               </div>
 
+              {isCounterOffer && originalNegotiation && (
+                <div className="mt-6 border-t border-zinc-700 pt-5">
+                  <label className="mb-2 block text-sm font-bold text-blue-300">
+                    Jogador adicional do clube adversário (máximo 1)
+                  </label>
+                  <select
+                    value={requestedOtherPlayer}
+                    onChange={event => setRequestedOtherPlayer(event.target.value)}
+                    className="w-full rounded-xl border border-blue-700 bg-zinc-950 px-4 py-3 text-white"
+                  >
+                    <option value="">Nenhum jogador adicional</option>
+                    {counterOtherPlayers
+                      .filter(player => String(player.id) !== playerId)
+                      .map(player => (
+                        <option key={player.id} value={player.id}>
+                          {player.name}
+                          {player.position ? ` — ${player.position}` : ""}
+                          {player.ca !== null ? ` — CA ${player.ca}` : ""}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="mt-2 text-xs text-zinc-400">
+                    Se aceita, este jogador sai do adversário e chega ao seu clube.
+                  </p>
+                </div>
+              )}
+
             </section>
 
             {/* ENVIAR */}
 
             <button
               type="submit"
-              disabled={
-                sending ||
-                !marketOpen
-              }
+              disabled={sending || (isCounterOffer && !originalNegotiation)}
               className="w-full rounded-xl bg-green-500 px-5 py-4 text-lg font-black text-black transition hover:bg-green-400 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
             >
               {sending
@@ -2339,6 +2337,15 @@ export default function NewNegotiationPage() {
 
               </div>
 
+              {isCounterOffer && selectedRequestedOtherPlayer && (
+                <div className="mt-4">
+                  <p className="text-xs uppercase text-blue-300">
+                    Jogador adicional do adversário → seu clube
+                  </p>
+                  <p className="mt-1 font-bold">+ {selectedRequestedOtherPlayer.name}</p>
+                </div>
+              )}
+
               <hr className="border-zinc-800" />
 
               <div>
@@ -2350,7 +2357,7 @@ export default function NewNegotiationPage() {
                 <p className="mt-1 font-black text-green-400">
                   {currentWindow
                     ? `Janela ${currentWindow.window_number}`
-                    : "-"}
+                    : "Fechada — transferência futura"}
                 </p>
 
               </div>
