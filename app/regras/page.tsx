@@ -49,7 +49,9 @@ const sections: RuleSection[] = [
     rules: [
       "Mínimo obrigatório: 1 treinador, 1 adjunto principal, 1 preparador e 1 fisioterapeuta.",
       "Os profissionais devem estar registrados e vinculados corretamente ao clube.",
-      "Contratações e dispensas de staff devem seguir as regras da janela e os registros do site.",
+      "A contratação e a demissão do treinador principal podem ser realizadas a qualquer momento, inclusive com a janela de transferências fechada.",
+      "A administração da liga deve ser informada sobre qualquer contratação ou demissão de treinador. A mudança só terá efeito após a administração ser comunicada e realizar a atualização correspondente.",
+      "A contratação e a dispensa dos demais profissionais da comissão técnica, incluindo adjunto principal, preparador e fisioterapeuta, só são permitidas quando a janela de transferências estiver aberta.",
       "O presidente deve conferir sua comissão técnica após cada atualização do save.",
     ],
   },
