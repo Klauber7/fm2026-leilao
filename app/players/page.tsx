@@ -56,6 +56,8 @@ type PlayerMarketState = {
   attributeFilters: AttributeFilter[];
   page: number;
   scrollY: number;
+  focusedPlayerId?: number;
+  focusedOffsetY?: number;
 };
 function normalizeSearch(value: string) {
   return value
@@ -310,21 +312,30 @@ export default function PlayersPage() {
     useState(false);
   const restoreScrollYRef =
     useRef(0);
+  const restoreFocusRef = useRef<{ id: number; offsetY: number } | null>(null);
+  const leavingForProfileRef = useRef(false);
   const shouldRestoreScrollRef = useRef(false);
   const restoreScrollDoneRef =
     useRef(false);
   const skipNextStateSaveRef =
     useRef(true);
   const saveMarketState =
-    useCallback(() => {
+    useCallback((focusedPlayerId?: number) => {
       if (
         typeof window ===
           "undefined" ||
         !marketStateReady ||
-        !restoreScrollDoneRef.current
+        !restoreScrollDoneRef.current ||
+        (leavingForProfileRef.current && focusedPlayerId === undefined)
       ) {
         return;
       }
+      if (focusedPlayerId !== undefined) {
+        leavingForProfileRef.current = true;
+      }
+      const focusedCard = focusedPlayerId !== undefined
+        ? document.getElementById(`market-player-${focusedPlayerId}`)
+        : null;
       const state:
         PlayerMarketState = {
         search,
@@ -342,6 +353,12 @@ export default function PlayersPage() {
         page,
         scrollY:
           window.scrollY,
+        ...(focusedCard && focusedPlayerId !== undefined
+          ? {
+              focusedPlayerId,
+              focusedOffsetY: focusedCard.getBoundingClientRect().top,
+            }
+          : {}),
       };
       const serialized =
         JSON.stringify(state);
@@ -505,6 +522,16 @@ export default function PlayersPage() {
           restoreScrollYRef.current =
             saved.scrollY;
         }
+        if (
+          typeof saved.focusedPlayerId === "number" &&
+          typeof saved.focusedOffsetY === "number" &&
+          Number.isFinite(saved.focusedOffsetY)
+        ) {
+          restoreFocusRef.current = {
+            id: saved.focusedPlayerId,
+            offsetY: saved.focusedOffsetY,
+          };
+        }
       }
     } catch (error) {
       console.error(
@@ -597,25 +624,34 @@ export default function PlayersPage() {
         0,
         document.documentElement.scrollHeight - window.innerHeight
       );
+      const focus = restoreFocusRef.current;
+      const card = focus
+        ? document.getElementById(`market-player-${focus.id}`)
+        : null;
 
-      // A lista paginada pode precisar de alguns frames para
-      // recuperar sua altura depois da navegação.
-      if (maxY < targetY && attempts < 60) {
+      // Aguarda a lista e a página restauradas antes de reposicionar.
+      if (!card && maxY < targetY && attempts < 120) {
         attempts += 1;
         frame = window.requestAnimationFrame(restorePosition);
         return;
       }
 
+      const cardY = card && focus
+        ? window.scrollY + card.getBoundingClientRect().top - focus.offsetY
+        : targetY;
       window.scrollTo({
-        top: Math.min(targetY, maxY),
-        behavior: "auto",
+        top: Math.min(Math.max(0, cardY), maxY),
+        behavior: "instant",
       });
       restoreScrollDoneRef.current = true;
       shouldRestoreScrollRef.current = false;
       sessionStorage.removeItem(PLAYER_MARKET_RETURN_KEY);
     };
 
-    frame = window.requestAnimationFrame(restorePosition);
+    // Aguarda a renderização da grade antes de tentar a restauração.
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(restorePosition);
+    });
     return () => window.cancelAnimationFrame(frame);
   }, [marketStateReady, loading, players.length]);
 
@@ -1292,6 +1328,8 @@ export default function PlayersPage() {
       localStorage.removeItem(PLAYER_MARKET_STATE_KEY);
       restoreScrollYRef.current =
         0;
+      restoreFocusRef.current = null;
+      leavingForProfileRef.current = false;
       restoreScrollDoneRef.current =
         true;
     }
@@ -1822,6 +1860,7 @@ export default function PlayersPage() {
                   key={
                     player.id
                   }
+                  id={`market-player-${player.id}`}
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
                 >
                   {/* ID */}
@@ -1836,7 +1875,7 @@ export default function PlayersPage() {
                   <Link
                     href={`/players/${player.id}`}
                     onClick={() => {
-                      saveMarketState();
+                      saveMarketState(player.id);
                       sessionStorage.setItem(PLAYER_MARKET_RETURN_KEY, "1");
                     }}
                     className="block"
@@ -1904,7 +1943,7 @@ export default function PlayersPage() {
                     <Link
                       href={`/players/${player.id}`}
                       onClick={() => {
-                        saveMarketState();
+                        saveMarketState(player.id);
                         sessionStorage.setItem(PLAYER_MARKET_RETURN_KEY, "1");
                       }}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"

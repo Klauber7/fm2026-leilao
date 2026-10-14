@@ -32,6 +32,7 @@ type TransferWindow = {
 
 const PAGE_SIZE = 50;
 const STAFF_MARKET_STATE_KEY = "friendzone-staff-market-state";
+const STAFF_MARKET_RETURN_KEY = "friendzone-staff-market-return";
 
 type StaffMarketState = {
   search: string;
@@ -43,6 +44,8 @@ type StaffMarketState = {
   maxCP: string;
   page: number;
   scrollY: number;
+  focusedCoachId?: number;
+  focusedOffsetY?: number;
 };
 
 const STAFF_ROLES = [
@@ -112,14 +115,28 @@ export default function CoachesPage() {
 
   const [marketStateReady, setMarketStateReady] = useState(false);
   const restoreScrollYRef = useRef(0);
+  const shouldRestoreScrollRef = useRef(false);
+  const restoreFocusRef = useRef<{ id: number; offsetY: number } | null>(null);
+  const leavingForProfileRef = useRef(false);
   const restoreScrollDoneRef = useRef(false);
   const skipNextSearchResetRef = useRef(false);
   const skipNextStateSaveRef = useRef(true);
 
-  const saveMarketState = useCallback(() => {
-    if (typeof window === "undefined" || !marketStateReady) {
+  const saveMarketState = useCallback((focusedCoachId?: number) => {
+    if (
+      typeof window === "undefined" ||
+      !marketStateReady ||
+      !restoreScrollDoneRef.current ||
+      (leavingForProfileRef.current && focusedCoachId === undefined)
+    ) {
       return;
     }
+    if (focusedCoachId !== undefined) {
+      leavingForProfileRef.current = true;
+    }
+    const focusedCard = focusedCoachId !== undefined
+      ? document.getElementById(`market-coach-${focusedCoachId}`)
+      : null;
 
     const state: StaffMarketState = {
       search,
@@ -131,6 +148,12 @@ export default function CoachesPage() {
       maxCP,
       page,
       scrollY: window.scrollY,
+      ...(focusedCard && focusedCoachId !== undefined
+        ? {
+            focusedCoachId,
+            focusedOffsetY: focusedCard.getBoundingClientRect().top,
+          }
+        : {}),
     };
 
     const serialized = JSON.stringify(state);
@@ -162,9 +185,11 @@ export default function CoachesPage() {
     }
 
     try {
+      shouldRestoreScrollRef.current =
+        sessionStorage.getItem(STAFF_MARKET_RETURN_KEY) === "1";
       const raw =
-        localStorage.getItem(STAFF_MARKET_STATE_KEY) ||
-        sessionStorage.getItem(STAFF_MARKET_STATE_KEY);
+        sessionStorage.getItem(STAFF_MARKET_STATE_KEY) ||
+        localStorage.getItem(STAFF_MARKET_STATE_KEY);
 
       if (raw) {
         const saved = JSON.parse(raw) as Partial<StaffMarketState>;
@@ -197,6 +222,16 @@ export default function CoachesPage() {
           Number.isFinite(saved.scrollY)
         ) {
           restoreScrollYRef.current = saved.scrollY;
+        }
+        if (
+          typeof saved.focusedCoachId === "number" &&
+          typeof saved.focusedOffsetY === "number" &&
+          Number.isFinite(saved.focusedOffsetY)
+        ) {
+          restoreFocusRef.current = {
+            id: saved.focusedCoachId,
+            offsetY: saved.focusedOffsetY,
+          };
         }
       }
     } catch (error) {
@@ -248,17 +283,47 @@ export default function CoachesPage() {
       return;
     }
 
-    const targetY = restoreScrollYRef.current;
+    if (!shouldRestoreScrollRef.current) {
+      restoreScrollDoneRef.current = true;
+      return;
+    }
+    const targetY = Math.max(0, restoreScrollYRef.current);
+    let frame = 0;
+    let attempts = 0;
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo({
-          top: targetY,
-          behavior: "auto",
-        });
-        restoreScrollDoneRef.current = true;
+    const restorePosition = () => {
+      const maxY = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight
+      );
+      const focus = restoreFocusRef.current;
+      const card = focus
+        ? document.getElementById(`market-coach-${focus.id}`)
+        : null;
+
+      // Espera a lista e a paginação carregarem antes de restaurar a tela.
+      if (!card && maxY < targetY && attempts < 120) {
+        attempts += 1;
+        frame = window.requestAnimationFrame(restorePosition);
+        return;
+      }
+
+      const cardY = card && focus
+        ? window.scrollY + card.getBoundingClientRect().top - focus.offsetY
+        : targetY;
+      window.scrollTo({
+        top: Math.min(Math.max(0, cardY), maxY),
+        behavior: "instant",
       });
+      restoreScrollDoneRef.current = true;
+      shouldRestoreScrollRef.current = false;
+      sessionStorage.removeItem(STAFF_MARKET_RETURN_KEY);
+    };
+
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(restorePosition);
     });
+    return () => window.cancelAnimationFrame(frame);
   }, [marketStateReady, loading, coaches.length]);
 
   useEffect(() => {
@@ -614,6 +679,10 @@ export default function CoachesPage() {
       sessionStorage.removeItem(STAFF_MARKET_STATE_KEY);
       localStorage.removeItem(STAFF_MARKET_STATE_KEY);
       restoreScrollYRef.current = 0;
+      restoreFocusRef.current = null;
+      leavingForProfileRef.current = false;
+      shouldRestoreScrollRef.current = false;
+      sessionStorage.removeItem(STAFF_MARKET_RETURN_KEY);
       restoreScrollDoneRef.current = true;
     }
 
@@ -791,6 +860,7 @@ export default function CoachesPage() {
               return (
                 <div
                   key={coach.id}
+                  id={`market-coach-${coach.id}`}
                   className="group overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-md"
                 >
                   {/* ID */}
@@ -801,7 +871,14 @@ export default function CoachesPage() {
                     </span>
                   </div>
 
-                  <Link href={`/coaches/${coach.id}`} onClick={saveMarketState} className="block">
+                  <Link
+                    href={`/coaches/${coach.id}`}
+                    onClick={() => {
+                      saveMarketState(coach.id);
+                      sessionStorage.setItem(STAFF_MARKET_RETURN_KEY, "1");
+                    }}
+                    className="block"
+                  >
                     {/* NOME */}
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-green-300">
                       {coach.name} - {coach.age ?? "-"} anos
@@ -851,7 +928,10 @@ export default function CoachesPage() {
                   {marketOpen ? (
                     <Link
                       href={`/coaches/${coach.id}`}
-                      onClick={saveMarketState}
+                      onClick={() => {
+                        saveMarketState(coach.id);
+                        sessionStorage.setItem(STAFF_MARKET_RETURN_KEY, "1");
+                      }}
                       className="mt-4 block w-full rounded-lg bg-green-600 px-3 py-2 text-center text-[12px] font-black text-white transition hover:bg-green-500"
                     >
                       DAR LANCE —{" "}
