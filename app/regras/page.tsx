@@ -93,7 +93,7 @@ const sections: RuleSection[] = [
     intro: "A administração acompanha os saldos, as dívidas e as penalidades dos clubes.",
     rules: [
       "O clube pode manter no máximo R$ 30 milhões em parcelas futuras pendentes, conforme o regulamento financeiro.",
-      "Compras parceladas devem respeitar o calendário de vencimento das obrigações.",
+      "A parcela será paga na próxima janela de transferências.",
       "O clube que não quitar a dívida no prazo definido pode receber transfer ban até a regularização.",
       "Compras, vendas, reembolsos, parcelas e multas devem ser registradas no histórico financeiro.",
       "As premiações de competições e partidas seguem os valores oficialmente divulgados pela liga.",
