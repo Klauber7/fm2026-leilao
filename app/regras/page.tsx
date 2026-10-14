@@ -22,9 +22,9 @@ const sections: RuleSection[] = [
     intro: "As competições da FriendZone League FM são organizadas pela administração.",
     rules: [
       "FriendZone Premier League: campeonato de pontos corridos, com 20 equipes e 38 rodadas.",
-      "FriendZone Champions League: competição eliminatória entre os classificados, conforme o chaveamento divulgado.",
-      "FriendZone Cup: competição de copa com confrontos definidos pela organização.",
-      "FriendZone Super Cup: disputa conforme os critérios anunciados pela administração.",
+      "FriendZone Champions League (Champions Cup): as 16 equipes mais bem classificadas da FriendZone Premier League garantem vaga na competição.",
+      "FriendZone Cup: os confrontos são definidos pelo Football Manager (FM).",
+      "FriendZone Super Cup: o campeão da FriendZone Cup enfrenta o campeão da FriendZone Premier League.",
       "Resultados, classificações e chaveamentos publicados no site são a referência para acompanhar cada torneio.",
     ],
   },
