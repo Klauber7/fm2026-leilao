@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+// Revisão do regulamento consolidada para publicação em produção.
 export const metadata: Metadata = {
   title: "Regras da Liga",
   description: "Regulamento de elenco, comissão técnica, transferências, finanças e disciplina da FriendZone League FM.",
