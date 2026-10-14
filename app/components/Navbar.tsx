@@ -88,6 +88,11 @@ const mainMenu: MenuItem[] = [
     label: "Clubes",
     icon: "🏟️",
   },
+  {
+    href: "/regras",
+    label: "Regras da Liga",
+    icon: "📜",
+  },
 ];
 
 export default function Navbar() {
