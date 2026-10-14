@@ -432,6 +432,9 @@ export default function NegotiationsPage() {
   }
 
   function getStatusLabel(status: string) {
+    if (status === "future_transfer") {
+      return "Aceita — próxima janela";
+    }
     if (status === "accepted") {
       return "Aceita";
     }
@@ -452,6 +455,9 @@ export default function NegotiationsPage() {
   }
 
   function statusClass(status: string) {
+    if (status === "future_transfer") {
+      return "bg-blue-500/15 text-blue-300";
+    }
     if (status === "accepted") {
       return "bg-green-500/15 text-green-400";
     }
@@ -481,10 +487,6 @@ export default function NegotiationsPage() {
       return false;
     }
 
-    if (!marketOpen) {
-      return false;
-    }
-
     if (negotiation.status !== "pending") {
       return false;
     }
@@ -508,11 +510,6 @@ export default function NegotiationsPage() {
       return;
     }
 
-    if (!marketOpen) {
-      setError("Mercado de transferências fechado.");
-      return;
-    }
-
     if (!canRespond(negotiation)) {
       setError("Você não pode aceitar essa proposta.");
       return;
@@ -522,7 +519,9 @@ export default function NegotiationsPage() {
       `ACEITAR NEGOCIAÇÃO?\n\n` +
         `${negotiation.player?.name || "Jogador"}\n\n` +
         `Valor: ${money(negotiation.amount)}\n\n` +
-        `Depois de aceitar, os jogadores e o dinheiro serão transferidos automaticamente.`
+        (marketOpen
+          ? `Ao aceitar, a transferência será executada conforme as regras da janela.`
+          : `Ao aceitar, a negociação ficará como TRANSFERÊNCIA FUTURA. Nenhum jogador mudará de equipe agora.`)
     );
 
     if (!confirmed) {
@@ -534,7 +533,7 @@ export default function NegotiationsPage() {
     setError("");
     setMessage("");
 
-    const { error: acceptError } = await supabase.rpc(
+    const { data: acceptResult, error: acceptError } = await supabase.rpc(
       "accept_transfer_negotiation",
       {
         p_negotiation_id: negotiation.id,
@@ -583,7 +582,9 @@ export default function NegotiationsPage() {
     }
 
     setMessage(
-      "Negociação aceita! Dinheiro, jogadores e parcelas foram atualizados."
+      acceptResult?.future_transfer
+        ? "Contraproposta aceita! Transferência futura registrada para a próxima janela. Os jogadores continuam em seus clubes."
+        : "Negociação aceita! Transferência executada conforme as regras da janela."
     );
 
     await loadNegotiations();
@@ -597,11 +598,6 @@ export default function NegotiationsPage() {
 
   async function handleReject(negotiation: Negotiation) {
     if (!myTeam) {
-      return;
-    }
-
-    if (!marketOpen) {
-      setError("Mercado de transferências fechado.");
       return;
     }
 
@@ -716,34 +712,25 @@ export default function NegotiationsPage() {
               Parcelas
             </Link>
 
-            {marketOpen ? (
-              <Link
-                href="/transfers/negotiations/new"
-                className="rounded-xl bg-green-500 px-5 py-3 font-black text-black transition hover:bg-green-400"
-              >
-                + Nova proposta
-              </Link>
-            ) : (
-              <button
-                type="button"
-                disabled
-                className="cursor-not-allowed rounded-xl bg-zinc-800 px-5 py-3 font-black text-zinc-500"
-              >
-                🔒 Nova proposta
-              </button>
-            )}
+            <Link
+              href="/transfers/negotiations/new"
+              className="rounded-xl bg-green-500 px-5 py-3 font-black text-black transition hover:bg-green-400"
+            >
+              + Nova proposta
+            </Link>
           </div>
         </div>
 
         {!marketOpen && (
           <div className="mb-8 rounded-2xl border border-red-500/30 bg-red-500/5 p-6">
             <p className="font-black text-red-400">
-              🔒 Janela de transferências fechada
+              Janela fechada — negociações permitidas
             </p>
 
             <p className="mt-2 text-zinc-400">
-              O histórico continua disponível, mas novas ações ficam
-              bloqueadas até a abertura da próxima janela.
+              Propostas, contrapropostas e respostas estão liberadas.
+              Negociações aceitas agora serão transferências futuras:
+              os jogadores só mudarão de clube quando a próxima janela abrir.
             </p>
           </div>
         )}
@@ -1021,6 +1008,15 @@ function NegotiationThreadCard({
                             CA {offered.player.ca}
                           </span>
                         )}
+                      <p className="mt-1 text-xs text-zinc-400">
+                        {offered.from_team_id === latest.buyer_team_id
+                          ? latest.buyer_team?.name
+                          : latest.seller_team?.name}
+                        {" → "}
+                        {offered.to_team_id === latest.buyer_team_id
+                          ? latest.buyer_team?.name
+                          : latest.seller_team?.name}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -1083,10 +1079,7 @@ function NegotiationThreadCard({
           <div className="mt-6 grid gap-3 border-t border-zinc-800 pt-6 md:grid-cols-3">
             <button
               type="button"
-              disabled={
-                processingId === latest.id ||
-                !marketOpen
-              }
+              disabled={processingId === latest.id}
               onClick={() =>
                 onAccept(latest)
               }
@@ -1094,15 +1087,14 @@ function NegotiationThreadCard({
             >
               {processingId === latest.id
                 ? "PROCESSANDO..."
-                : "✓ ACEITAR"}
+                : marketOpen
+                ? "✓ ACEITAR"
+                : "✓ ACEITAR PARA PRÓXIMA JANELA"}
             </button>
 
             <button
               type="button"
-              disabled={
-                processingId === latest.id ||
-                !marketOpen
-              }
+              disabled={processingId === latest.id}
               onClick={() =>
                 onReject(latest)
               }
