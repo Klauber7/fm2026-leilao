@@ -4,7 +4,7 @@ import Link from "next/link";
 // Revisão do regulamento consolidada para publicação em produção.
 export const metadata: Metadata = {
   title: "Regras da Liga",
-  description: "Regulamento de elenco, comissão técnica, transferências, finanças e disciplina da FriendZone League FM.",
+  description: "Regulamento de elenco, comissão técnica, transferências, finanças, premiações e disciplina da FriendZone League FM.",
 };
 
 type RuleSection = {
@@ -114,6 +114,29 @@ const sections: RuleSection[] = [
     ],
   },
   {
+    id: "premiacoes",
+    icon: "🏅",
+    title: "Premiações oficiais da FriendZone League FM",
+    intro: "A liga premia participação, desempenho esportivo, classificação final, destaques individuais e patrocínio ao longo da temporada. Valores em milhões (M) ou milhares (K).",
+    rules: [
+      "🏆 FRIENDZONE PREMIER LEAGUE — 20 equipes, 38 partidas por equipe.",
+      "Por partida: 650K por jogo disputado; bônus adicional de 350K por vitória e 200K por empate. Derrota não gera bônus adicional.",
+      "Participação garantida: 24,7M por equipe nas 38 partidas (38 × 650K), independentemente dos resultados.",
+      "Classificação final: campeão 40M; vice-campeão 35M; 3º lugar 32M; 4º lugar 27M; 5º ao 12º lugar 23M; 13º ao 20º lugar 19M.",
+      "Premiações individuais: artilheiro da Premier League 3M; equipe dos melhores da Premier League 2M.",
+      "🏆 CHAMPIONS CUP — 16 equipes, formato mata-mata.",
+      "Primeira eliminatória 3M; quartas de final 5M; semifinal 16M; vice-campeão 24M; campeão 30M.",
+      "Premiações individuais: artilheiro da Champions Cup 1,5M; equipe dos melhores da Champions Cup 1M.",
+      "🏆 FRIENDZONE CUP — 20 equipes, formato mata-mata.",
+      "1ª eliminatória 3M; oitavas de final 7M; quartas de final 10M; semifinal 14M; vice-campeão 20M; campeão 25M.",
+      "Premiações individuais: artilheiro da FriendZone Cup 1,5M; equipe dos melhores da FriendZone Cup 1M.",
+      "🏆 FRIENDZONE SUPER CUP — jogo único entre o campeão da Premier League e o campeão da FriendZone Cup.",
+      "Campeão da Super Cup 10M; vice-campeão 7M.",
+      "🤝 PATROCÍNIO OFICIAL — cada equipe recebe 75M por temporada, independentemente da classificação ou dos resultados.",
+      "O patrocínio será pago em três janelas: 1ª janela 25M; 2ª janela 25M; 3ª janela 25M, totalizando 75M por equipe na temporada.",
+    ],
+  },
+  {
     id: "disciplina",
     icon: "⚖️",
     title: "Fiscalização e penalidades",
@@ -146,7 +169,7 @@ export default function RegrasDaLigaPage() {
           <h1 className="mt-3 text-3xl font-black md:text-5xl">📜 Regras da Liga</h1>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300 md:text-base">
             Consulte o regulamento de competições, elencos, comissão técnica,
-            transferências, contrapropostas e finanças. Todos os presidentes
+            transferências, contrapropostas, finanças e premiações. Todos os presidentes
             devem acompanhar também os comunicados oficiais da liga.
           </p>
           <Link href="/teams" className="mt-6 inline-block rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-300 transition hover:bg-emerald-500/20">
