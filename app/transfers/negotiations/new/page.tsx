@@ -875,6 +875,28 @@ export default function NewNegotiationPage() {
     [counterOtherPlayers, requestedOtherPlayer]
   );
 
+  // O jogador principal já é a 1ª saída do clube vendedor.
+  // Portanto, quem está contrapondo como vendedor só pode oferecer
+  // mais 1 jogador próprio, nunca 2.
+  const isMyTeamSeller = Boolean(
+    isCounterOffer && originalNegotiation && myTeam &&
+    originalNegotiation.seller_team_id === myTeam.id
+  );
+  const maxOwnAdditionalPlayers = isMyTeamSeller ? 1 : 2;
+  const selectedOwnAdditionalCount = [offeredPlayer1, offeredPlayer2].filter(Boolean).length;
+  const countFromMainSeller = 1 + (isMyTeamSeller
+    ? selectedOwnAdditionalCount
+    : (requestedOtherPlayer ? 1 : 0));
+  const countFromMainBuyer = isMyTeamSeller
+    ? (requestedOtherPlayer ? 1 : 0)
+    : selectedOwnAdditionalCount;
+
+  useEffect(() => {
+    if (isMyTeamSeller && offeredPlayer2) {
+      setOfferedPlayer2("");
+    }
+  }, [isMyTeamSeller, offeredPlayer2]);
+
   async function handleSubmit(
     event: React.FormEvent
   ) {
@@ -1028,6 +1050,14 @@ export default function NewNegotiationPage() {
     }
     if (requestedOtherPlayer && !isCounterOffer) {
       setError("Jogador adicional do adversário só é permitido na contraproposta.");
+      return;
+    }
+    if (selectedOwnAdditionalCount > maxOwnAdditionalPlayers) {
+      setError("O jogador principal já conta como 1. O clube vendedor só pode adicionar mais 1 jogador próprio.");
+      return;
+    }
+    if (countFromMainSeller > 2 || countFromMainBuyer > 2) {
+      setError("Limite de 2 jogadores por clube na negociação, incluindo o jogador principal.");
       return;
     }
     const selectedIds = [playerId, offeredPlayer1, offeredPlayer2, requestedOtherPlayer].filter(Boolean);
@@ -2010,9 +2040,12 @@ export default function NewNegotiationPage() {
               </h2>
 
               <p className="mt-1 text-sm text-zinc-500">
-                Até 2 jogadores do seu clube{isCounterOffer
-                  ? " e 1 jogador adicional do adversário (além do jogador principal)."
-                  : "."}
+                {isMyTeamSeller
+                  ? "O jogador principal já é 1 dos 2 jogadores do seu clube. Você pode incluir somente mais 1 jogador próprio."
+                  : "Você pode incluir até 2 jogadores do seu clube."}
+                {isCounterOffer
+                  ? " Também pode pedir 1 jogador adicional do adversário, respeitando o máximo de 2 por clube."
+                  : ""}
               </p>
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -2075,7 +2108,7 @@ export default function NewNegotiationPage() {
 
                 </div>
 
-                <div>
+                {!isMyTeamSeller && <div>
 
                   <label className="mb-2 block text-sm font-bold text-zinc-300">
                     Jogador 2
@@ -2131,7 +2164,7 @@ export default function NewNegotiationPage() {
 
                   </select>
 
-                </div>
+                </div>}
 
               </div>
 
@@ -2158,6 +2191,7 @@ export default function NewNegotiationPage() {
                   </select>
                   <p className="mt-2 text-xs text-zinc-400">
                     Se aceita, este jogador sai do adversário e chega ao seu clube.
+                    O jogador principal já conta como 1 do clube vendedor.
                   </p>
                 </div>
               )}
@@ -2335,6 +2369,11 @@ export default function NewNegotiationPage() {
                   </div>
                 )}
 
+              </div>
+
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-300">
+                <p>Clube vendedor: {countFromMainSeller}/2 jogadores saindo (inclui o principal).</p>
+                <p>Clube comprador: {countFromMainBuyer}/2 jogadores saindo.</p>
               </div>
 
               {isCounterOffer && selectedRequestedOtherPlayer && (
