@@ -1177,7 +1177,7 @@ export default function NewNegotiationPage() {
           await getTransferredCountInWindow(
             movement.fromTeamId,
             movement.toTeamId,
-            windowCheck.opened_at
+            windowCheck?.opened_at || ""
           );
 
         if (
