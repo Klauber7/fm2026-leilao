@@ -388,7 +388,9 @@ export default function NegotiationsPage() {
       });
     });
 
-    return result.sort((a, b) => {
+    // Somente negociações efetivamente finalizadas aparecem no histórico.
+    // Propostas recusadas, canceladas, pendentes ou futuras não são negócios fechados.
+    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted")).sort((a, b) => {
       return (
         new Date(b.latest.created_at).getTime() -
         new Date(a.latest.created_at).getTime()
