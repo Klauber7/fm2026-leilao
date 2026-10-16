@@ -390,7 +390,7 @@ export default function NegotiationsPage() {
 
     // Somente negociações efetivamente finalizadas aparecem no histórico.
     // Propostas recusadas, canceladas, pendentes ou futuras não são negócios fechados.
-    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted")).sort((a, b) => {
+    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted" || item.status === "pending")).sort((a, b) => {
       return (
         new Date(b.latest.created_at).getTime() -
         new Date(a.latest.created_at).getTime()
@@ -674,6 +674,7 @@ export default function NegotiationsPage() {
             <h1 className="text-4xl font-black md:text-5xl">
               Negociações
             </h1>
+            <Link href="/transfers/loans" className="mt-4 inline-block rounded-xl bg-green-500 px-4 py-3 font-bold text-black">Solicitar empréstimo de jogador →</Link>
 
             <p className="mt-3 text-zinc-400">
               Gerencie propostas e contrapropostas do{" "}
