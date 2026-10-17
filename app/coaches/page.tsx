@@ -13,6 +13,7 @@ type Coach = {
   role: string | null;
   ca: number | null;
   cp: number | null;
+  attributes: Record<string, number | null> | null;
   preferred_formation: string | null;
   value: number | null;
   team_id: number | null;
@@ -31,6 +32,17 @@ type TransferWindow = {
 };
 
 const PAGE_SIZE = 50;
+const STAFF_HIGHLIGHTS: Record<string, string[]> = {
+  "Treinador": ["Conhecimento Tático", "Motivação", "Gestão de Pessoas"],
+  "Treinador Adjunto Principal": ["Conhecimento Tático", "Treino Tático", "Motivação"],
+  "Preparador": ["Treino Ataque", "Treino Defesa", "Treino Técnico"],
+  "Preparador Físico": ["Treino Físico", "Motivação", "Trabalho c/ Jovens"],
+  "Treinador de Goleiros": ["Treino Guarda-Redes", "GR Manejo*", "GR Distribuição*"],
+  "Fisioterapeuta": ["Fisioterapia", "Ciência Desportiva", "Profissionalismo"],
+  "Preparador de Bolas Paradas": ["Treino Bolas Paradas", "Conhecimento Tático", "Treino Tático"],
+  "Analista de Desempenho": ["Análise de Dados", "Avaliar Capacidade", "Avaliar Potencial"],
+  "Cientista Desportivo": ["Ciência Desportiva", "Treino Físico", "Profissionalismo"],
+};
 const STAFF_MARKET_STATE_KEY = "friendzone-staff-market-state";
 const STAFF_MARKET_RETURN_KEY = "friendzone-staff-market-return";
 
@@ -444,6 +456,7 @@ export default function CoachesPage() {
         role,
         ca,
         cp,
+        attributes,
         preferred_formation,
         value,
         team_id
@@ -917,6 +930,16 @@ export default function CoachesPage() {
                       <span className="text-sky-400">
                         {coach.cp ?? "-"}
                       </span>
+                    </div>
+
+                    {/* ATRIBUTOS DA FUNÇÃO */}
+                    <div className="mt-3 grid grid-cols-3 gap-1.5">
+                      {(STAFF_HIGHLIGHTS[coach.role || ""] || ["Conhecimento Tático", "Motivação", "Determinação"]).map((key) => (
+                        <div key={key} className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-1.5 py-2 text-center">
+                          <div className="text-[10px] font-black text-sky-300">{coach.attributes?.[key] ?? "–"}</div>
+                          <div className="mt-1 line-clamp-2 text-[9px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</div>
+                        </div>
+                      ))}
                     </div>
 
                     {/* TÁTICA PREFERIDA */}
