@@ -16,7 +16,7 @@ type Coach = {
   nationality: string | null;
   age: number | null;
   ca: number | null;
-  pa: number | null;
+  cp: number | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -33,8 +33,8 @@ type StaffGroup =
   | "manager"
   | "assistant"
   | "technical"
-  | "attack"
-  | "defense"
+  | "setpieces"
+  | "science"
   | "fitness"
   | "goalkeeping"
   | "medical"
@@ -46,7 +46,7 @@ type FilterGroup = "all" | StaffGroup;
 type SortOption =
   | "ca-desc"
   | "ca-asc"
-  | "pa-desc"
+  | "cp-desc"
   | "name-asc"
   | "age-asc"
   | "age-desc"
@@ -92,87 +92,15 @@ function getErrorMessage(error: unknown) {
 
 function getStaffGroup(role: string | null): StaffGroup {
   const normalized = normalizeText(role);
-
-  if (
-    normalized.includes("head coach") ||
-    normalized.includes("manager") ||
-    normalized === "treinador" ||
-    normalized.includes("treinador principal")
-  ) {
-    return "manager";
-  }
-
-  if (
-    normalized.includes("assistant") ||
-    normalized.includes("assistente")
-  ) {
-    return "assistant";
-  }
-
-  if (
-    normalized.includes("technical") ||
-    normalized.includes("tecnico") ||
-    normalized.includes("técnico")
-  ) {
-    return "technical";
-  }
-
-  if (
-    normalized.includes("attack") ||
-    normalized.includes("ataque") ||
-    normalized.includes("offensive") ||
-    normalized.includes("ofensivo")
-  ) {
-    return "attack";
-  }
-
-  if (
-    normalized.includes("defense") ||
-    normalized.includes("defence") ||
-    normalized.includes("defesa") ||
-    normalized.includes("defensive") ||
-    normalized.includes("defensivo")
-  ) {
-    return "defense";
-  }
-
-  if (
-    normalized.includes("fitness") ||
-    normalized.includes("physical") ||
-    normalized.includes("preparador fisico") ||
-    normalized.includes("preparação física") ||
-    normalized.includes("preparacao fisica")
-  ) {
-    return "fitness";
-  }
-
-  if (
-    normalized.includes("goalkeeper") ||
-    normalized.includes("goalkeeping") ||
-    normalized.includes("goleiro") ||
-    normalized.includes("guarda-redes")
-  ) {
-    return "goalkeeping";
-  }
-
-  if (
-    normalized.includes("physio") ||
-    normalized.includes("fisioterapeuta") ||
-    normalized.includes("doctor") ||
-    normalized.includes("medico") ||
-    normalized.includes("médico")
-  ) {
-    return "medical";
-  }
-
-  if (
-    normalized.includes("analyst") ||
-    normalized.includes("analista") ||
-    normalized.includes("performance")
-  ) {
-    return "analysis";
-  }
-
+  if (normalized === "treinador" || normalized === "treinador principal" || normalized === "head coach" || normalized === "manager") return "manager";
+  if (normalized.includes("adjunto") || normalized.includes("assistant") || normalized.includes("assistente")) return "assistant";
+  if (normalized.includes("bolas paradas") || normalized.includes("set piece")) return "setpieces";
+  if (normalized.includes("cientista") || normalized.includes("sports scientist")) return "science";
+  if (normalized.includes("goleiro") || normalized.includes("guarda-redes") || normalized.includes("goalkeep")) return "goalkeeping";
+  if (normalized.includes("fisico") || normalized.includes("fitness") || normalized.includes("physical")) return "fitness";
+  if (normalized.includes("fisioterapeuta") || normalized.includes("physio") || normalized.includes("medico")) return "medical";
+  if (normalized.includes("analista") || normalized.includes("analyst") || normalized.includes("performance")) return "analysis";
+  if (normalized.includes("preparador") || normalized.includes("coach") || normalized.includes("tecnico")) return "technical";
   return "others";
 }
 
@@ -190,11 +118,11 @@ function sortStaff(
           Number(second.ca || 0)
       );
 
-    case "pa-desc":
+    case "cp-desc":
       return sortedMembers.sort(
         (first, second) =>
-          Number(second.pa || 0) -
-          Number(first.pa || 0)
+          Number(second.cp || 0) -
+          Number(first.cp || 0)
       );
 
     case "name-asc":
@@ -317,10 +245,10 @@ function StaffCard({
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
           <div>
             <p className="text-[10px] font-bold uppercase text-zinc-500">
-              PA
+              CP
             </p>
             <p className="mt-1 text-sm font-black text-white">
-              {member.pa ?? "-"}
+              {member.cp ?? "-"}
             </p>
           </div>
 
@@ -443,7 +371,7 @@ export default function StaffPage() {
           nationality,
           age,
           ca,
-          pa,
+          cp,
           value,
           image_url,
           team_id,
@@ -625,23 +553,23 @@ export default function StaffPage() {
     );
   }, [staff]);
 
-  const averagePa = useMemo(() => {
+  const averageCp = useMemo(() => {
     const validMembers = staff.filter(
-      (member) => member.pa !== null
+      (member) => member.cp !== null
     );
 
     if (validMembers.length === 0) {
       return 0;
     }
 
-    const totalPa = validMembers.reduce(
+    const totalCp = validMembers.reduce(
       (total, member) =>
-        total + Number(member.pa || 0),
+        total + Number(member.cp || 0),
       0
     );
 
     return Math.round(
-      totalPa / validMembers.length
+      totalCp / validMembers.length
     );
   }, [staff]);
 
@@ -650,8 +578,8 @@ export default function StaffPage() {
       manager: 0,
       assistant: 0,
       technical: 0,
-      attack: 0,
-      defense: 0,
+      setpieces: 0,
+      science: 0,
       fitness: 0,
       goalkeeping: 0,
       medical: 0,
@@ -692,7 +620,7 @@ export default function StaffPage() {
           member.nationality,
           member.age?.toString(),
           member.ca?.toString(),
-          member.pa?.toString(),
+          member.cp?.toString(),
         ]
           .filter(Boolean)
           .join(" ")
@@ -719,8 +647,8 @@ export default function StaffPage() {
       manager: [],
       assistant: [],
       technical: [],
-      attack: [],
-      defense: [],
+      setpieces: [],
+      science: [],
       fitness: [],
       goalkeeping: [],
       medical: [],
@@ -734,86 +662,16 @@ export default function StaffPage() {
     });
 
     const allSections: StaffSection[] = [
-      {
-        key: "manager",
-        title: "Treinadores",
-        abbreviation: "TEC",
-        description:
-          "Treinadores principais responsáveis pelo time.",
-        members: grouped.manager,
-      },
-      {
-        key: "assistant",
-        title: "Assistentes",
-        abbreviation: "ASS",
-        description:
-          "Assistentes dos treinadores principais.",
-        members: grouped.assistant,
-      },
-      {
-        key: "technical",
-        title: "Treinadores técnicos",
-        abbreviation: "TÉC",
-        description:
-          "Profissionais responsáveis pelo desenvolvimento técnico.",
-        members: grouped.technical,
-      },
-      {
-        key: "attack",
-        title: "Treinadores de ataque",
-        abbreviation: "ATA",
-        description:
-          "Especialistas no desenvolvimento ofensivo.",
-        members: grouped.attack,
-      },
-      {
-        key: "defense",
-        title: "Treinadores de defesa",
-        abbreviation: "DEF",
-        description:
-          "Especialistas na organização defensiva.",
-        members: grouped.defense,
-      },
-      {
-        key: "fitness",
-        title: "Preparadores físicos",
-        abbreviation: "FIS",
-        description:
-          "Responsáveis pelo condicionamento físico.",
-        members: grouped.fitness,
-      },
-      {
-        key: "goalkeeping",
-        title: "Treinadores de goleiros",
-        abbreviation: "GK",
-        description:
-          "Especialistas no treinamento dos goleiros.",
-        members: grouped.goalkeeping,
-      },
-      {
-        key: "medical",
-        title: "Departamento médico",
-        abbreviation: "MED",
-        description:
-          "Fisioterapeutas e profissionais médicos.",
-        members: grouped.medical,
-      },
-      {
-        key: "analysis",
-        title: "Analistas",
-        abbreviation: "ANA",
-        description:
-          "Analistas de desempenho e observação.",
-        members: grouped.analysis,
-      },
-      {
-        key: "others",
-        title: "Outros profissionais",
-        abbreviation: "OUT",
-        description:
-          "Profissionais ainda sem categoria definida.",
-        members: grouped.others,
-      },
+      { key: "manager", title: "Treinadores", abbreviation: "TEC", description: "Treinadores principais.", members: grouped.manager },
+      { key: "assistant", title: "Treinadores adjuntos", abbreviation: "ADJ", description: "Auxiliares e adjuntos principais.", members: grouped.assistant },
+      { key: "technical", title: "Preparadores", abbreviation: "PRE", description: "Treinadores e preparadores técnicos.", members: grouped.technical },
+      { key: "fitness", title: "Preparadores físicos", abbreviation: "FIS", description: "Condicionamento físico.", members: grouped.fitness },
+      { key: "goalkeeping", title: "Treinadores de goleiros", abbreviation: "GK", description: "Treinamento de goleiros.", members: grouped.goalkeeping },
+      { key: "medical", title: "Fisioterapeutas", abbreviation: "MED", description: "Fisioterapia e saúde.", members: grouped.medical },
+      { key: "setpieces", title: "Preparadores de bolas paradas", abbreviation: "BOL", description: "Bolas paradas.", members: grouped.setpieces },
+      { key: "analysis", title: "Analistas de desempenho", abbreviation: "ANA", description: "Análise de desempenho.", members: grouped.analysis },
+      { key: "science", title: "Cientistas desportivos", abbreviation: "CIE", description: "Ciência desportiva.", members: grouped.science },
+      { key: "others", title: "Outros profissionais", abbreviation: "OUT", description: "Outras funções.", members: grouped.others },
     ];
 
     return allSections.filter(
@@ -826,31 +684,16 @@ export default function StaffPage() {
     label: string;
     count: number;
   }> = [
-    {
-      key: "all",
-      label: "Todos",
-      count: staff.length,
-    },
-    {
-      key: "manager",
-      label: "Treinadores",
-      count: groupCounts.manager,
-    },
-    {
-      key: "assistant",
-      label: "Assistentes",
-      count: groupCounts.assistant,
-    },
-    {
-      key: "fitness",
-      label: "Preparadores físicos",
-      count: groupCounts.fitness,
-    },
-    {
-      key: "medical",
-      label: "Departamento médico",
-      count: groupCounts.medical,
-    },
+    { key: "all", label: "Todos", count: staff.length },
+    { key: "manager", label: "Treinadores", count: groupCounts.manager },
+    { key: "assistant", label: "Adjuntos", count: groupCounts.assistant },
+    { key: "technical", label: "Preparadores", count: groupCounts.technical },
+    { key: "fitness", label: "Preparadores físicos", count: groupCounts.fitness },
+    { key: "goalkeeping", label: "Treinadores de goleiros", count: groupCounts.goalkeeping },
+    { key: "medical", label: "Fisioterapeutas", count: groupCounts.medical },
+    { key: "setpieces", label: "Bolas paradas", count: groupCounts.setpieces },
+    { key: "analysis", label: "Analistas", count: groupCounts.analysis },
+    { key: "science", label: "Cientistas desportivos", count: groupCounts.science },
   ];
 
   if (loading) {
@@ -980,11 +823,11 @@ export default function StaffPage() {
 
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
             <p className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              PA médio
+              CP médio
             </p>
 
             <p className="mt-3 text-4xl font-black text-purple-400">
-              {averagePa || "-"}
+              {averageCp || "-"}
             </p>
           </div>
 
@@ -1068,45 +911,16 @@ export default function StaffPage() {
                   Todos
                 </option>
 
-                <option value="manager">
-                  Treinadores
-                </option>
-
-                <option value="assistant">
-                  Assistentes
-                </option>
-
-                <option value="technical">
-                  Treinadores técnicos
-                </option>
-
-                <option value="attack">
-                  Treinadores de ataque
-                </option>
-
-                <option value="defense">
-                  Treinadores de defesa
-                </option>
-
-                <option value="fitness">
-                  Preparadores físicos
-                </option>
-
-                <option value="goalkeeping">
-                  Treinadores de goleiros
-                </option>
-
-                <option value="medical">
-                  Departamento médico
-                </option>
-
-                <option value="analysis">
-                  Analistas
-                </option>
-
-                <option value="others">
-                  Outros
-                </option>
+                <option value="manager">Treinadores</option>
+                <option value="assistant">Treinadores adjuntos</option>
+                <option value="technical">Preparadores</option>
+                <option value="fitness">Preparadores físicos</option>
+                <option value="goalkeeping">Treinadores de goleiros</option>
+                <option value="medical">Fisioterapeutas</option>
+                <option value="setpieces">Preparadores de bolas paradas</option>
+                <option value="analysis">Analistas de desempenho</option>
+                <option value="science">Cientistas desportivos</option>
+                <option value="others">Outros</option>
               </select>
             </div>
 
@@ -1136,8 +950,8 @@ export default function StaffPage() {
                   Menor CA
                 </option>
 
-                <option value="pa-desc">
-                  Maior PA
+                <option value="cp-desc">
+                  Maior CP
                 </option>
 
                 <option value="name-asc">
