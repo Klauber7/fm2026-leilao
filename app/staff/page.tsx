@@ -17,6 +17,7 @@ type Coach = {
   age: number | null;
   ca: number | null;
   cp: number | null;
+  attributes: Record<string, number | null> | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -103,6 +104,19 @@ function getStaffGroup(role: string | null): StaffGroup {
   if (normalized.includes("preparador") || normalized.includes("coach") || normalized.includes("tecnico")) return "technical";
   return "others";
 }
+
+const PREVIEW: Record<string, string[]> = {
+  manager: ["Conhecimento Tático", "Motivação", "Gestão de Pessoas"],
+  assistant: ["Conhecimento Tático", "Treino Tático", "Motivação"],
+  technical: ["Treino Ataque", "Treino Defesa", "Treino Técnico"],
+  fitness: ["Treino Físico", "Motivação", "Trabalho c/ Jovens"],
+  goalkeeping: ["Treino Guarda-Redes", "GR Manejo*", "GR Distribuição*"],
+  medical: ["Fisioterapia", "Ciência Desportiva", "Profissionalismo"],
+  setpieces: ["Treino Bolas Paradas", "Conhecimento Tático", "Treino Tático"],
+  analysis: ["Análise de Dados", "Avaliar Capacidade", "Avaliar Potencial"],
+  science: ["Ciência Desportiva", "Treino Físico", "Profissionalismo"],
+  others: ["Conhecimento Tático", "Motivação", "Profissionalismo"],
+};
 
 function sortStaff(
   members: Coach[],
@@ -242,6 +256,14 @@ function StaffCard({
           </div>
         </div>
 
+        <div className="mt-3 grid grid-cols-3 gap-1.5 border-t border-zinc-800 pt-3">
+          {(PREVIEW[getStaffGroup(member.role)] || PREVIEW.others).map((key) => (
+            <div key={key} className="min-w-0 rounded-lg border border-sky-950 bg-[#06121e] p-2 text-center">
+              <p className="text-sm font-black text-sky-300">{member.attributes?.[key] ?? "–"}</p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</p>
+            </div>
+          ))}
+        </div>
         <div className="mt-3 grid grid-cols-2 gap-3 border-t border-zinc-800 pt-3">
           <div>
             <p className="text-[10px] font-bold uppercase text-zinc-500">
@@ -372,6 +394,7 @@ export default function StaffPage() {
           age,
           ca,
           cp,
+          attributes,
           value,
           image_url,
           team_id,
@@ -884,7 +907,7 @@ export default function StaffPage() {
                 onChange={(event) =>
                   setSearchTerm(event.target.value)
                 }
-                placeholder="Nome, função, nacionalidade, idade, CA ou PA"
+                placeholder="Nome, função, nacionalidade, idade, CA ou CP"
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 outline-none transition placeholder:text-zinc-600 focus:border-purple-500"
               />
             </div>
