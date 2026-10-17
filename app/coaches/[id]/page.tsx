@@ -8,6 +8,7 @@ import StaffAttributes from "@/app/components/StaffAttributes";
 
 type Coach = {
   id: number;
+  unique_id: string | null;
   name: string;
   nationality: string | null;
   role: string | null;
@@ -116,6 +117,7 @@ export default function CoachDetailPage() {
         .from("coaches")
         .select(`
           id,
+          unique_id,
           name,
           nationality,
           role,
@@ -341,9 +343,9 @@ export default function CoachDetailPage() {
       return;
     }
 
-    if (coach.team_id !== null) {
+    if (coach.team_id !== null || coach.market_active === false) {
       setErrorMessage(
-        "Este profissional já foi contratado."
+        "Este profissional não está disponível no mercado."
       );
       return;
     }
@@ -423,8 +425,8 @@ export default function CoachDetailPage() {
       return;
     }
 
-    if (coach.team_id !== null) {
-      setErrorMessage("Este profissional já foi contratado.");
+    if (coach.team_id !== null || coach.market_active === false) {
+      setErrorMessage("Este profissional não está disponível no mercado.");
       return;
     }
 
@@ -563,243 +565,154 @@ export default function CoachDetailPage() {
 
   const marketOpen = Boolean(currentWindow);
 
+  const compactMoney = (value: number | null) => {
+    const amount = Number(value || 0);
+    if (amount >= 1000000) {
+      return `R$ ${(amount / 1000000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}M`;
+    }
+    return money(amount);
+  };
+
+  const canBid = isAvailable && marketOpen && Boolean(team);
+
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-12 text-white md:px-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-screen bg-[#07090d] px-3 py-3 text-white sm:px-5 lg:px-8">
+      <div className="mx-auto max-w-[1600px]">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => router.back()}
-            className="font-bold text-green-400 hover:text-green-300"
+            className="rounded-md border border-zinc-700 bg-zinc-800 px-4 py-2 text-xs font-bold text-white transition hover:border-sky-600"
           >
-            ← Voltar ao mercado
+            ← Comissão Técnica
           </button>
-
           {team && (
             <Link
               href="/staff-shopping-list"
-              className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-5 py-3 text-center font-black text-purple-300 hover:bg-purple-500/20"
+              className="rounded-md border border-sky-900 bg-[#101827] px-3 py-2 text-xs font-bold text-sky-200 hover:text-white"
             >
-              🛒 Ver Carrinho
+              🛒 Lista de staff {isInCart ? "✓" : ""}
             </Link>
           )}
         </div>
 
-        {errorMessage && (
-          <div className="mt-8 rounded-2xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
-            {errorMessage}
+        <div className={`mb-2 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border px-4 py-3 ${marketOpen && isAvailable ? "border-emerald-700 bg-emerald-950/70" : "border-red-700 bg-red-950/70"}`}>
+          <div>
+            <p className="text-[13px] font-black">
+              {coach.team_id !== null ? "🔒 PROFISSIONAL CONTRATADO" : !isAvailable ? "🔒 FORA DO MERCADO" : marketOpen ? "🟢 LEILÃO ABERTO" : "🔒 LEILÃO FECHADO"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-zinc-300">
+              {coach.team_id !== null
+                ? "Profissional já vinculado a uma equipe da FriendZone."
+                : !isAvailable
+                ? "Cadastro histórico preservado, indisponível para contratação."
+                : marketOpen
+                ? `Mercado aberto${currentWindow?.name ? ` — ${currentWindow.name}` : ""}.`
+                : "Aguarde a abertura do mercado."}
+            </p>
           </div>
-        )}
-
-        {successMessage && (
-          <div className="mt-8 rounded-2xl border border-green-500/30 bg-green-500/10 p-5 text-green-300">
-            {successMessage}
-          </div>
-        )}
-
-        <div className="mt-8">
-          {marketOpen ? (
-            <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-5 py-4 text-green-300">
-              🟢 Mercado de jogadores e staff aberto
-              {currentWindow?.name ? ` — ${currentWindow.name}` : ""}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-red-300">
-              🔒 Mercado de jogadores e staff fechado
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleAuction}
+            disabled={!canBid || startingAuction}
+            className="min-w-52 rounded-lg bg-[#343d50] px-5 py-2.5 text-center text-xs font-black text-white transition enabled:hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-65"
+          >
+            {startingAuction ? "ABRINDO LEILÃO..." : activeAuction && canBid ? "ENTRAR NO LEILÃO" : `DAR LANCE — ${compactMoney(coach.value)}`}
+          </button>
         </div>
 
-        <section className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[380px_1fr]">
-          <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-            <div className="h-96 bg-zinc-800">
-              {coach.image_url ? (
-                <img
-                  src={coach.image_url}
-                  alt={coach.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-8xl">
-                  👔
-                </div>
-              )}
-            </div>
+        {errorMessage && (
+          <p role="alert" className="mb-2 rounded-lg border border-red-700 bg-red-950/70 p-3 text-sm text-red-200">{errorMessage}</p>
+        )}
+        {successMessage && (
+          <p role="status" className="mb-2 rounded-lg border border-emerald-700 bg-emerald-950/70 p-3 text-sm text-emerald-200">{successMessage}</p>
+        )}
+
+        <header className="flex flex-wrap items-center gap-4 rounded-[10px] border border-sky-700 bg-[#020b1c] p-3">
+          <div className="flex h-28 w-32 shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-700 bg-slate-900 sm:w-44">
+            {coach.image_url ? (
+              <img src={coach.image_url} alt={coach.name} className="h-full w-full object-cover" />
+            ) : (
+              <span aria-hidden="true" className="text-5xl">👔</span>
+            )}
           </div>
 
-          <div>
-            <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-              <div>
-                <p className="font-bold uppercase tracking-widest text-green-400">
-                  {coach.role || "Comissão técnica"}
-                </p>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-black leading-tight sm:text-3xl lg:text-4xl">{coach.name}</h1>
+            <p className="mt-2 text-xs text-zinc-300">
+              {coach.age ?? "–"} anos · {coach.nationality || "Nacionalidade não informada"} · {coach.role || "Comissão técnica"} · ID {coach.unique_id || coach.id}
+            </p>
+            {coach.save_club && (
+              <p className="mt-1 text-xs text-zinc-400">Clube no save: {coach.save_club}</p>
+            )}
+            {coach.preferred_formation && (
+              <p className="mt-2 text-xs text-sky-300">⚽ Tática favorita: <strong>{coach.preferred_formation}</strong></p>
+            )}
+            {coach.original_role && coach.original_role !== coach.role && (
+              <p className="mt-1 text-xs text-zinc-500">Outras funções no save: {coach.original_role}</p>
+            )}
+          </div>
 
-                <h1 className="mt-2 text-5xl font-black md:text-6xl">
-                  {coach.name}
-                </h1>
-
-                <p className="mt-4 text-lg text-zinc-400">
-                  {coach.nationality || "Nacionalidade não informada"} • {coach.age ?? "-"} anos
-                </p>
-                {coach.preferred_formation && (
-                  <p className="mt-2 text-sm text-zinc-300">Formação preferida: {coach.preferred_formation}</p>
-                )}
-                {coach.original_role && coach.original_role !== coach.role && (
-                  <p className="mt-1 text-sm text-zinc-400">Funções no save: {coach.original_role}</p>
-                )}
-              </div>
-
-              {isAvailable ? (
-                <span className="rounded-xl border border-green-500 px-5 py-3 font-black text-green-400">
-                  DISPONÍVEL
-                </span>
-              ) : (
-                <span className="rounded-xl border border-red-500 px-5 py-3 font-black text-red-400">
-                  {coach.team_id === null ? "FORA DO MERCADO" : "CONTRATADO"}
-                </span>
-              )}
+          <div className="ml-auto flex gap-2">
+            <div className="min-w-[66px] rounded-lg border border-emerald-600 bg-black/30 px-3 py-2 text-center">
+              <p className="text-[11px] font-bold text-emerald-300">CA</p>
+              <p className="mt-1 text-2xl font-black text-emerald-400">{coach.ca ?? "–"}</p>
             </div>
+            <div className="min-w-[66px] rounded-lg border border-sky-600 bg-black/30 px-3 py-2 text-center">
+              <p className="text-[11px] font-bold text-sky-300">CP</p>
+              <p className="mt-1 text-2xl font-black text-sky-100">{coach.cp ?? "–"}</p>
+            </div>
+          </div>
+        </header>
 
-            <section className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3">
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-                <p className="text-zinc-400">
-                  CA
-                </p>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-lg border border-slate-700 bg-[#17191d] px-3 py-2">
+            <p className="text-[10px] font-black tracking-wide text-zinc-400">VALOR</p>
+            <p className="text-base font-black">{compactMoney(coach.value)}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-[#17191d] px-3 py-2">
+            <p className="text-[10px] font-black tracking-wide text-zinc-400">TÁTICA FAVORITA</p>
+            <p className="text-sm font-black">{coach.preferred_formation || "Não informada"}</p>
+          </div>
+        </div>
 
-                <p className="mt-2 text-4xl font-black text-green-400">
-                  {coach.ca ?? "-"}
-                </p>
-              </div>
+        <StaffAttributes attributes={coach.attributes} />
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-                <p className="text-zinc-400">
-                  CP
-                </p>
-
-                <p className="mt-2 text-4xl font-black">
-                  {coach.cp ?? "-"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-                <p className="text-zinc-400">
-                  Valor
-                </p>
-
-                <p className="mt-2 text-2xl font-black text-green-400">
-                  {money(coach.value)}
-                </p>
-              </div>
-            </section>
-
-            <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-7">
-              <h2 className="text-2xl font-black">
-                Leilão e Lista de Staff
-              </h2>
-
-              {team ? (
-                <>
-                  <div className="mt-5">
-                    <p className="text-zinc-400">
-                      Seu clube
-                    </p>
-
-                    <p className="mt-1 text-xl font-black">
-                      {team.name}
-                    </p>
-                  </div>
-
-                  {isAvailable && (
-                    <>
-                      {marketOpen ? (
-                        <button
-                          type="button"
-                          onClick={handleAuction}
-                          disabled={startingAuction}
-                          className="mt-7 w-full rounded-xl bg-green-600 py-4 font-black text-white transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-                        >
-                          {startingAuction
-                            ? "ABRINDO LEILÃO..."
-                            : activeAuction
-                            ? "ENTRAR NO LEILÃO"
-                            : `DAR LANCE — ${money(coach.value)}`}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          className="mt-7 w-full cursor-not-allowed rounded-xl border border-red-500/30 bg-red-500/10 py-4 font-black text-red-400"
-                        >
-                          🔒 MERCADO FECHADO
-                        </button>
-                      )}
-
-                      {activeAuction && (
-                        <div className="mt-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-center font-bold text-yellow-300">
-                          Este profissional já possui um leilão ativo.
-                        </div>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={toggleCart}
-                        disabled={cartLoading}
-                        className={`mt-7 w-full rounded-xl py-4 font-black transition disabled:opacity-50 ${
-                          isInCart
-                            ? "border border-purple-500/40 bg-purple-500/10 text-purple-300 hover:bg-purple-500/20"
-                            : "bg-green-600 text-white hover:bg-green-500"
-                        }`}
-                      >
-                        {cartLoading
-                          ? "SALVANDO..."
-                          : isInCart
-                          ? "✓ REMOVER DO CARRINHO"
-                          : "🛒 ADICIONAR AO CARRINHO"}
-                      </button>
-
-                      {isInCart && (
-                        <Link
-                          href="/staff-shopping-list"
-                          className="mt-4 block w-full rounded-xl border border-purple-500/40 bg-purple-500/10 px-6 py-4 text-center font-black text-purple-300 hover:bg-purple-500/20"
-                        >
-                          IR PARA O CARRINHO →
-                        </Link>
-                      )}
-                    </>
-                  )}
-
-                  {belongsToMyTeam && (
-                    <div className="mt-7 rounded-xl border border-green-500/30 bg-green-500/10 p-5 text-center font-bold text-green-400">
-                      Este profissional pertence ao seu clube.
-                    </div>
-                  )}
-
-                  {!isAvailable &&
-                    !belongsToMyTeam && (
-                      <div className="mt-7 rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-center text-red-300">
-                        Este profissional já pertence a outro clube.
-                      </div>
-                    )}
-                </>
-              ) : (
-                <div className="mt-6">
-                  <p className="text-zinc-400">
-                    Você precisa possuir um clube para adicionar profissionais
-                    ao carrinho.
-                  </p>
-
-                  <Link
-                    href="/teams"
-                    className="mt-5 inline-block rounded-xl bg-green-600 px-6 py-3 font-black"
-                  >
-                    Ir para clubes
-                  </Link>
-                </div>
-              )}
-            </section>
+        <section className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-900 bg-[#06121e] px-4 py-4">
+          <div>
+            <h2 className="text-sm font-black text-white">Leilão e lista de staff</h2>
+            <p className="mt-1 text-xs text-zinc-400">
+              {belongsToMyTeam ? "Profissional contratado pelo seu clube." :
+                coach.team_id !== null ? "Profissional contratado por outro clube." :
+                !isAvailable ? "Profissional fora do mercado atual." :
+                team ? `Seu clube: ${team.name}` :
+                "Vincule uma equipe à sua conta para participar do mercado."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {isAvailable && team && (
+              <button
+                type="button"
+                onClick={toggleCart}
+                disabled={cartLoading}
+                className={`rounded-lg border px-4 py-2.5 text-xs font-bold disabled:opacity-50 ${isInCart ? "border-emerald-600 bg-emerald-950 text-emerald-300" : "border-sky-600 bg-sky-950 text-sky-200"}`}
+              >
+                {cartLoading ? "SALVANDO..." : isInCart ? "✓ REMOVER DO CARRINHO" : "🛒 ADICIONAR À LISTA"}
+              </button>
+            )}
+            {isInCart && (
+              <Link href="/staff-shopping-list" className="rounded-lg bg-[#2c3647] px-4 py-2.5 text-xs font-black text-white hover:bg-sky-700">
+                VER CARRINHO →
+              </Link>
+            )}
+            {!team && (
+              <Link href="/teams" className="rounded-lg bg-sky-700 px-4 py-2.5 text-xs font-black text-white hover:bg-sky-600">
+                VER CLUBES
+              </Link>
+            )}
           </div>
         </section>
-        <StaffAttributes attributes={coach.attributes} />
+        <p className="mt-3 text-xs text-zinc-500">Atributos e preço extraídos do save FZ26. Tendências representam preferências táticas, não uma nota geral de qualidade. * Nomenclatura provisória do arquivo.</p>
       </div>
     </main>
   );
