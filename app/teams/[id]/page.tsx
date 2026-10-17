@@ -253,15 +253,6 @@ function PlayerCardCompact({
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-zinc-800 pt-3">
-          {staffHighlights(member.role).map((key) => (
-            <div key={key} className="min-w-0 rounded-md border border-sky-950 bg-[#071525] px-2 py-2 text-center">
-              <p className="text-sm font-black text-sky-300">{member.attributes?.[key] ?? "–"}</p>
-              <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</p>
-            </div>
-          ))}
-        </div>
-
         <div className="mt-5 border-t border-zinc-800 pt-4">
           <p className="text-sm text-zinc-500">
             Valor estimado
@@ -360,6 +351,15 @@ function StaffCard({
               <p className="text-xl font-black text-sky-300">{member.cp ?? "–"}</p>
             </div>
           </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-zinc-800 pt-3">
+          {staffHighlights(member.role).map((key) => (
+            <div key={key} className="min-w-0 rounded-md border border-sky-950 bg-[#071525] px-2 py-2 text-center">
+              <p className="text-sm font-black text-sky-300">{member.attributes?.[key] ?? "–"}</p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-5 border-t border-zinc-800 pt-4">
