@@ -446,14 +446,14 @@ export default function CoachesPage() {
         cp,
         preferred_formation,
         value,
-        value,
         team_id
         `,
         {
           count: "exact",
         }
       )
-      .is("team_id", null);
+      .is("team_id", null)
+      .eq("market_active", true);
 
     if (roleFilter !== "all") {
       query = query.eq("role", roleFilter);
@@ -729,7 +729,7 @@ export default function CoachesPage() {
               </h1>
 
               <p className="mt-2 text-sm text-zinc-400">
-                Profissionais disponíveis organizados pelo maior CA.
+                Mercado atualizado com os profissionais do save, classificados por função e ordenados por CA.
               </p>
             </div>
 
@@ -841,6 +841,20 @@ export default function CoachesPage() {
               Limpar
             </button>
           </div>
+        </div>
+
+        {/* ACESSO RÁPIDO POR FUNÇÃO */}
+        <div className="mb-6 flex flex-wrap gap-2" aria-label="Filtrar por função">
+          <button type="button" onClick={() => { setRoleFilter("all"); setPage(1); }}
+            className={`rounded-full border px-3 py-2 text-xs font-bold transition ${roleFilter === "all" ? "border-green-500 bg-green-500/20 text-green-300" : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-green-500/50"}`}>
+            Todas as funções
+          </button>
+          {STAFF_ROLES.map((role) => (
+            <button key={role} type="button" onClick={() => { setRoleFilter(role); setPage(1); }}
+              className={`rounded-full border px-3 py-2 text-xs font-bold transition ${roleFilter === role ? "border-green-500 bg-green-500/20 text-green-300" : "border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-green-500/50"}`}>
+              {role}
+            </button>
+          ))}
         </div>
 
         {/* CARDS */}
