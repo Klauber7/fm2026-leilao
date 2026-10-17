@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import StaffAttributes from "@/app/components/StaffAttributes";
 
 type Coach = {
   id: number;
@@ -12,7 +13,11 @@ type Coach = {
   role: string | null;
   age: number | null;
   ca: number | null;
-  pa: number | null;
+  cp: number | null;
+  attributes: Record<string, number | null> | null;
+  preferred_formation: string | null;
+  original_role: string | null;
+  save_club: string | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -115,7 +120,11 @@ export default function CoachDetailPage() {
           role,
           age,
           ca,
-          pa,
+          cp,
+          attributes,
+          preferred_formation,
+          original_role,
+          save_club,
           value,
           image_url,
           team_id,
@@ -628,10 +637,14 @@ export default function CoachDetailPage() {
                 </h1>
 
                 <p className="mt-4 text-lg text-zinc-400">
-                  {coach.nationality ||
-                    "Nacionalidade não informada"}{" "}
-                  • {coach.age ?? "-"} anos
+                  {coach.nationality || "Nacionalidade não informada"} • {coach.age ?? "-"} anos
                 </p>
+                {coach.preferred_formation && (
+                  <p className="mt-2 text-sm text-zinc-300">Formação preferida: {coach.preferred_formation}</p>
+                )}
+                {coach.original_role && coach.original_role !== coach.role && (
+                  <p className="mt-1 text-sm text-zinc-400">Funções no save: {coach.original_role}</p>
+                )}
               </div>
 
               {isAvailable ? (
@@ -658,11 +671,11 @@ export default function CoachDetailPage() {
 
               <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
                 <p className="text-zinc-400">
-                  PA
+                  CP
                 </p>
 
                 <p className="mt-2 text-4xl font-black">
-                  {coach.pa ?? "-"}
+                  {coach.cp ?? "-"}
                 </p>
               </div>
 
@@ -784,6 +797,7 @@ export default function CoachDetailPage() {
             </section>
           </div>
         </section>
+        <StaffAttributes attributes={coach.attributes} />
       </div>
     </main>
   );
