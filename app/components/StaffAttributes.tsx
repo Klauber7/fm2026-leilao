@@ -5,15 +5,22 @@ type AttributeValues = Record<string, number | null>;
 const GROUPS = [
   {
     icon: "🏋️",
-    title: "TREINAMENTO E AVALIAÇÕES",
+    title: "TREINAMENTO",
     keys: [
       "Treino Ataque", "Treino Defesa", "Treino Físico", "Treino Guarda-Redes",
       "Treino Bolas Paradas", "Treino Posse", "Treino Técnico", "Treino Tático",
-      "Conhecimento Tático", "Avaliar Capacidade", "Avaliar Potencial",
-      "Análise de Dados", "Avaliar Staff", "Negociação", "Gestão de Pessoas",
-      "Motivação", "Determinação", "Autoridade", "Trabalho c/ Jovens",
-      "Fisioterapia", "Ciência Desportiva", "Treino Geral*", "GR Manejo*",
-      "GR Distribuição*", "Adaptabilidade Tática*", "Excentricidade*",
+      "Conhecimento Tático", "Treino Geral*", "GR Manejo*", "GR Distribuição*",
+      "Adaptabilidade Tática*",
+    ],
+  },
+  {
+    icon: "📋",
+    title: "AVALIAÇÕES E GESTÃO",
+    keys: [
+      "Avaliar Capacidade", "Avaliar Potencial", "Análise de Dados", "Avaliar Staff",
+      "Negociação", "Gestão de Pessoas", "Motivação", "Determinação",
+      "Autoridade", "Trabalho c/ Jovens", "Fisioterapia", "Ciência Desportiva",
+      "Excentricidade*",
     ],
   },
   {
@@ -68,10 +75,10 @@ function AttributeLine({
 
   return (
     <div
-      className="grid min-h-[27px] grid-cols-[minmax(0,1fr)_minmax(65px,30%)_24px] items-center gap-2"
+      className="grid min-h-[25px] grid-cols-[minmax(0,1fr)_minmax(43px,28%)_22px] items-center gap-1.5"
       title={label.endsWith("*") ? label + " — nomenclatura provisória do save" : label}
     >
-      <span className="truncate text-[12px] text-zinc-200" title={label}>
+      <span className="truncate text-[11px] text-zinc-200 xl:text-[12px]" title={label}>
         {label.replace(/\*$/, "")}
         {label.endsWith("*") && <span className="ml-0.5 text-amber-400">*</span>}
       </span>
@@ -115,19 +122,19 @@ export default function StaffAttributes({
   }
 
   return (
-    <div className="mt-3 grid grid-cols-1 items-stretch gap-2 lg:grid-cols-3" aria-label="Atributos da comissão técnica">
+    <div className="mt-3 grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Atributos da comissão técnica">
       {GROUPS.map((group) => (
         <section
           key={group.title}
           className="h-full overflow-hidden rounded-[10px] border border-sky-600 bg-[linear-gradient(180deg,#04131c_0%,#031016_100%)]"
         >
-          <div className="flex min-h-[48px] items-center gap-2 border-b border-sky-800 bg-[linear-gradient(90deg,#082f49,#071a2b)] px-3 py-2">
+          <div className="flex min-h-[44px] items-center gap-2 border-b border-sky-800 bg-[linear-gradient(90deg,#082f49,#071a2b)] px-3 py-2">
             <span className="text-xl" aria-hidden="true">{group.icon}</span>
             <h2 className="text-[13px] font-black italic tracking-wide text-white sm:text-sm">
               {group.title}
             </h2>
           </div>
-          <div className="px-3 py-3">
+          <div className="px-2.5 py-2.5">
             {group.keys.map((label) => (
               <AttributeLine key={label} label={label} value={attributes[label]} />
             ))}
