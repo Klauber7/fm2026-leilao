@@ -43,6 +43,7 @@ type Coach = {
   ca: number | null;
   cp: number | null;
   value: number | null;
+  attributes: Record<string, number | null> | null;
   image_url: string | null;
   team_id: number | null;
   hired_at: string | null;
@@ -252,6 +253,15 @@ function PlayerCardCompact({
           </div>
         </div>
 
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-zinc-800 pt-3">
+          {staffHighlights(member.role).map((key) => (
+            <div key={key} className="min-w-0 rounded-md border border-sky-950 bg-[#071525] px-2 py-2 text-center">
+              <p className="text-sm font-black text-sky-300">{member.attributes?.[key] ?? "–"}</p>
+              <p className="mt-1 line-clamp-2 text-[10px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</p>
+            </div>
+          ))}
+        </div>
+
         <div className="mt-5 border-t border-zinc-800 pt-4">
           <p className="text-sm text-zinc-500">
             Valor estimado
@@ -268,6 +278,32 @@ function PlayerCardCompact({
       </div>
     </Link>
   );
+}
+
+const STAFF_ORDER = [
+  "Treinador", "Treinador Adjunto Principal", "Preparador", "Preparador Físico",
+  "Treinador de Goleiros", "Fisioterapeuta", "Preparador de Bolas Paradas",
+  "Analista de Desempenho", "Cientista Desportivo"
+];
+
+function staffRank(role: string | null) {
+  const index = STAFF_ORDER.indexOf(role || "");
+  return index < 0 ? STAFF_ORDER.length : index;
+}
+
+function staffHighlights(role: string | null) {
+  const preview: Record<string, string[]> = {
+    "Treinador": ["Conhecimento Tático", "Motivação", "Gestão de Pessoas"],
+    "Treinador Adjunto Principal": ["Conhecimento Tático", "Treino Tático", "Motivação"],
+    "Preparador": ["Treino Ataque", "Treino Defesa", "Treino Técnico"],
+    "Preparador Físico": ["Treino Físico", "Trabalho c/ Jovens", "Motivação"],
+    "Treinador de Goleiros": ["Treino Guarda-Redes", "GR Manejo*", "GR Distribuição*"],
+    "Fisioterapeuta": ["Fisioterapia", "Ciência Desportiva", "Profissionalismo"],
+    "Preparador de Bolas Paradas": ["Treino Bolas Paradas", "Treino Tático", "Conhecimento Tático"],
+    "Analista de Desempenho": ["Análise de Dados", "Avaliar Capacidade", "Avaliar Potencial"],
+    "Cientista Desportivo": ["Ciência Desportiva", "Treino Físico", "Profissionalismo"],
+  };
+  return preview[role || ""] || ["Conhecimento Tático", "Motivação", "Profissionalismo"];
 }
 
 function StaffCard({
@@ -299,6 +335,9 @@ function StaffCard({
             <h3 className="mt-1 text-2xl font-black text-white">
               {member.name}
             </h3>
+            <Link href={`/coaches/${member.id}`} className="mt-1 inline-flex text-xs font-bold text-sky-400 hover:text-sky-200">
+              Ver ficha completa e atributos →
+            </Link>
 
             <p className="mt-1 text-zinc-400">
               {member.age !== null
@@ -311,14 +350,15 @@ function StaffCard({
             </p>
           </div>
 
-          <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 px-4 py-2 text-center">
-            <p className="text-[11px] font-black uppercase text-zinc-400">
-              CA
-            </p>
-
-            <p className="text-3xl font-black text-purple-400">
-              {member.ca ?? "-"}
-            </p>
+          <div className="flex shrink-0 items-start gap-2">
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-center">
+              <p className="text-[10px] font-black text-zinc-400">CA</p>
+              <p className="text-xl font-black text-emerald-400">{member.ca ?? "–"}</p>
+            </div>
+            <div className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-center">
+              <p className="text-[10px] font-black text-zinc-400">CP</p>
+              <p className="text-xl font-black text-sky-300">{member.cp ?? "–"}</p>
+            </div>
           </div>
         </div>
 
@@ -394,7 +434,7 @@ export default function TeamPage() {
           supabase
             .from("coaches")
             .select(
-              "id,unique_id,name,age,role,nationality,ca,cp,value,image_url,team_id,hired_at"
+              "id,unique_id,name,age,role,nationality,ca,cp,value,attributes,image_url,team_id,hired_at"
             )
             .eq("team_id", teamId)
             .order("ca", {
@@ -737,7 +777,7 @@ export default function TeamPage() {
             </div>
           ) : (
             <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
-              {staff.map((member) => (
+              {[...staff].sort((a, b) => staffRank(a.role) - staffRank(b.role) || Number(b.ca ?? 0) - Number(a.ca ?? 0)).map((member) => (
                 <StaffCard
                   key={member.id}
                   member={member}
