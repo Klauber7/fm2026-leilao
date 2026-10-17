@@ -18,6 +18,7 @@ type Coach = {
   preferred_formation: string | null;
   original_role: string | null;
   save_club: string | null;
+  market_active: boolean;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -125,6 +126,7 @@ export default function CoachDetailPage() {
           preferred_formation,
           original_role,
           save_club,
+          market_active,
           value,
           image_url,
           team_id,
@@ -553,7 +555,7 @@ export default function CoachDetailPage() {
     );
   }
 
-  const isAvailable = coach.team_id === null;
+  const isAvailable = coach.team_id === null && coach.market_active !== false;
 
   const belongsToMyTeam =
     coach.team_id !== null &&
@@ -653,7 +655,7 @@ export default function CoachDetailPage() {
                 </span>
               ) : (
                 <span className="rounded-xl border border-red-500 px-5 py-3 font-black text-red-400">
-                  CONTRATADO
+                  {coach.team_id === null ? "FORA DO MERCADO" : "CONTRATADO"}
                 </span>
               )}
             </div>
