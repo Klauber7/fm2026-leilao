@@ -1,11 +1,11 @@
 "use client";
 
-type StaffAttribute = Record<string, number | null>;
+type AttributeValues = Record<string, number | null>;
 
 const GROUPS = [
   {
-    title: "Treinamento e avaliações",
-    subtitle: "Atributos técnicos e de desenvolvimento da comissão",
+    icon: "🏋️",
+    title: "TREINAMENTO E AVALIAÇÕES",
     keys: [
       "Treino Ataque", "Treino Defesa", "Treino Físico", "Treino Guarda-Redes",
       "Treino Bolas Paradas", "Treino Posse", "Treino Técnico", "Treino Tático",
@@ -17,8 +17,8 @@ const GROUPS = [
     ],
   },
   {
-    title: "Tendências táticas",
-    subtitle: "Preferências e inclinações de trabalho (não são notas de qualidade)",
+    icon: "⚽",
+    title: "TENDÊNCIAS TÁTICAS",
     keys: [
       "Tend. Ataque", "Tend. Objetividade", "Tend. Ritmo", "Tend. Largura",
       "Tend. Pressão", "Tend. Recuar", "Tend. Impedimento", "Tend. Marcação",
@@ -30,8 +30,8 @@ const GROUPS = [
     ],
   },
   {
-    title: "Personalidade",
-    subtitle: "Características profissionais, escala original do save",
+    icon: "🧠",
+    title: "PERSONALIDADE",
     keys: [
       "Adaptabilidade", "Ambição", "Lealdade", "Pressão",
       "Profissionalismo", "Desportivismo", "Temperamento", "Controvérsia",
@@ -39,74 +39,101 @@ const GROUPS = [
   },
 ] as const;
 
-function colorFor(value: number, isTendency: boolean) {
-  if (isTendency) return "bg-sky-400";
-  if (value >= 16) return "bg-emerald-400";
-  if (value >= 12) return "bg-lime-400";
-  if (value >= 8) return "bg-yellow-400";
-  return "bg-orange-400";
+function barColor(value: number) {
+  if (value >= 16) return "#16a34a";
+  if (value >= 13) return "#65a30d";
+  if (value >= 10) return "#93c5fd";
+  if (value >= 7) return "#facc15";
+  return "#ef4444";
 }
 
-export default function StaffAttributes({ attributes }: { attributes?: StaffAttribute | null }) {
+function numberColor(value: number) {
+  if (value >= 16) return "#4ade80";
+  if (value >= 13) return "#a3e635";
+  if (value >= 10) return "#bfdbfe";
+  if (value >= 7) return "#fde047";
+  return "#f87171";
+}
+
+function AttributeLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: number | null | undefined;
+}) {
+  const numericValue = value == null ? null : Number(value);
+  const valid = numericValue !== null && Number.isFinite(numericValue);
+  const score = valid ? Math.min(20, Math.max(0, numericValue)) : 0;
+
+  return (
+    <div
+      className="grid min-h-[27px] grid-cols-[minmax(0,1fr)_minmax(65px,30%)_24px] items-center gap-2"
+      title={label.endsWith("*") ? label + " — nomenclatura provisória do save" : label}
+    >
+      <span className="truncate text-[12px] text-zinc-200" title={label}>
+        {label.replace(/\*$/, "")}
+        {label.endsWith("*") && <span className="ml-0.5 text-amber-400">*</span>}
+      </span>
+
+      <div className="h-[11px] overflow-hidden rounded-md border border-zinc-600 bg-[#111827]">
+        {valid && (
+          <div
+            className="h-full rounded"
+            style={{
+              background: barColor(score),
+              width: `${score * 5}%`,
+            }}
+          />
+        )}
+      </div>
+      <span
+        className="text-right text-[13px] font-extrabold tabular-nums"
+        style={{ color: valid ? numberColor(score) : "#71717a" }}
+      >
+        {valid ? score : "—"}
+      </span>
+    </div>
+  );
+}
+
+export default function StaffAttributes({
+  attributes,
+}: {
+  attributes?: AttributeValues | null;
+}) {
   const hasAttributes = !!attributes && Object.keys(attributes).length > 0;
   if (!hasAttributes) {
     return (
-      <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-        <h2 className="text-2xl font-black text-white">Atributos do profissional</h2>
+      <section className="mt-4 rounded-xl border border-sky-800 bg-[#031016] p-5">
+        <h2 className="text-base font-black text-white">Atributos do profissional</h2>
         <p className="mt-2 text-sm text-zinc-400">
-          Atributos ainda não importados para este profissional.
+          Este profissional é um cadastro antigo e ainda não tem atributos no arquivo atual do save.
         </p>
       </section>
     );
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-5 sm:p-7">
-      <h2 className="text-2xl font-black text-white">Atributos do profissional</h2>
-      <p className="mt-2 text-sm text-zinc-400">
-        Dados do save FriendZone FM26. Valores exibidos na escala de 1 a 20.
-      </p>
-      <div className="mt-7 space-y-8">
-        {GROUPS.map((group, index) => {
-          const present = group.keys.filter(
-            (key) => attributes?.[key] !== null && attributes?.[key] !== undefined
-          );
-          if (present.length === 0) return null;
-          return (
-            <div key={group.title}>
-              <h3 className="text-lg font-black text-white">{group.title}</h3>
-              <p className="mt-1 text-xs text-zinc-500">{group.subtitle}</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {present.map((name) => {
-                  const value = Number(attributes?.[name]);
-                  const isTendency = index === 1;
-                  return (
-                    <div key={name} className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-zinc-300">{name.replace(/\*$/, "")}</span>
-                        <span className="min-w-7 text-right text-sm font-black text-white">{value}</span>
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-                        <div
-                          className={`h-full rounded-full ${colorFor(value, isTendency)}`}
-                          style={{ width: `${Math.max(0, Math.min(100, value * 5))}%` }}
-                        />
-                      </div>
-                      {name.endsWith("*") && (
-                        <p className="mt-1 text-[10px] text-amber-400/80">Nome/escala a confirmar no editor</p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <p className="mt-6 border-t border-zinc-800 pt-4 text-xs text-zinc-500">
-        Tendências não representam necessariamente qualidade; para Controvérsia, menor tende a ser melhor.
-        Campos marcados com * seguem a interpretação provisória da exportação.
-      </p>
-    </section>
+    <div className="mt-3 grid grid-cols-1 items-stretch gap-2 lg:grid-cols-3" aria-label="Atributos da comissão técnica">
+      {GROUPS.map((group) => (
+        <section
+          key={group.title}
+          className="h-full overflow-hidden rounded-[10px] border border-sky-600 bg-[linear-gradient(180deg,#04131c_0%,#031016_100%)]"
+        >
+          <div className="flex min-h-[48px] items-center gap-2 border-b border-sky-800 bg-[linear-gradient(90deg,#082f49,#071a2b)] px-3 py-2">
+            <span className="text-xl" aria-hidden="true">{group.icon}</span>
+            <h2 className="text-[13px] font-black italic tracking-wide text-white sm:text-sm">
+              {group.title}
+            </h2>
+          </div>
+          <div className="px-3 py-3">
+            {group.keys.map((label) => (
+              <AttributeLine key={label} label={label} value={attributes[label]} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
