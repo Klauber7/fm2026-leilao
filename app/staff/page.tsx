@@ -291,6 +291,9 @@ function StaffCard({
             <h3 className="mt-0.5 truncate text-base font-black leading-tight text-white">
               {member.name}
             </h3>
+            <Link href={`/coaches/${member.id}`} className="mt-1 inline-block text-xs font-semibold text-sky-400 hover:text-sky-300">
+              Ver ficha e atributos →
+            </Link>
 
             <p className="mt-1 text-xs text-zinc-400">
               {member.age !== null ? `${member.age} anos` : "Idade não informada"}
