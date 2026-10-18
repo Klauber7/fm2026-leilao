@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Standings2026 from "./Standings2026";
+import PremierResultAdmin from "./PremierResultAdmin";
 
 type CompetitionImage = {
   competition: string;
@@ -169,6 +170,7 @@ export default function PremierLeaguePage() {
           </p>
         </header>
 
+        <PremierResultAdmin />
         <Standings2026 />
 
         {loading ? (
