@@ -367,6 +367,18 @@ export default function InternalNegotiationPage() {
         );
       } else if (
         rawMessage.includes(
+          "TRANSFER_BAN_OUTSTANDING_DEBT"
+        )
+      ) {
+        setError("Transfer ban: quite as parcelas vencidas antes de contratar novamente.");
+      } else if (
+        rawMessage.includes(
+          "INVALID_INSTALLMENT_TOTAL"
+        )
+      ) {
+        setError("A soma da entrada e da segunda parcela deve corresponder ao valor total negociado.");
+      } else if (
+        rawMessage.includes(
           "INSUFFICIENT_BUDGET"
         )
       ) {
