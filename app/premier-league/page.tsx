@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import Standings2026 from "./Standings2026";
 
 type CompetitionImage = {
   competition: string;
@@ -167,6 +168,8 @@ export default function PremierLeaguePage() {
             melhor jogador e premiações em dinheiro.
           </p>
         </header>
+
+        <Standings2026 />
 
         {loading ? (
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center text-zinc-400">
