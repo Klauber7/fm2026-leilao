@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import PremierResultAdmin from "@/app/premier-league/PremierResultAdmin";
 
 type CompetitionImage = {
   competition: string;
@@ -403,6 +404,8 @@ export default function AdminPremierLeaguePage() {
             melhor jogador e as premiações em dinheiro da competição.
           </p>
         </header>
+
+        <PremierResultAdmin />
 
         {message && (
           <div className="mb-6 rounded-2xl border border-green-500/30 bg-green-500/10 p-4 font-bold text-green-300">
