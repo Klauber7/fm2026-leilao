@@ -33,6 +33,7 @@ type ExchangePlayer = {
 
 type InstallmentRow = {
   id: number;
+  seller_paid_upfront: boolean;
 
   installment_number: number;
 
@@ -1830,8 +1831,9 @@ export default function AdminTransfersPage() {
                                               {installment.payer_team_name ||
                                                 "?"}
                                               {" → "}
-                                              {installment.receiver_team_name ||
-                                                "?"}
+                                              {installment.seller_paid_upfront
+                                                ? "Sistema FriendZone (vendedor já recebeu 100%)"
+                                                : installment.receiver_team_name || "?"}
                                             </p>
 
                                           </div>
