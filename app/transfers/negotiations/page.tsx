@@ -551,6 +551,12 @@ export default function NegotiationsPage() {
         setMarketOpen(false);
 
         setError("A janela de transferências foi fechada.");
+      } else if (errorMessage.includes("TRANSFER_BAN_OUTSTANDING_DEBT")) {
+        setError("Transfer ban: o clube comprador precisa quitar as parcelas vencidas antes de contratar.");
+      } else if (errorMessage.includes("FAIR_PLAY_LIMIT")) {
+        setError("Fair Play Financeiro: a soma das parcelas a pagar ultrapassa o limite de 30M.");
+      } else if (errorMessage.includes("INVALID_INSTALLMENT_TOTAL")) {
+        setError("O valor da entrada e das parcelas não corresponde ao valor total da negociação.");
       } else if (errorMessage.includes("INSUFFICIENT_BUDGET")) {
         setError(
           "O clube comprador não possui saldo suficiente para o pagamento inicial."
