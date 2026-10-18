@@ -1063,6 +1063,9 @@ function NegotiationThreadCard({
                 <p className="pt-2 text-xs font-black uppercase text-yellow-400">
                   2ª parcela na próxima janela
                 </p>
+                <p className="text-xs leading-5 text-zinc-400">
+                  O vendedor recebe o valor integral ao aprovar a transferência. O comprador deve a segunda parcela exclusivamente ao sistema FriendZone.
+                </p>
               </div>
             ) : (
               <p className="mt-2 text-sm text-zinc-400">
