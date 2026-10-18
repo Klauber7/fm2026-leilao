@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "python3 -m venv /tmp/fz-bracket-venv && /tmp/fz-bracket-venv/bin/pip -q install Pillow==11.3.0 && /tmp/fz-bracket-venv/bin/python scripts/generate_champions_bracket.py && next build",
     "start": "next start",
     "lint": "eslint"
   },
