@@ -29,6 +29,7 @@ type InstallmentRow = {
 
   payer_team_id: number;
   receiver_team_id: number;
+  seller_paid_upfront: boolean;
 
   installment_number: number;
 
@@ -230,6 +231,7 @@ export default function InstallmentsPage() {
               negotiation_id,
               payer_team_id,
               receiver_team_id,
+              seller_paid_upfront,
               installment_number,
               amount,
               status,
@@ -743,7 +745,8 @@ export default function InstallmentsPage() {
           installment
         ) =>
           installment.receiver_team_id ===
-          myTeam.id
+          myTeam.id &&
+          !installment.seller_paid_upfront
       );
     }, [
       installments,
@@ -1135,7 +1138,7 @@ export default function InstallmentsPage() {
           <div className="rounded-2xl border border-green-500/20 bg-green-500/5 p-6">
 
             <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-              A receber
+              A receber (legado)
             </p>
 
             <p className="mt-3 text-3xl font-black text-green-400">
@@ -1194,7 +1197,7 @@ export default function InstallmentsPage() {
             </p>
 
             <p className="mt-2 text-sm text-zinc-500">
-              De outros clubes
+              Parcelas históricas
             </p>
 
           </div>
@@ -1210,7 +1213,7 @@ export default function InstallmentsPage() {
           </p>
 
           <p className="mt-2 text-sm leading-7 text-zinc-300">
-            A segunda parcela é cobrada automaticamente quando a janela indicada é aberta. Primeiro o clube recebe o crédito da nova janela e depois o sistema processa a parcela.
+            Para novos negócios, o vendedor recebe 100% da transferência no aceite. O comprador paga a entrada e deve as parcelas seguintes ao sistema FriendZone, sem novo crédito ao vendedor. Parcela vencida não paga pode impedir novas contratações.
           </p>
 
         </section>
@@ -1322,6 +1325,7 @@ export default function InstallmentsPage() {
                   const isPaying =
                     installment.payer_team_id ===
                     myTeam.id;
+                  const sellerAlreadyPaid = !isPaying && installment.seller_paid_upfront;
 
                   return (
                     <article
@@ -1357,8 +1361,8 @@ export default function InstallmentsPage() {
                             }`}
                           >
                             {isPaying
-                              ? "A PAGAR"
-                              : "A RECEBER"}
+                              ? installment.seller_paid_upfront ? "A PAGAR AO SISTEMA" : "A PAGAR"
+                              : sellerAlreadyPaid ? "VENDA JÁ PAGA" : "A RECEBER"}
                           </span>
 
                           <span className="text-sm text-zinc-500">
@@ -1531,8 +1535,12 @@ export default function InstallmentsPage() {
 
                           <p className="mt-3 text-sm text-zinc-500">
                             {isPaying
-                              ? `Seu clube paga para ${installment.receiver_team?.name || "outro clube"}.`
-                              : `Seu clube recebe de ${installment.payer_team?.name || "outro clube"}.`}
+                              ? installment.seller_paid_upfront
+                                ? "Seu clube deve esta parcela ao sistema FriendZone; o vendedor já recebeu 100%."
+                                : `Seu clube paga para ${installment.receiver_team?.name || "outro clube"}.`
+                              : sellerAlreadyPaid
+                                ? "Venda integral já creditada. Esta parcela é uma dívida do comprador com o sistema."
+                                : `Seu clube recebe de ${installment.payer_team?.name || "outro clube"}.`}
                           </p>
 
                         </div>
