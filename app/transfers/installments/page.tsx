@@ -558,6 +558,9 @@ export default function InstallmentsPage() {
                     row.receiver_team_id
                   ),
 
+                seller_paid_upfront:
+                  Boolean(row.seller_paid_upfront),
+
                 installment_number:
                   Number(
                     row.installment_number
