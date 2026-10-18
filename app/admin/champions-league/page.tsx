@@ -6,17 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 const COMPETITION = "champions_league";
 
-type Slot =
-  | "first_round"
-  | "quarterfinals"
-  | "semifinals"
-  | "final"
-  | "top_scorer"
-  | "best_player"
-  | "money_first_round"
-  | "money_quarterfinals"
-  | "money_semifinals"
-  | "money_final";
+type Slot = "bracket";
 
 type ImageRecord = {
   competition: string;
@@ -27,76 +17,12 @@ type ImageRecord = {
   updated_by?: string | null;
 };
 
-const SECTIONS: {
-  slot: Slot;
-  title: string;
-  description: string;
-  icon: string;
-}[] = [
+const SECTIONS: { slot: Slot; title: string; description: string; icon: string; }[] = [
   {
-    slot: "first_round",
-    title: "Primeira Eliminatória",
-    description: "Resultados da primeira eliminatória.",
-    icon: "⚽",
-  },
-  {
-    slot: "quarterfinals",
-    title: "Quartas de Final",
-    description: "Resultados das quartas de final.",
-    icon: "🔥",
-  },
-  {
-    slot: "semifinals",
-    title: "Semifinal",
-    description: "Resultados das semifinais.",
-    icon: "⚔️",
-  },
-  {
-    slot: "final",
-    title: "Final",
-    description: "Resultado da grande final.",
+    slot: "bracket",
+    title: "Chaveamento oficial",
+    description: "Imagem única com oitavas, quartas, semifinais, final e campeão.",
     icon: "🏆",
-  },
-  {
-    slot: "top_scorer",
-    title: "Artilharia",
-    description: "Artilheiros da Champions Cup.",
-    icon: "⚽",
-  },
-  {
-    slot: "best_player",
-    title: "Melhor Jogador",
-    description: "Melhores jogadores da Champions Cup.",
-    icon: "⭐",
-  },
-
-  {
-    slot: "money_first_round",
-    title: "Premiação — Primeira Eliminatória",
-    description:
-      "Premiação em dinheiro referente à primeira eliminatória.",
-    icon: "💰",
-  },
-  {
-    slot: "money_quarterfinals",
-    title: "Premiação — Quartas de Final",
-    description:
-      "Premiação em dinheiro referente às quartas de final.",
-    icon: "💰",
-  },
-  {
-    slot: "money_semifinals",
-    title: "Premiação — Semifinal",
-    description:
-      "Premiação em dinheiro referente às semifinais.",
-    icon: "💰",
-  },
-  {
-    slot: "money_final",
-    title: "Premiação — Final",
-    description:
-      "Premiação em dinheiro referente à final da Champions Cup.",
-    icon: "💰",
   },
 ];
 
@@ -388,8 +314,7 @@ export default function ChampionsLeagueAdminPage() {
         </h1>
 
         <p className="mt-3 text-slate-400">
-          Resultados, estatísticas e premiação em dinheiro
-          por fase.
+          Imagem única do chaveamento oficial da Champions Cup.
         </p>
 
         {message && (
