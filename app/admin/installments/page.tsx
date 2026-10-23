@@ -593,16 +593,6 @@ export default function AdminPage() {
             />
 
             <AdminCard
-              href="/admin/draft"
-              eyebrow="Liga"
-              title="Draft"
-              icon="🎯"
-              description="Controle rodadas, escolhas e administração do draft."
-              action="ABRIR DRAFT →"
-              color="orange"
-            />
-
-            <AdminCard
               href="/bid"
               eyebrow="Registro oficial"
               title="BID"
