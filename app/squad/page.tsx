@@ -461,6 +461,10 @@ export default function SquadPage() {
           </div>
         </header>
 
+        <Link href={`/dispensas#equipe-${team.id}`} className="mt-6 block rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-5 font-bold text-emerald-300 hover:bg-emerald-950/40">
+          Dispensa 100% · Escolha 1 jogador e receba o valor integral →
+        </Link>
+
         {errorMessage && (
           <div className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             {errorMessage}
