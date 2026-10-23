@@ -29,11 +29,6 @@ const mainMenu: MenuItem[] = [
     icon: "📰",
   },
   {
-    href: "/draft",
-    label: "Draft FZ 2026",
-    icon: "🏆",
-  },
-  {
     href: "/players",
     label: "Mercado de Jogadores",
     icon: "🌍",
