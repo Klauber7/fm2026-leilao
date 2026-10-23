@@ -1103,6 +1103,12 @@ export default function DashboardPage() {
 
 
 
+        <Link href="/dispensas" className="mt-8 block rounded-2xl border border-emerald-500/50 bg-zinc-900 p-6 hover:bg-zinc-800">
+          <h2 className="text-2xl font-black">Dispensa 100%</h2>
+          <p className="mt-2 text-zinc-400">Escolha 1 jogador do seu elenco para dispensar e receba 100% do valor. Registro automático no BID.</p>
+          <p className="mt-3 font-bold text-emerald-400">ABRIR DISPENSAS →</p>
+        </Link>
+
         {/* PAINEL DE NEGOCIAÇÕES */}
 
         <section className="mt-8">
