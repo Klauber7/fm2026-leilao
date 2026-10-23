@@ -103,8 +103,8 @@ const sections: RuleSection[] = [
   {
     id: "ajustes-janela",
     icon: "🛠️",
-    title: "Ajustes a cada janela de transferências",
-    intro: "A cada janela de transferências, a administração realizará os seguintes ajustes no save do Football Manager para todos os clubes.",
+    title: "Ajustes no início da temporada",
+    intro: "Apenas no início de cada temporada, a administração realizará os seguintes ajustes no save do Football Manager para todos os clubes.",
     rules: [
       "Maximizar a familiaridade tática existente de cada equipe.",
       "Melhorar a coesão da equipe.",
