@@ -8,12 +8,14 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { groupSquadPlayers } from "@/lib/squad-positions";
 
 type Player = {
   id: number;
   name: string;
   position: string | null;
   natural_position: string | null;
+  category: string[] | null;
   age: number | null;
   nationality: string | null;
   ca: number | null;
@@ -28,204 +30,12 @@ type Team = {
   budget: number | null;
 };
 
-type PositionGroup =
-  | "goalkeepers"
-  | "defenders"
-  | "midfielders"
-  | "attackers";
-
-type SquadSection = {
-  key: PositionGroup;
-  title: string;
-  abbreviation: string;
-  players: Player[];
-};
-
 function money(value: number | null | undefined) {
   return Number(value || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
   });
-}
-
-function normalizePosition(position: string | null) {
-  return (position || "")
-    .trim()
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ");
-}
-
-function hasAnyPosition(
-  position: string,
-  patterns: RegExp[]
-) {
-  return patterns.some((pattern) => pattern.test(position));
-}
-
-function getPositionGroup(player: Player): PositionGroup {
-  const natural = normalizePosition(player.natural_position);
-  const p = normalizePosition(player.position);
-
-  // A posição natural manda na organização do elenco.
-  // Assim, por exemplo, Eric Smith fica em Meio-campistas porque
-  // natural_position = "Volante", mesmo podendo atuar também como zagueiro.
-  if (
-    hasAnyPosition(natural, [
-      /^GR$/,
-      /^GK$/,
-      /\bGOLEIRO\b/,
-      /\bGOALKEEPER\b/,
-      /\bGUARDA[- ]?REDES\b/,
-    ])
-  ) {
-    return "goalkeepers";
-  }
-
-  if (
-    hasAnyPosition(natural, [
-      /\bVOLANTE\b/,
-      /\bMEIO[- ]?CAMPISTA\b/,
-      /\bMEIA CENTRAL\b/,
-      /\bMEIA ATACANTE\b/,
-      /\bDEFENSIVE MIDFIELDER\b/,
-      /\bCENTRAL MIDFIELDER\b/,
-      /\bATTACKING MIDFIELDER\b/,
-    ])
-  ) {
-    return "midfielders";
-  }
-
-  if (
-    hasAnyPosition(natural, [
-      /\bZAGUEIRO\b/,
-      /\bDEFENSOR\b/,
-      /\bLATERAL\b/,
-      /\bALA\b/,
-      /\bCENTRAL DEFENDER\b/,
-      /\bCENTER BACK\b/,
-      /\bCENTRE BACK\b/,
-      /\bRIGHT BACK\b/,
-      /\bLEFT BACK\b/,
-      /\bWING BACK\b/,
-    ])
-  ) {
-    return "defenders";
-  }
-
-  if (
-    hasAnyPosition(natural, [
-      /\bPONTA\b/,
-      /\bATACANTE\b/,
-      /\bAVANCADO\b/,
-      /\bEXTREMO\b/,
-      /\bWINGER\b/,
-      /\bSTRIKER\b/,
-      /\bFORWARD\b/,
-      /\bCENTRE FORWARD\b/,
-      /\bCENTER FORWARD\b/,
-    ])
-  ) {
-    return "attackers";
-  }
-
-  // Fallback para registros sem natural_position.
-  // Primeiro identificamos meio-campistas para evitar que jogadores
-  // como "D (C), MD, M (C)" caiam automaticamente em Defensores.
-  if (
-    hasAnyPosition(p, [
-      /(^|,\s*)MD\b/,
-      /(^|,\s*)DM\b/,
-      /(^|,\s*)VOL\b/,
-      /(^|,\s*)M\s*\(C\)/,
-      /(^|,\s*)MC\b/,
-      /(^|,\s*)CM\b/,
-      /(^|,\s*)MO\s*\(C\)/,
-      /(^|,\s*)AMC\b/,
-      /(^|,\s*)AM\s*\(C\)/,
-      /\bVOLANTE\b/,
-      /\bDEFENSIVE MIDFIELDER\b/,
-      /\bMEIO[- ]?CAMPISTA CENTRAL\b/,
-      /\bCENTRAL MIDFIELDER\b/,
-      /\bMEIA ATACANTE\b/,
-      /\bATTACKING MIDFIELDER\b/,
-    ])
-  ) {
-    return "midfielders";
-  }
-
-  if (
-    hasAnyPosition(p, [
-      /(^|,\s*)GR\b/,
-      /(^|,\s*)GK\b/,
-      /\bGOLEIRO\b/,
-      /\bGOALKEEPER\b/,
-      /\bGUARDA[- ]?REDES\b/,
-    ])
-  ) {
-    return "goalkeepers";
-  }
-
-  if (
-    hasAnyPosition(p, [
-      /(^|,\s*)D\s*\(C\)/,
-      /(^|,\s*)DC\b/,
-      /(^|,\s*)CB\b/,
-      /(^|,\s*)D\s*\((D|E|DE)\)/,
-      /(^|,\s*)DD\b/,
-      /(^|,\s*)DE\b/,
-      /(^|,\s*)DR\b/,
-      /(^|,\s*)DL\b/,
-      /(^|,\s*)RB\b/,
-      /(^|,\s*)LB\b/,
-      /(^|,\s*)WB\b/,
-      /\bZAGUEIRO\b/,
-      /\bLATERAL\b/,
-      /\bALA\b/,
-      /\bCENTRAL DEFENDER\b/,
-      /\bCENTER BACK\b/,
-      /\bCENTRE BACK\b/,
-      /\bRIGHT BACK\b/,
-      /\bLEFT BACK\b/,
-      /\bWING BACK\b/,
-    ])
-  ) {
-    return "defenders";
-  }
-
-  if (
-    hasAnyPosition(p, [
-      /(^|,\s*)MO\s*\((D|E|DE)\)/,
-      /(^|,\s*)M\s*\((D|E|DE)\)/,
-      /(^|,\s*)AML\b/,
-      /(^|,\s*)AMR\b/,
-      /(^|,\s*)ML\b/,
-      /(^|,\s*)MR\b/,
-      /(^|,\s*)LW\b/,
-      /(^|,\s*)RW\b/,
-      /(^|,\s*)PL\b/,
-      /(^|,\s*)ST\b/,
-      /(^|,\s*)CF\b/,
-      /(^|,\s*)FW\b/,
-      /\bPONTA\b/,
-      /\bWINGER\b/,
-      /\bEXTREMO\b/,
-      /\bATACANTE\b/,
-      /\bAVANCADO\b/,
-      /\bSTRIKER\b/,
-      /\bFORWARD\b/,
-      /\bCENTRE FORWARD\b/,
-      /\bCENTER FORWARD\b/,
-    ])
-  ) {
-    return "attackers";
-  }
-
-  // Sem categoria reconhecida: mantém no meio-campo para não criar
-  // uma quinta seção "Outros".
-  return "midfielders";
 }
 
 function PlayerCard({
@@ -377,6 +187,7 @@ export default function SquadPage() {
           name,
           position,
           natural_position,
+          category,
           age,
           nationality,
           ca,
@@ -545,50 +356,7 @@ export default function SquadPage() {
     };
   }, [team?.id, loadSquad]);
 
-  const sections = useMemo<SquadSection[]>(() => {
-    const grouped: Record<PositionGroup, Player[]> = {
-      goalkeepers: [],
-      defenders: [],
-      midfielders: [],
-      attackers: [],
-    };
-
-    players.forEach((player) => {
-      const group = getPositionGroup(player);
-      grouped[group].push(player);
-    });
-
-    const allSections: SquadSection[] = [
-      {
-        key: "goalkeepers",
-        title: "Goleiros",
-        abbreviation: "GK",
-        players: grouped.goalkeepers,
-      },
-      {
-        key: "defenders",
-        title: "Defensores",
-        abbreviation: "DEF",
-        players: grouped.defenders,
-      },
-      {
-        key: "midfielders",
-        title: "Meio-campistas",
-        abbreviation: "MID",
-        players: grouped.midfielders,
-      },
-      {
-        key: "attackers",
-        title: "Atacantes",
-        abbreviation: "ATA",
-        players: grouped.attackers,
-      },
-    ];
-
-    return allSections.filter(
-      (section) => section.players.length > 0
-    );
-  }, [players]);
+  const sections = useMemo(() => groupSquadPlayers(players), [players]);
 
   const totalValue = useMemo(
     () =>
