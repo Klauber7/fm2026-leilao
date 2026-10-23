@@ -552,6 +552,12 @@ export default function TeamPage() {
           />
         </section>
 
+        <Link href={`/dispensas#equipe-${team.id}`} className="mt-8 block rounded-2xl border border-emerald-500/40 bg-zinc-900 p-6 hover:bg-zinc-800">
+          <h2 className="text-2xl font-black text-emerald-400">Dispensa 100%</h2>
+          <p className="mt-2 text-zinc-300">1 jogador por equipe · reembolso integral · retorno ao mercado pelo valor original · registro no BID</p>
+          <p className="mt-3 font-bold text-emerald-300">Ver dispensa desta equipe →</p>
+        </Link>
+
         <section
           id="elenco"
           className="mt-14"
