@@ -57,21 +57,6 @@ const sections: RuleSection[] = [
     ],
   },
   {
-    id: "draft",
-    icon: "🎯",
-    title: "Regulamento oficial — Draft",
-    intro: "Escolhas por sorteio, vínculo com o clube e reposição por posição na temporada seguinte.",
-    rules: [
-      "Art. 1º — Cada clube poderá selecionar até 5 jogadores no Draft, por meio de sorteio, respeitando as categorias de posições disponíveis.",
-      "Art. 2º — Todos os jogadores selecionados no Draft serão automaticamente vinculados aos respectivos clubes.",
-      "Art. 3º — Jogadores adquiridos pelo Draft não poderão ser vendidos, trocados, emprestados ou negociados com outros clubes.",
-      "Art. 4º — Ao término de cada temporada, cada clube poderá dispensar até 2 jogadores provenientes do Draft, recuperando 100% do valor pago por esses jogadores, quando aplicável.",
-      "Art. 5º — Na temporada seguinte, o clube poderá selecionar até 2 novos jogadores para substituir os dispensados, respeitando obrigatoriamente a mesma categoria de posição.",
-      "Exemplos: dispensou 1 zagueiro (DC) → poderá selecionar 1 defensor (DC, LD ou LE); dispensou 1 goleiro (GK) → deverá selecionar 1 goleiro; dispensou 1 ponta (PD/PE) → poderá selecionar 1 ponta.",
-      "Art. 6º — Quem não dispensar jogadores do Draft não terá direito a novas escolhas de reposição. O limite máximo será de 2 substituições por temporada.",
-    ],
-  },
-  {
     id: "mercado",
     icon: "🔄",
     title: "Mercado de transferências",
