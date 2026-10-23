@@ -54,6 +54,7 @@ function pricingLabel(value: string | null | undefined) {
 
   const labels: Record<string, string> = {
     auction: "Leilão",
+    release100: "Dispensa 100%",
     free: "Grátis",
     paid: "Valor aberto",
     manual: "Valor aberto",
@@ -85,7 +86,7 @@ export default function BidPage() {
     setError("");
 
     try {
-      const { data, error: bidError } = await supabase
+      const historyQuery = supabase
         .from("bid_feed")
         .select(`
           feed_id,
@@ -107,11 +108,31 @@ export default function BidPage() {
           nullsFirst: false,
         });
 
-      if (bidError) {
-        throw bidError;
-      }
+      const [history, releases] = await Promise.all([
+        historyQuery,
+        supabase.from("full_refund_releases")
+          .select("id,team_id,team_name,player_id,player_name,refund,created_at"),
+      ]);
+      if (history.error) throw history.error;
+      if (releases.error) throw releases.error;
+      const releaseItems: BidFeedRow[] = (releases.data || []).map((release) => ({
+        feed_id: `release100-${release.id}`,
+        item_type: "player",
+        item_name: release.player_name,
+        staff_role: null,
+        origin_name: release.team_name,
+        destination_name: "Mercado",
+        amount: Number(release.refund),
+        pricing_type: "release100",
+        completed_at: release.created_at,
+        player_id: release.player_id,
+        coach_id: null,
+        origin_team_id: release.team_id,
+        destination_team_id: null,
+      }));
+      setItems([...(history.data || []) as BidFeedRow[], ...releaseItems]
+        .sort((a, b) => Date.parse(b.completed_at || "") - Date.parse(a.completed_at || "")));
 
-      setItems((data || []) as BidFeedRow[]);
     } catch (loadError) {
       console.error("Erro ao carregar BID:", loadError);
       setError("Não foi possível carregar o BID.");
@@ -126,6 +147,7 @@ export default function BidPage() {
 
     const channel = supabase
       .channel("bid-live-all-transfers")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "full_refund_releases" }, () => { void loadBid(); })
       .on(
         "postgres_changes",
         {
@@ -228,7 +250,7 @@ export default function BidPage() {
           </h1>
 
           <p className="mt-3 text-zinc-400">
-            Boletim oficial com todas as contratações registradas no histórico da liga.
+            Boletim oficial com contratações e dispensas registradas no histórico da liga.
           </p>
         </div>
 
@@ -278,7 +300,7 @@ export default function BidPage() {
         {!loading && !error && filteredItems.length === 0 && (
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-10 text-center">
             <p className="text-xl font-black">
-              Nenhuma contratação encontrada.
+              Nenhuma transação encontrada.
             </p>
 
             {search && (
@@ -358,7 +380,7 @@ export default function BidPage() {
 
                   <div className="md:text-right">
                     <p className="text-xs font-black uppercase tracking-widest text-zinc-500">
-                      Valor
+                      {item.pricing_type === "release100" ? "Reembolso ao clube" : "Valor"}
                     </p>
 
                     <p className="mt-1 text-2xl font-black text-green-400">
