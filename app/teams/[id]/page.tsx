@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { supabase } from "@/lib/supabase";
+import { getPositionBadge, groupSquadPlayers } from "@/lib/squad-positions";
 
 type Team = {
   id: number;
@@ -26,6 +27,8 @@ type Player = {
   name: string;
   age: number | null;
   position: string | null;
+  natural_position: string | null;
+  category: string[] | null;
   nationality: string | null;
   ca: number | null;
   value: number | null;
@@ -49,111 +52,12 @@ type Coach = {
   hired_at: string | null;
 };
 
-type PositionGroup =
-  | "goalkeepers"
-  | "defenders"
-  | "midfielders"
-  | "attackers"
-  | "others";
-
-type PlayerSection = {
-  key: PositionGroup;
-  title: string;
-  abbreviation: string;
-  players: Player[];
-};
-
 function money(value: number | null | undefined) {
   return Number(value || 0).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
   });
-}
-
-function normalizeText(value: string | null | undefined) {
-  return (value || "")
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function getPositionGroup(position: string | null): PositionGroup {
-  const normalized = normalizeText(position);
-
-  if (
-    normalized === "gk" ||
-    normalized === "gr" ||
-    normalized.includes("goleiro") ||
-    normalized.includes("goalkeeper")
-  ) {
-    return "goalkeepers";
-  }
-
-  if (
-    normalized === "dc" ||
-    normalized === "cb" ||
-    normalized === "dl" ||
-    normalized === "dr" ||
-    normalized === "ld" ||
-    normalized === "le" ||
-    normalized === "lb" ||
-    normalized === "rb" ||
-    normalized.includes("zag") ||
-    normalized.includes("zagueiro") ||
-    normalized.includes("defensor") ||
-    normalized.includes("defender") ||
-    normalized.includes("lateral")
-  ) {
-    return "defenders";
-  }
-
-  if (
-    normalized === "dm" ||
-    normalized === "dmc" ||
-    normalized === "mc" ||
-    normalized === "cm" ||
-    normalized === "am" ||
-    normalized === "amc" ||
-    normalized.includes("volante") ||
-    normalized.includes("meio") ||
-    normalized.includes("midfielder") ||
-    normalized.includes("meia")
-  ) {
-    return "midfielders";
-  }
-
-  if (
-    normalized === "st" ||
-    normalized === "cf" ||
-    normalized === "fw" ||
-    normalized === "rw" ||
-    normalized === "lw" ||
-    normalized === "pd" ||
-    normalized === "pe" ||
-    normalized.includes("atacante") ||
-    normalized.includes("striker") ||
-    normalized.includes("forward") ||
-    normalized.includes("centroavante") ||
-    normalized.includes("ponta") ||
-    normalized.includes("winger")
-  ) {
-    return "attackers";
-  }
-
-  return "others";
-}
-
-function getPositionBadge(position: string | null) {
-  const group = getPositionGroup(position);
-
-  if (group === "goalkeepers") return "GK";
-  if (group === "defenders") return "DEF";
-  if (group === "midfielders") return "MID";
-  if (group === "attackers") return "ATA";
-
-  return "OUT";
 }
 
 function getInitials(name: string) {
@@ -217,7 +121,7 @@ function PlayerCardCompact({
               />
             ) : (
               <span className="text-sm font-black text-zinc-300">
-                {getPositionBadge(player.position)}
+                {getPositionBadge(player)}
               </span>
             )}
           </div>
@@ -424,7 +328,7 @@ export default function TeamPage() {
           supabase
             .from("players")
             .select(
-              "id,name,age,position,nationality,ca,value,image_url,team_id"
+              "id,name,age,position,natural_position,category,nationality,ca,value,image_url,team_id"
             )
             .eq("team_id", teamId)
             .order("ca", {
@@ -516,61 +420,7 @@ export default function TeamPage() {
     );
   }, [players]);
 
-  const playerSections = useMemo(() => {
-    const grouped: Record<
-      PositionGroup,
-      Player[]
-    > = {
-      goalkeepers: [],
-      defenders: [],
-      midfielders: [],
-      attackers: [],
-      others: [],
-    };
-
-    players.forEach((player) => {
-      grouped[
-        getPositionGroup(player.position)
-      ].push(player);
-    });
-
-    const sections: PlayerSection[] = [
-      {
-        key: "goalkeepers",
-        title: "Goleiros",
-        abbreviation: "GK",
-        players: grouped.goalkeepers,
-      },
-      {
-        key: "defenders",
-        title: "Defensores",
-        abbreviation: "DEF",
-        players: grouped.defenders,
-      },
-      {
-        key: "midfielders",
-        title: "Meio-campistas",
-        abbreviation: "MID",
-        players: grouped.midfielders,
-      },
-      {
-        key: "attackers",
-        title: "Atacantes",
-        abbreviation: "ATA",
-        players: grouped.attackers,
-      },
-      {
-        key: "others",
-        title: "Outros jogadores",
-        abbreviation: "OUT",
-        players: grouped.others,
-      },
-    ];
-
-    return sections.filter(
-      (section) => section.players.length > 0
-    );
-  }, [players]);
+  const playerSections = useMemo(() => groupSquadPlayers(players), [players]);
 
   if (loading) {
     return (
