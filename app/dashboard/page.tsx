@@ -1101,11 +1101,7 @@ export default function DashboardPage() {
 
         </section>
 
-        <Link href="/draft" className="mt-8 block rounded-2xl border border-amber-500/50 bg-zinc-900 p-6">
-          <h2 className="text-2xl font-black">🏆 Draft FZ 2026</h2>
-          <p className="mt-2 text-zinc-400">200 jogadores · 5 escolhas por equipe · Aguardando abertura oficial</p>
-          <p className="mt-3 font-bold text-amber-400">VER DRAFT →</p>
-        </Link>
+
 
         {/* PAINEL DE NEGOCIAÇÕES */}
 
