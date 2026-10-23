@@ -29,6 +29,11 @@ const mainMenu: MenuItem[] = [
     icon: "📰",
   },
   {
+    href: "/dispensas",
+    label: "Dispensa 100%",
+    icon: "💰",
+  },
+  {
     href: "/players",
     label: "Mercado de Jogadores",
     icon: "🌍",
