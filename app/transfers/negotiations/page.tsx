@@ -388,9 +388,8 @@ export default function NegotiationsPage() {
       });
     });
 
-    // Somente negociações efetivamente finalizadas aparecem no histórico.
-    // Propostas recusadas, canceladas, pendentes ou futuras não são negócios fechados.
-    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted" || item.status === "pending")).sort((a, b) => {
+    // Mantém propostas ativas, negócios concluídos e transferências futuras visíveis.
+    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted" || item.status === "pending" || item.status === "future_transfer")).sort((a, b) => {
       return (
         new Date(b.latest.created_at).getTime() -
         new Date(a.latest.created_at).getTime()
@@ -409,7 +408,7 @@ export default function NegotiationsPage() {
     if (!myTeam) return [];
 
     return threads.filter(
-      (thread) => thread.latest.created_by_team_id !== myTeam.id
+      (thread) => thread.latest.status !== "future_transfer" && thread.latest.created_by_team_id !== myTeam.id
     );
   }, [threads, myTeam]);
 
@@ -417,9 +416,13 @@ export default function NegotiationsPage() {
     if (!myTeam) return [];
 
     return threads.filter(
-      (thread) => thread.latest.created_by_team_id === myTeam.id
+      (thread) => thread.latest.status !== "future_transfer" && thread.latest.created_by_team_id === myTeam.id
     );
   }, [threads, myTeam]);
+
+  const futureThreads = threads.filter(
+    (thread) => thread.latest.status === "future_transfer"
+  );
 
   function money(value: number | null | undefined) {
     return `R$ ${Number(value || 0).toLocaleString("pt-BR")}`;
@@ -758,6 +761,41 @@ export default function NegotiationsPage() {
 
         <div className="space-y-12">
 
+          <section aria-labelledby="future-transfers-heading">
+            <div className="mb-5">
+              <h2 id="future-transfers-heading" className="text-2xl font-black text-blue-300">
+                Transferências futuras ({futureThreads.length})
+              </h2>
+              <p className="mt-2 text-sm text-zinc-400">
+                Negociações aceitas para a próxima janela. Os jogadores permanecem nos clubes atuais até a abertura.
+              </p>
+            </div>
+            {futureThreads.length === 0 ? (
+              <EmptyBox text="Nenhuma transferência futura registrada para o seu clube." />
+            ) : (
+              <div className="grid gap-5">
+                {futureThreads.map((thread) => (
+                  <NegotiationThreadCard
+                    key={thread.rootId}
+                    thread={thread}
+                    myTeam={myTeam}
+                    money={money}
+                    dateTime={dateTime}
+                    statusClass={statusClass}
+                    getStatusLabel={getStatusLabel}
+                    canRespond={canRespond}
+                    marketOpen={marketOpen}
+                    processingId={processingId}
+                    expanded={Boolean(expandedThreads[thread.rootId])}
+                    onToggle={() => toggleThread(thread.rootId)}
+                    onAccept={handleAccept}
+                    onReject={handleReject}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
           {/* RECEBIDAS */}
 
           <section>
@@ -993,6 +1031,15 @@ function NegotiationThreadCard({
                 </p>
               </div>
             </div>
+
+            {latest.status === "future_transfer" && (
+              <div className="mt-5 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-200">
+                <p className="font-bold">
+                  {latest.seller_team?.name || "Clube vendedor"} → {latest.buyer_team?.name || "Clube comprador"}
+                </p>
+                <p className="mt-1">Transferência prevista para a abertura da próxima janela.</p>
+              </div>
+            )}
 
             {latest.offered_players.length > 0 && (
               <div className="mt-5">
