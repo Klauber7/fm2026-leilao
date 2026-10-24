@@ -19,6 +19,11 @@ type MenuItem = {
 
 const mainMenu: MenuItem[] = [
   {
+    href: "/financeiro",
+    label: "Financeiro da Minha Equipe",
+    icon: "💵",
+  },
+  {
     href: "/dashboard",
     label: "Dashboard",
     icon: "🏠",
