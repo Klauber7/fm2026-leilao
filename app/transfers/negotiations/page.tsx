@@ -713,6 +713,8 @@ export default function NegotiationsPage() {
               .
             </p>
 
+            <p className="mt-2 text-sm text-amber-300">Ofertas válidas por 1 hora. Cada contraproposta reinicia o prazo. Ao vencer, a negociação é retirada automaticamente.</p>
+
             {marketOpen ? (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/10 px-4 py-2">
                 <span className="h-2 w-2 rounded-full bg-green-400" />
@@ -798,6 +800,7 @@ export default function NegotiationsPage() {
                   <NegotiationThreadCard
                     key={thread.rootId}
                     thread={thread}
+                    now={now}
                     myTeam={myTeam}
                     money={money}
                     dateTime={dateTime}
@@ -837,6 +840,7 @@ export default function NegotiationsPage() {
                   <NegotiationThreadCard
                     key={thread.rootId}
                     thread={thread}
+                    now={now}
                     myTeam={myTeam}
                     money={money}
                     dateTime={dateTime}
@@ -876,6 +880,7 @@ export default function NegotiationsPage() {
                   <NegotiationThreadCard
                     key={thread.rootId}
                     thread={thread}
+                    now={now}
                     myTeam={myTeam}
                     money={money}
                     dateTime={dateTime}
@@ -913,6 +918,7 @@ function EmptyBox({
 
 type ThreadCardProps = {
   thread: NegotiationThread;
+  now: number;
 
   myTeam: Team | null;
 
@@ -955,6 +961,7 @@ type ThreadCardProps = {
 
 function NegotiationThreadCard({
   thread,
+  now,
   myTeam,
   money,
   dateTime,
@@ -969,6 +976,11 @@ function NegotiationThreadCard({
   onReject,
 }: ThreadCardProps) {
   const latest = thread.latest;
+  const expiresAt = latest.expires_at
+    ? new Date(latest.expires_at).getTime()
+    : new Date(latest.created_at).getTime() + 60 * 60 * 1000;
+  const secondsLeft = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+  const timeLeft = `${String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   const otherTeam =
     myTeam?.id === latest.buyer_team_id
@@ -999,6 +1011,19 @@ function NegotiationThreadCard({
               >
                 {getStatusLabel(latest.status)}
               </span>
+
+              {latest.status === "pending" && (
+                <span
+                  role="timer"
+                  aria-label={`Tempo restante da oferta: ${timeLeft}`}
+                  className={`rounded-full border px-4 py-2 text-sm font-black tabular-nums ${secondsLeft <= 300
+                    ? "border-red-500/40 bg-red-500/15 text-red-300"
+                    : "border-amber-500/40 bg-amber-500/15 text-amber-300"}`}
+                  title={`Retirada automática em ${dateTime(new Date(expiresAt).toISOString())}`}
+                >
+                  Expira em {timeLeft}
+                </span>
+              )}
 
               {thread.negotiations.length > 1 && (
                 <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-black text-blue-400">
