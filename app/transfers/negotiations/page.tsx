@@ -50,6 +50,7 @@ type Negotiation = {
   created_by_team_id: number | null;
 
   created_at: string;
+  expires_at?: string | null;
 
   accepted_at: string | null;
   rejected_at: string | null;
@@ -71,6 +72,8 @@ type NegotiationThread = {
 };
 
 export default function NegotiationsPage() {
+  const [now, setNow] = useState(() => Date.now());
+
   const [myTeam, setMyTeam] = useState<Team | null>(null);
 
   const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
@@ -93,10 +96,16 @@ export default function NegotiationsPage() {
 
   useEffect(() => {
     loadNegotiations();
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const refresh = window.setInterval(() => { void loadNegotiations(false); }, 15000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearInterval(refresh);
+    };
   }, []);
 
-  async function loadNegotiations() {
-    setLoading(true);
+  async function loadNegotiations(showLoading = true) {
+    if (showLoading) setLoading(true);
     setError("");
 
     /*
@@ -389,13 +398,21 @@ export default function NegotiationsPage() {
     });
 
     // Mantém propostas ativas, negócios concluídos e transferências futuras visíveis.
-    return result.filter((thread) => thread.negotiations.some((item) => item.status === "accepted" || item.status === "pending" || item.status === "future_transfer")).sort((a, b) => {
+    return result.filter((thread) => {
+      const latest = thread.latest;
+      if (latest.status === "accepted" || latest.status === "future_transfer") return true;
+      if (latest.status !== "pending") return false;
+      const deadline = latest.expires_at
+        ? new Date(latest.expires_at).getTime()
+        : new Date(latest.created_at).getTime() + 60 * 60 * 1000;
+      return deadline > now;
+    }).sort((a, b) => {
       return (
         new Date(b.latest.created_at).getTime() -
         new Date(a.latest.created_at).getTime()
       );
     });
-  }, [negotiations]);
+  }, [negotiations, now]);
 
   /*
     RECEBIDAS / ENVIADAS
@@ -492,7 +509,10 @@ export default function NegotiationsPage() {
       return false;
     }
 
-    if (negotiation.status !== "pending") {
+    const deadline = negotiation.expires_at
+      ? new Date(negotiation.expires_at).getTime()
+      : new Date(negotiation.created_at).getTime() + 60 * 60 * 1000;
+    if (negotiation.status !== "pending" || deadline <= Date.now()) {
       return false;
     }
 
