@@ -19,7 +19,7 @@ export function PersonPhoto({ name, src, large = false }: { name: string; src: s
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const safeSrc = src && /^https?:\/\//i.test(src) && src !== failedSrc ? src : null;
   return (
-    <span className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-zinc-800 text-lg font-black text-zinc-300 ${large ? "h-14 w-14 sm:h-16 sm:w-16" : "h-11 w-11"}`}>
+    <span className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-zinc-800 text-lg font-black text-zinc-300 ${large ? "h-8 w-8 sm:h-9 sm:w-9" : "h-11 w-11"}`}>
       {safeSrc ? <img src={safeSrc} alt={name} loading="lazy" className="h-full w-full object-contain" onError={() => setFailedSrc(src)} /> : name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -277,8 +277,24 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
 
   const slots = FORMATIONS[current.formation].flat();
   let fieldIndex = 0;
+  const benchSection = (
+<section aria-label="Banco de reservas">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-xl font-black">Reservas <span className="text-sm text-zinc-500">({bench.length})</span></h3>{planning && <button type="button" className={action} onClick={(e) => openPicker(-1, e.currentTarget)}>+ Planejar reserva</button>}</div>
+          {bench.length === 0 ? <p className="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Nenhum reserva. Os jogadores que não estiverem entre os titulares aparecerão aqui.</p> : <div className={`grid gap-2 ${planning ? "sm:grid-cols-2 2xl:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2"}`}>
+            {bench.map((p) => <article key={p.id} className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${p.team_id !== team.id ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-800 bg-zinc-900"}`}>
+              <PersonPhoto name={p.name} src={p.image_url} />
+              <div className="min-w-0 flex-1"><Link href={`/players/${p.id}`} className="block truncate text-sm font-black hover:text-green-300">{p.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{getPositionBadge(p)} · {p.age ?? "—"} anos · CA {p.ca ?? "—"} · CP {p.cp ?? "—"}</p>{p.team_id !== team.id && <p className="mt-1 text-[11px] text-amber-300">Reforço · {money(p.value)}</p>}</div>
+              <div className="flex shrink-0 flex-col gap-2"><button type="button" className={`${action} px-2 py-1 text-xs`} onClick={(e) => {
+                opener.current = e.currentTarget;
+                setPendingPlayer(p.id);
+                field.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}>Escalar</button>{p.team_id !== team.id && <button type="button" className="text-xs text-red-300" onClick={() => edit({ ...current, targets: current.targets.filter((id) => id !== p.id) })}>Retirar plano</button>}</div>
+            </article>)}
+          </div>}
+        </section>
+  );
   return (
-    <section className="mt-8 space-y-6" aria-label={planning ? "Meu planejamento" : "Minha escalação"}>
+    <section className="mt-6 space-y-4" aria-label={planning ? "Meu planejamento" : "Minha escalação"}>
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-widest text-green-400">{planning ? "Planejamento privado" : "Organize sua equipe"}</p>
@@ -292,7 +308,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
       {saveError && <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{saveError}</p>}
       {missing > 0 && <p role="status" className="text-sm text-amber-300">{missing} jogador(es) da escalação salva não está(ão) mais disponível(is). As posições foram liberadas.</p>}
 
-      <fieldset disabled={busy} className="min-w-0 space-y-6">
+      <fieldset disabled={busy} className="min-w-0 space-y-4">
         <legend className="sr-only">Configurar {planning ? "planejamento" : "escalação"}</legend>
         <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
           {planning && <>
@@ -334,7 +350,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
             <label className="text-xs text-zinc-400">Filtrar lista por posição<select className={`${control} mt-1 block w-full`} value={listGroup} onChange={(e) => setListGroup(e.target.value)}><option value="all">Todas as posições</option>{POSITION_SECTIONS.map((g) => <option key={g.key} value={g.key}>{g.title}</option>)}</select></label>
           </div>
           {listError && <p role="alert" className="mt-3 text-sm text-red-300">{listError}</p>}
-          {shortlistPlayers.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Sua lista preferencial está vazia. <Link href="/players" className="font-bold text-green-400">Adicionar jogadores no mercado →</Link></p> : visibleShortlist.length === 0 ? <p className="mt-4 text-sm text-zinc-400">Nenhum jogador da lista corresponde aos filtros.</p> : <div className="mt-4 grid max-h-[560px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 2xl:grid-cols-3">
+          {shortlistPlayers.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Sua lista preferencial está vazia. <Link href="/players" className="font-bold text-green-400">Adicionar jogadores no mercado →</Link></p> : visibleShortlist.length === 0 ? <p className="mt-4 text-sm text-zinc-400">Nenhum jogador da lista corresponde aos filtros.</p> : <div className="mt-4 grid max-h-[320px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 2xl:grid-cols-3">
             {visibleShortlist.map((player) => {
               const starter = current.starters.includes(player.id);
               const included = player.team_id === team.id || current.targets.includes(player.id);
@@ -351,24 +367,23 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
           <p className="mt-4 text-xs text-zinc-500">Estar na lista não aumenta o custo do plano. Apenas os reforços que você escolher entram no cálculo. Nenhuma oferta é enviada aqui.</p>
         </section>}
 
-        <div className={`grid min-w-0 gap-5 ${planning ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
-          <div className="min-w-0">
-            <div className="mb-3 flex items-center justify-between gap-3"><h3 className="font-black">Titulares</h3><span className="text-xs text-zinc-400">{current.starters.filter(Boolean).length}/11 · {current.formation}</span></div>
+        <div className={`grid min-w-0 gap-5 ${planning ? "xl:grid-cols-[minmax(0,1fr)_260px]" : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]"}`}>
+          <div className="mx-auto w-full min-w-0 max-w-[640px] rounded-2xl border border-zinc-800 bg-zinc-900/60 p-3 sm:p-4">
+            <div className="mb-3 flex items-center justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Campo tático</p><h3 className="mt-0.5 text-sm font-black">Titulares <span className="ml-1 text-xs font-normal text-zinc-400">{current.starters.filter(Boolean).length}/11</span></h3></div><span className="rounded-full border border-green-500/25 bg-green-500/10 px-3 py-1 text-xs font-bold text-green-300">{current.formation}</span></div>
             {pendingPlayer !== null && <div role="status" className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-green-500/40 bg-green-500/10 p-3 text-sm text-green-300"><span>Clique na posição para escalar <strong>{playerMap.get(pendingPlayer)?.name}</strong>.</span><button type="button" className={action} onClick={() => setPendingPlayer(null)}>Cancelar</button></div>}
-            <div ref={field} className="relative scroll-mt-24 overflow-hidden rounded-2xl border border-green-700/60 bg-[#0b3525] p-2 sm:p-5" style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 12%,rgba(255,255,255,.025) 12%,rgba(255,255,255,.025) 24%)" }}>
-              <div aria-hidden="true" className="pointer-events-none absolute inset-3 rounded-sm border border-white/20 sm:inset-5"><div className="absolute inset-x-0 top-1/2 border-t border-white/20" /><div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" /><div className="absolute left-1/4 right-1/4 top-0 h-[15%] border-x border-b border-white/20" /><div className="absolute bottom-0 left-1/4 right-1/4 h-[15%] border-x border-t border-white/20" /></div>
-              <div className="relative flex min-h-[580px] flex-col justify-between gap-5 py-4 sm:min-h-[640px]">
-                {FORMATIONS[current.formation].map((row, rowIndex) => <div key={rowIndex} className="flex justify-around gap-1 sm:gap-3">
+            <div ref={field} className="relative scroll-mt-24 overflow-hidden rounded-xl border border-emerald-500/25 bg-[#0b2b21] p-2 sm:p-3 shadow-inner" style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 12%,rgba(255,255,255,.025) 12%,rgba(255,255,255,.025) 24%)" }}>
+              <div aria-hidden="true" className="pointer-events-none absolute inset-2.5 rounded-sm border border-white/15 sm:inset-3"><div className="absolute inset-x-0 top-1/2 border-t border-white/20" /><div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20" /><div className="absolute left-1/4 right-1/4 top-0 h-[15%] border-x border-b border-white/20" /><div className="absolute bottom-0 left-1/4 right-1/4 h-[15%] border-x border-t border-white/20" /></div>
+              <div className="relative flex min-h-[380px] flex-col justify-between gap-2 py-2 sm:min-h-[420px]">
+                {FORMATIONS[current.formation].map((row, rowIndex) => <div key={rowIndex} className="flex justify-around gap-1 sm:gap-2">
                   {row.map((slot) => {
                     const index = fieldIndex++;
                     const player = playerMap.get(current.starters[index] || -1);
                     const target = player && player.team_id !== team.id;
-                    return <button type="button" key={index} aria-label={`${slot.label} ${index + 1}: ${player?.name || "escolher titular"}`} title={player?.name || "Escolher titular"} onClick={(e) => openPicker(index, e.currentTarget)} className={`flex w-full min-w-0 max-w-28 flex-col items-center gap-1 rounded-xl border px-0.5 py-2 text-center shadow-lg transition hover:border-green-300 focus-visible:outline-2 focus-visible:outline-green-300 ${target ? "border-amber-400/60 bg-amber-950/80" : "border-white/15 bg-zinc-950/70"}`}>
-                      <span className="text-[10px] font-black text-green-300">{slot.label}</span>
-                      {player ? <PersonPhoto name={player.name} src={player.image_url} large /> : <span className="flex h-14 w-12 items-center justify-center text-3xl font-light text-green-300 sm:h-16">+</span>}
-                      <span className="line-clamp-2 w-full break-words text-[10px] font-black leading-tight sm:text-xs">{player?.name || "Escolher"}</span>
+                    return <button type="button" key={index} aria-label={`${slot.label} ${index + 1}: ${player?.name || "escolher titular"}`} title={player?.name || "Escolher titular"} onClick={(e) => openPicker(index, e.currentTarget)} className={`flex w-full min-w-0 max-w-24 flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-center shadow-sm transition hover:border-green-300 focus-visible:outline-2 focus-visible:outline-green-300 ${target ? "border-amber-400/60 bg-amber-950/80" : "border-white/15 bg-zinc-950/70"}`}>
+                      <span className={`text-[9px] font-bold ${target ? "text-amber-300" : "text-green-300"}`}>{slot.label}{target ? " · Alvo" : ""}</span>
+                      {player ? <PersonPhoto name={player.name} src={player.image_url} large /> : <span className="flex h-8 w-8 items-center justify-center text-2xl font-light text-green-300 sm:h-9">+</span>}
+                      <span className="w-full truncate text-[10px] font-bold leading-tight sm:text-[11px]">{player?.name || "Escolher"}</span>
                       {player && <span className="text-[9px] text-zinc-300 sm:text-[10px]">CA {player.ca ?? "—"} · CP {player.cp ?? "—"}</span>}
-                      {target && <span className="text-[9px] font-bold text-amber-300">Reforço</span>}
                     </button>;
                   })}
                 </div>)}
@@ -376,7 +391,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
             </div>
           </div>
 
-          {planning && <aside className="h-fit rounded-2xl border border-zinc-800 bg-zinc-900 p-5 xl:sticky xl:top-5" aria-label="Resumo do planejamento">
+          {planning && <aside className="h-fit rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4 xl:sticky xl:top-5" aria-label="Resumo do planejamento">
             <p className="text-xs font-black uppercase tracking-widest text-green-400">Seu plano, na conta</p>
             <dl className="mt-5 space-y-4 text-sm">
               <div><dt className="text-zinc-400">Orçamento atual</dt><dd className="mt-1 text-xl font-black">{money(team.budget)}</dd></div>
@@ -391,22 +406,10 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
               <p><strong className="block text-lg text-white">{totals.averageCa ?? "—"}</strong>CA médio</p><p><strong className="block text-lg text-white">{totals.averageAge ?? "—"}</strong>Idade média</p>
             </div>
           </aside>}
+          {!planning && <div className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-3 sm:p-4">{benchSection}</div>}
         </div>
 
-        <section aria-label="Banco de reservas">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-xl font-black">Reservas <span className="text-sm text-zinc-500">({bench.length})</span></h3>{planning && <button type="button" className={action} onClick={(e) => openPicker(-1, e.currentTarget)}>+ Planejar reserva</button>}</div>
-          {bench.length === 0 ? <p className="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Nenhum reserva. Os jogadores que não estiverem entre os titulares aparecerão aqui.</p> : <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-            {bench.map((p) => <article key={p.id} className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${p.team_id !== team.id ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-800 bg-zinc-900"}`}>
-              <PersonPhoto name={p.name} src={p.image_url} />
-              <div className="min-w-0 flex-1"><Link href={`/players/${p.id}`} className="block truncate text-sm font-black hover:text-green-300">{p.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{getPositionBadge(p)} · {p.age ?? "—"} anos · CA {p.ca ?? "—"} · CP {p.cp ?? "—"}</p>{p.team_id !== team.id && <p className="mt-1 text-[11px] text-amber-300">Reforço · {money(p.value)}</p>}</div>
-              <div className="flex shrink-0 flex-col gap-2"><button type="button" className={`${action} px-2 py-1 text-xs`} onClick={(e) => {
-                opener.current = e.currentTarget;
-                setPendingPlayer(p.id);
-                field.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}>Escalar</button>{p.team_id !== team.id && <button type="button" className="text-xs text-red-300" onClick={() => edit({ ...current, targets: current.targets.filter((id) => id !== p.id) })}>Retirar plano</button>}</div>
-            </article>)}
-          </div>}
-        </section>
+        {planning && benchSection}
 
         <div className="flex flex-wrap items-center gap-3 border-t border-zinc-800 pt-5">
           <button type="button" className="rounded-xl bg-green-500 px-6 py-3 text-sm font-black text-zinc-950 transition hover:bg-green-400 disabled:opacity-50" disabled={busy} onClick={() => void save()}>{busy ? "Salvando..." : planning ? "Salvar planejamento" : "Salvar escalação"}</button>
