@@ -62,6 +62,17 @@ export function assignStarter(starters: (number | null)[], index: number, player
   return next;
 }
 
+/** Selecting a shortlist candidate adds it to this plan only, never to the club. */
+export function addPlayerToPlan(plan: TeamPlan, player: PlanningPlayer, index: number | null = null): TeamPlan {
+  if (plan.kind === "lineup" && player.team_id !== plan.team_id) return plan;
+  return {
+    ...plan,
+    targets: plan.kind === "planning" && player.team_id !== plan.team_id
+      ? [...new Set([...plan.targets, player.id])] : plan.targets,
+    starters: index === null ? plan.starters : assignStarter(plan.starters, index, player.id),
+  };
+}
+
 /** Preserve players in comparable roles when changing shape, then fill remaining slots. */
 export function changeFormation(plan: TeamPlan, formation: Formation): TeamPlan {
   const oldSlots = FORMATIONS[plan.formation].flat();

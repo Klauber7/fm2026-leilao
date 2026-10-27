@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getPositionBadge, getPositionGroup, POSITION_SECTIONS } from "@/lib/squad-positions";
 import {
-  assignStarter, changeFormation, cleanPlan, emptyPlan, FORMATIONS, isFormation,
+  addPlayerToPlan, assignStarter, changeFormation, cleanPlan, emptyPlan, FORMATIONS, isFormation,
   money, PLANNING_PLAYER_COLUMNS, planTotals, suggestStarters,
   type PlanKind, type PlanningPlayer, type PlanningTeam, type TeamPlan,
 } from "@/lib/team-planning";
@@ -30,6 +30,11 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
   const [plan, setPlan] = useState<TeamPlan | null>(null);
   const [extras, setExtras] = useState<PlanningPlayer[]>([]);
   const [shortlist, setShortlist] = useState<number[]>([]);
+  const [listSearch, setListSearch] = useState("");
+  const [listGroup, setListGroup] = useState("all");
+  const [listLoading, setListLoading] = useState(false);
+  const [listError, setListError] = useState("");
+  const listRequest = useRef(0);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [staffError, setStaffError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -95,6 +100,48 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
     return () => { active = false; };
   }, [team.id, mode, planning, retry]);
 
+  const refreshShortlist = useCallback(async () => {
+    if (!planning) return;
+    const request = ++listRequest.current;
+    setListLoading(true);
+    setListError("");
+    try {
+      const { data, error } = await supabase.from("player_shopping_list").select("player_id").eq("team_id", team.id);
+      if (error) throw error;
+      const ids = (data || []).map((row) => Number(row.player_id));
+      const rows: PlanningPlayer[] = [];
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const response = await supabase.from("players").select(PLANNING_PLAYER_COLUMNS).in("id", ids.slice(offset, offset + 100));
+        if (response.error) throw response.error;
+        rows.push(...(response.data || []) as PlanningPlayer[]);
+      }
+      if (request !== listRequest.current) return;
+      setShortlist(ids);
+      setExtras((existing) => [...new Map([...existing, ...rows].map((p) => [p.id, p])).values()]);
+    } catch {
+      if (request === listRequest.current) setListError("Não foi possível atualizar sua lista preferencial. Tente novamente.");
+    } finally {
+      if (request === listRequest.current) setListLoading(false);
+    }
+  }, [team.id, planning]);
+
+  useEffect(() => {
+    if (!planning || loading) return;
+    const refresh = () => { void refreshShortlist(); };
+    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
+    const channel = supabase.channel(`planning-shortlist-${team.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "player_shopping_list", filter: `team_id=eq.${team.id}` }, refresh)
+      .subscribe();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      ++listRequest.current;
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [planning, loading, team.id, refreshShortlist]);
+
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
@@ -137,6 +184,8 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
   const pool = useMemo(() => current ? allPlayers.filter((p) => p.team_id === team.id || current.targets.includes(p.id)) : [], [allPlayers, current, team.id]);
   const bench = useMemo(() => pool.filter((p) => !current?.starters.includes(p.id)).sort((a, b) => (b.ca ?? -1) - (a.ca ?? -1)), [pool, current]);
   const totals = planTotals(pool, team.id, team.budget, Number(current?.staff_budget || 0));
+  const shortlistPlayers = useMemo(() => allPlayers.filter((p) => shortlist.includes(p.id)), [allPlayers, shortlist]);
+  const visibleShortlist = shortlistPlayers.filter((p) => normalize(p.name).includes(normalize(listSearch)) && (listGroup === "all" || getPositionGroup(p) === listGroup));
   const candidatePlayers = source === "roster" ? roster : source === "planned" ? pool.filter((p) => p.team_id !== team.id) : source === "shortlist" ? allPlayers.filter((p) => shortlist.includes(p.id)) : results;
   const filtered = candidatePlayers.filter((p) => (source === "market" || normalize(p.name).includes(normalize(search))) && (group === "all" || getPositionGroup(p) === group));
   const missing = plan ? plan.starters.filter((id) => id !== null).length - (current?.starters.filter((id) => id !== null).length || 0) : 0;
@@ -150,12 +199,13 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
 
   function openPicker(index: number, button: HTMLButtonElement) {
     if (pendingPlayer !== null && current && index >= 0) {
-      edit({ ...current, starters: assignStarter(current.starters, index, pendingPlayer) });
+      const player = playerMap.get(pendingPlayer);
+      if (player) edit(addPlayerToPlan(current, player, index));
       setPendingPlayer(null);
       return;
     }
     opener.current = button;
-    setSource("roster");
+    setSource(planning ? "shortlist" : "roster");
     setSearch("");
     setGroup("all");
     setSlotIndex(index);
@@ -167,9 +217,8 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
       setSearchError("Este jogador já é titular. Clique na posição dele para enviá-lo ao banco.");
       return;
     }
-    const targets = planning && player.team_id !== team.id ? [...new Set([...current.targets, player.id])] : current.targets;
     setExtras((rows) => [...rows.filter((p) => p.id !== player.id), player]);
-    edit({ ...current, targets, starters: slotIndex === -1 ? current.starters : assignStarter(current.starters, slotIndex, player.id) });
+    edit(addPlayerToPlan(current, player, slotIndex === -1 ? null : slotIndex));
     setSlotIndex(null);
   }
 
@@ -274,6 +323,33 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
             edit({ ...current, formation: lineup.formation, starters: lineup.starters, targets: [] });
           }}>Usar minha escalação</button>}
         </div>
+
+        {planning && <section aria-label="Jogadores da minha lista preferencial" className="rounded-2xl border border-indigo-500/30 bg-indigo-500/[0.04] p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h3 className="text-xl font-black">Minha lista preferencial <span className="text-sm text-indigo-300">({shortlistPlayers.length})</span></h3><p className="mt-2 max-w-3xl text-sm text-zinc-400">Todos os jogadores da sua lista estão disponíveis para planejar. Escolha quem será titular ou reserva; você decide depois se quer fazer uma oferta.</p></div>
+            <div className="flex flex-wrap gap-2"><button type="button" className={action} disabled={listLoading} onClick={() => void refreshShortlist()}>{listLoading ? "Atualizando..." : "Atualizar lista"}</button><Link className={action} href="/transfers/shopping-list">Abrir minha lista →</Link></div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-xs text-zinc-400">Buscar na minha lista<input className={`${control} mt-1 block w-full`} value={listSearch} placeholder="Nome do jogador" onChange={(e) => setListSearch(e.target.value)} /></label>
+            <label className="text-xs text-zinc-400">Filtrar lista por posição<select className={`${control} mt-1 block w-full`} value={listGroup} onChange={(e) => setListGroup(e.target.value)}><option value="all">Todas as posições</option>{POSITION_SECTIONS.map((g) => <option key={g.key} value={g.key}>{g.title}</option>)}</select></label>
+          </div>
+          {listError && <p role="alert" className="mt-3 text-sm text-red-300">{listError}</p>}
+          {shortlistPlayers.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Sua lista preferencial está vazia. <Link href="/players" className="font-bold text-green-400">Adicionar jogadores no mercado →</Link></p> : visibleShortlist.length === 0 ? <p className="mt-4 text-sm text-zinc-400">Nenhum jogador da lista corresponde aos filtros.</p> : <div className="mt-4 grid max-h-[560px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 2xl:grid-cols-3">
+            {visibleShortlist.map((player) => {
+              const starter = current.starters.includes(player.id);
+              const included = player.team_id === team.id || current.targets.includes(player.id);
+              return <article key={player.id} className={`min-w-0 rounded-xl border bg-zinc-950/70 p-3 ${included ? "border-green-500/40" : "border-zinc-700"}`}>
+                <div className="flex items-start gap-3"><PersonPhoto name={player.name} src={player.image_url} /><div className="min-w-0 flex-1"><Link href={`/players/${player.id}`} className="block truncate text-sm font-black hover:text-green-300">{player.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{player.position || getPositionBadge(player)} · {player.age ?? "—"} anos</p><p className="mt-1 text-[11px] text-zinc-400">CA {player.ca ?? "—"} · CP {player.cp ?? "—"}</p></div></div>
+                <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span className="font-bold text-amber-300">{money(player.value)}</span><span className={included ? "text-green-400" : "text-zinc-400"}>{starter ? "Titular no plano" : included ? "Reserva no plano" : "Disponível para planejar"}</span></div>
+                <div className="mt-3 flex flex-wrap gap-2"><button type="button" className={`${action} flex-1 text-xs`} disabled={starter} onClick={() => {
+                  setPendingPlayer(player.id);
+                  field.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}>{starter ? "Já é titular" : "Escalar no campo"}</button><button type="button" className={`${action} flex-1 text-xs`} disabled={included} onClick={() => edit(addPlayerToPlan(current, player))}>{included ? "Já no plano" : "+ Reserva"}</button></div>
+              </article>;
+            })}
+          </div>}
+          <p className="mt-4 text-xs text-zinc-500">Estar na lista não aumenta o custo do plano. Apenas os reforços que você escolher entram no cálculo. Nenhuma oferta é enviada aqui.</p>
+        </section>}
 
         <div className={`grid min-w-0 gap-5 ${planning ? "xl:grid-cols-[minmax(0,1fr)_280px]" : ""}`}>
           <div className="min-w-0">

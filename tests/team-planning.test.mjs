@@ -17,7 +17,7 @@ function load(file) {
   cache.set(absolute, module.exports);
   return module.exports;
 }
-const { FORMATIONS, assignStarter, changeFormation, cleanPlan, emptyPlan, suggestStarters, planTotals } = load("lib/team-planning.ts");
+const { FORMATIONS, addPlayerToPlan, assignStarter, changeFormation, cleanPlan, emptyPlan, suggestStarters, planTotals } = load("lib/team-planning.ts");
 const player = (id, position, team_id = 1, value = 10, ca = 100) => ({ id, name: `Player ${id}`, position, natural_position: position, category: [], team_id, value, ca, cp: null, age: 25, image_url: null });
 
 test("every formation has eleven slots and one goalkeeper", () => {
@@ -64,4 +64,19 @@ test("suggestions choose by position and CA and leave unavailable positions empt
   assert.equal(starters[10], 1);
   assert.equal(starters[1], 3);
   assert.equal(starters.filter(Boolean).length, 2);
+});
+
+test("any shortlist player, including one owned by another club, can be planned without changing ownership", () => {
+  const candidate = player(7, "ST", 2, 70);
+  const original = emptyPlan(1, "planning");
+  const reserve = addPlayerToPlan(original, candidate);
+  assert.deepEqual(reserve.targets, [7]);
+  assert.equal(reserve.starters.filter(Boolean).length, 0);
+  const starter = addPlayerToPlan(reserve, candidate, 1);
+  assert.deepEqual(starter.targets, [7]);
+  assert.equal(starter.starters[1], 7);
+  assert.equal(planTotals([candidate], 1, 100, 0).balance, 30);
+  assert.equal(candidate.team_id, 2);
+  assert.deepEqual(original.targets, []);
+  assert.deepEqual(addPlayerToPlan(emptyPlan(1, "lineup"), candidate).targets, []);
 });
