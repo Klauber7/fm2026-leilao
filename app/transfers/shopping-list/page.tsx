@@ -1518,6 +1518,11 @@ export default function ShoppingListPage() {
 
         </div>
 
+        <nav aria-label="Lista e planejamento" className="mt-6 flex flex-col items-start gap-2 text-sm font-bold">
+          <Link href="/transfers/shopping-list" aria-current="page" className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-5 py-3 text-indigo-300">🛒 Minha lista</Link>
+          <Link href="/planning" className="rounded-xl border border-green-500/30 bg-green-500/10 px-5 py-3 text-green-300 transition hover:bg-green-500/20">⚽ Meu planejamento →</Link>
+        </nav>
+
         {/* STATUS */}
 
         <section className="mt-8">

@@ -9,6 +9,7 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { groupSquadPlayers } from "@/lib/squad-positions";
+import TeamPlanner from "@/app/components/TeamPlanner";
 
 type Player = {
   id: number;
@@ -19,6 +20,7 @@ type Player = {
   age: number | null;
   nationality: string | null;
   ca: number | null;
+  cp: number | null;
   value: number | null;
   image_url: string | null;
   team_id: number | null;
@@ -136,7 +138,6 @@ export default function SquadPage() {
     useState<number | null>(null);
 
   const loadSquad = useCallback(async () => {
-    setLoading(true);
     setErrorMessage("");
 
     try {
@@ -191,6 +192,7 @@ export default function SquadPage() {
           age,
           nationality,
           ca,
+          cp,
           value,
           image_url,
           team_id
@@ -505,6 +507,9 @@ export default function SquadPage() {
           </div>
         </section>
 
+        <TeamPlanner key={team.id} team={team} roster={players} mode="lineup" />
+
+        <h2 className="mt-10 text-2xl font-black">Todos os jogadores por posição</h2>
         {players.length === 0 ? (
           <section className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center">
             <h2 className="text-2xl font-black">

@@ -1392,12 +1392,17 @@ export default function PlayersPage() {
                 jogadores encontrados
               </p>
             </div>
+            <div className="flex flex-col gap-2">
             <Link
               href="/transfers/shopping-list"
               className="inline-flex items-center justify-center rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-5 py-3 text-sm font-black text-indigo-300 transition hover:bg-indigo-500/20"
             >
               🛒 Minha Lista ({shoppingListIds.size})
             </Link>
+            <Link href="/planning" className="inline-flex items-center justify-center rounded-xl border border-green-500/30 bg-green-500/10 px-5 py-3 text-sm font-black text-green-300 transition hover:bg-green-500/20">
+              ⚽ Meu planejamento
+            </Link>
+            </div>
           </div>
         </div>
         {/* STATUS DO MERCADO */}
