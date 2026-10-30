@@ -1,4 +1,4 @@
-"use client";
+import SuperCupFinal from "./SuperCupFinal";
 
 export default function SuperCupPage() {
   return (
@@ -13,8 +13,9 @@ export default function SuperCupPage() {
         </h1>
 
         <p className="mt-4 text-zinc-400">
-          Em breve.
+          Campeão da Premier League × campeão da FriendZone Cup.
         </p>
+        <div className="mt-8"><SuperCupFinal /></div>
       </div>
     </main>
   );
