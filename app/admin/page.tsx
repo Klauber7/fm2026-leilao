@@ -616,6 +616,16 @@ export default function AdminPage() {
             />
 
             <AdminCard
+              href="/admin/super-cup"
+              eyebrow="Competição"
+              title="FriendZone Super Cup"
+              icon="🥇"
+              description="Selecione e salve as duas equipes da final da FriendZone Super Cup."
+              action="GERENCIAR SUPER CUP →"
+              color="yellow"
+            />
+
+            <AdminCard
               href="/admin/jornal"
               eyebrow="Comunicação"
               title="Jornal FriendZone"
