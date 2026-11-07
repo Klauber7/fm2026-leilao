@@ -7,12 +7,14 @@ import {
 } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import PositionMap from "./PositionMap";
 type Player = {
   id: number;
   unique_id: string;
   name: string;
   age: number | null;
   position: string | null;
+  position_ratings: number[] | null;
   nationality: string | null;
   club: string | null;
   ca: number | null;
@@ -1897,36 +1899,21 @@ export default function PlayersPage() {
                       }{" "}
                       anos
                     </div>
-                    {/* NACIONALIDADE */}
-                    <div className="mt-3 text-sm font-medium text-zinc-300">
-                      {
-                        player.nationality ||
-                        "-"
-                      }
-                    </div>
-                    {/* CA */}
-                    <div className="mt-3 text-sm font-black text-zinc-200">
-                      CA -{" "}
-                      <span
-                        className={getCAColor(
-                          player.ca
-                        )}
-                      >
-                        {
-                          player.ca ??
-                          "-"
-                        }
-                      </span>
-                    </div>
-                    {/* CP */}
-                    <div className="mt-2 text-sm font-black text-zinc-200">
-                      CP -{" "}
-                      <span className="text-sky-400">
-                        {
-                          player.cp ??
-                          "-"
-                        }
-                      </span>
+                    <div className="mt-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="break-words text-sm font-medium text-zinc-300">
+                          {player.nationality || "-"}
+                        </div>
+                        <div className="mt-3 text-sm font-black text-zinc-200">
+                          CA -{" "}
+                          <span className={getCAColor(player.ca)}>{player.ca ?? "-"}</span>
+                        </div>
+                        <div className="mt-2 text-sm font-black text-zinc-200">
+                          CP -{" "}
+                          <span className="text-sky-400">{player.cp ?? "-"}</span>
+                        </div>
+                      </div>
+                      <PositionMap ratings={player.position_ratings} compact />
                     </div>
                     {/* CLUBE */}
                     <div className="mt-3 truncate text-[14px] font-semibold text-zinc-200">

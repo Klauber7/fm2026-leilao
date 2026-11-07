@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import PositionMap from "../PositionMap";
 
 type Player = {
   id: number;
@@ -10,6 +11,7 @@ type Player = {
   name: string;
   age: number | null;
   position: string | null;
+  position_ratings: number[] | null;
   nationality: string | null;
   club: string | null;
   ca: number | null;
@@ -496,6 +498,7 @@ export default function PlayerPage() {
         name,
         age,
         position,
+        position_ratings,
         nationality,
         club,
         ca,
@@ -1004,6 +1007,13 @@ export default function PlayerPage() {
             </div>
           </div>
         </div>
+
+        {player.position_ratings && (
+          <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+            <h2 className="mb-2 text-xs font-bold text-zinc-200">Mapa de posições</h2>
+            <PositionMap ratings={player.position_ratings} />
+          </div>
+        )}
 
         <div
           style={{
