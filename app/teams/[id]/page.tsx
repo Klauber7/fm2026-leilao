@@ -29,6 +29,7 @@ type Player = {
   position: string | null;
   natural_position: string | null;
   category: string[] | null;
+  position_ratings: number[] | null;
   nationality: string | null;
   ca: number | null;
   value: number | null;
@@ -328,7 +329,7 @@ export default function TeamPage() {
           supabase
             .from("players")
             .select(
-              "id,name,age,position,natural_position,category,nationality,ca,value,image_url,team_id"
+              "id,name,age,position,natural_position,category,position_ratings,nationality,ca,value,image_url,team_id"
             )
             .eq("team_id", teamId)
             .order("ca", {

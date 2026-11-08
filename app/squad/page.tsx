@@ -17,6 +17,7 @@ type Player = {
   position: string | null;
   natural_position: string | null;
   category: string[] | null;
+  position_ratings: number[] | null;
   age: number | null;
   nationality: string | null;
   ca: number | null;
@@ -189,6 +190,7 @@ export default function SquadPage() {
           position,
           natural_position,
           category,
+          position_ratings,
           age,
           nationality,
           ca,

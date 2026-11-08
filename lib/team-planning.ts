@@ -1,4 +1,4 @@
-import { getPositionGroup, type PositionGroup } from "./squad-positions";
+import { getPositionGroup, getPositionGroups, type PositionGroup } from "./squad-positions";
 
 export type PlanningPlayer = {
   id: number;
@@ -6,6 +6,7 @@ export type PlanningPlayer = {
   position: string | null;
   natural_position: string | null;
   category: string[] | null;
+  position_ratings: number[] | null;
   age: number | null;
   ca: number | null;
   cp: number | null;
@@ -14,7 +15,7 @@ export type PlanningPlayer = {
   team_id: number | null;
 };
 
-export const PLANNING_PLAYER_COLUMNS = "id,name,position,natural_position,category,age,ca,cp,value,image_url,team_id";
+export const PLANNING_PLAYER_COLUMNS = "id,name,position,natural_position,category,position_ratings,age,ca,cp,value,image_url,team_id";
 export type PlanningTeam = { id: number; name: string; budget: number | null };
 export type PlanKind = "lineup" | "planning";
 export type TeamPlan = {
@@ -31,16 +32,16 @@ export type TeamPlan = {
 
 type Slot = { label: string; group: PositionGroup };
 const slot = (label: string, group: PositionGroup): Slot => ({ label, group });
-const backFour = [slot("LE", "fullbacks"), slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks"), slot("LD", "fullbacks")];
-const wings = [slot("PE", "wingers"), slot("ATA", "attackers"), slot("PD", "wingers")];
+const backFour = [slot("LE", "leftBacks"), slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks"), slot("LD", "rightBacks")];
+const wings = [slot("PE", "leftAttackingMidfielders"), slot("ATA", "attackers"), slot("PD", "rightAttackingMidfielders")];
 
 // Rows run from the attacking goal to the goalkeeper. Indices stay stable in storage.
 export const FORMATIONS = {
-  "4-3-3": [wings, [slot("MC", "midfielders"), slot("VOL", "defensiveMidfielders"), slot("MC", "midfielders")], backFour, [slot("GOL", "goalkeepers")]],
-  "4-2-3-1": [[slot("ATA", "attackers")], [slot("PE", "wingers"), slot("MEI", "midfielders"), slot("PD", "wingers")], [slot("VOL", "defensiveMidfielders"), slot("VOL", "defensiveMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
-  "4-4-2": [[slot("ATA", "attackers"), slot("ATA", "attackers")], [slot("PE", "wingers"), slot("MC", "midfielders"), slot("MC", "midfielders"), slot("PD", "wingers")], backFour, [slot("GOL", "goalkeepers")]],
-  "3-5-2": [[slot("ATA", "attackers"), slot("ATA", "attackers")], [slot("LE", "fullbacks"), slot("MC", "midfielders"), slot("VOL", "defensiveMidfielders"), slot("MC", "midfielders"), slot("LD", "fullbacks")], [slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks")], [slot("GOL", "goalkeepers")]],
-  "4-1-4-1": [[slot("ATA", "attackers")], [slot("PE", "wingers"), slot("MC", "midfielders"), slot("MC", "midfielders"), slot("PD", "wingers")], [slot("VOL", "defensiveMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
+  "4-3-3": [wings, [slot("MC", "defensiveMidfielders"), slot("VOL", "defensiveMidfielders"), slot("MC", "defensiveMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
+  "4-2-3-1": [[slot("ATA", "attackers")], [slot("PE", "leftAttackingMidfielders"), slot("MEI", "centralAttackingMidfielders"), slot("PD", "rightAttackingMidfielders")], [slot("VOL", "defensiveMidfielders"), slot("VOL", "defensiveMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
+  "4-4-2": [[slot("ATA", "attackers"), slot("ATA", "attackers")], [slot("PE", "leftAttackingMidfielders"), slot("MC", "defensiveMidfielders"), slot("MC", "defensiveMidfielders"), slot("PD", "rightAttackingMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
+  "3-5-2": [[slot("ATA", "attackers"), slot("ATA", "attackers")], [slot("LE", "leftBacks"), slot("MC", "defensiveMidfielders"), slot("VOL", "defensiveMidfielders"), slot("MC", "defensiveMidfielders"), slot("LD", "rightBacks")], [slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks"), slot("ZAG", "centrebacks")], [slot("GOL", "goalkeepers")]],
+  "4-1-4-1": [[slot("ATA", "attackers")], [slot("PE", "leftAttackingMidfielders"), slot("MC", "defensiveMidfielders"), slot("MC", "defensiveMidfielders"), slot("PD", "rightAttackingMidfielders")], [slot("VOL", "defensiveMidfielders")], backFour, [slot("GOL", "goalkeepers")]],
 } as const;
 export type Formation = keyof typeof FORMATIONS;
 
@@ -90,7 +91,7 @@ export function changeFormation(plan: TeamPlan, formation: Formation): TeamPlan 
 export function suggestStarters(players: PlanningPlayer[], formation: Formation) {
   const available = [...players].sort((a, b) => (b.ca ?? -1) - (a.ca ?? -1));
   return FORMATIONS[formation].flat().map((target) => {
-    const index = available.findIndex((player) => getPositionGroup(player) === target.group);
+    const index = available.findIndex((player) => getPositionGroups(player).includes(target.group));
     return index === -1 ? null : available.splice(index, 1)[0].id;
   });
 }
