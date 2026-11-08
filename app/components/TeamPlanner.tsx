@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { getPositionBadge, getPositionGroup, POSITION_SECTIONS } from "@/lib/squad-positions";
+import { getPositionBadge, getPositionGroups, POSITION_SECTIONS } from "@/lib/squad-positions";
 import {
   addPlayerToPlan, assignStarter, changeFormation, cleanPlan, emptyPlan, FORMATIONS, isFormation,
   money, PLANNING_PLAYER_COLUMNS, planTotals, suggestStarters,
@@ -165,6 +165,8 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
         let query = supabase.from("players").select(PLANNING_PLAYER_COLUMNS)
           .or(`team_id.is.null,team_id.neq.${team.id}`).order("ca", { ascending: false, nullsFirst: false }).limit(40);
         const term = normalize(search);
+        const category = POSITION_SECTIONS.find((section) => section.key === group)?.category;
+        if (category) query = query.contains("category", [category]);
         if (term) query = query.ilike("search_name", `%${term}%`);
         const { data, error } = await query;
         if (error) throw error;
@@ -176,7 +178,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
       }
     }, 300);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [source, search, slotIndex, team.id]);
+  }, [source, search, group, slotIndex, team.id]);
 
   const allPlayers = useMemo(() => [...new Map([...extras.filter((p) => p.team_id !== team.id), ...roster].map((p) => [p.id, p])).values()], [extras, roster, team.id]);
   const current = useMemo(() => plan ? cleanPlan(plan, allPlayers, team.id) : null, [plan, allPlayers, team.id]);
@@ -185,9 +187,9 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
   const bench = useMemo(() => pool.filter((p) => !current?.starters.includes(p.id)).sort((a, b) => (b.ca ?? -1) - (a.ca ?? -1)), [pool, current]);
   const totals = planTotals(pool, team.id, team.budget, Number(current?.staff_budget || 0));
   const shortlistPlayers = useMemo(() => allPlayers.filter((p) => shortlist.includes(p.id)), [allPlayers, shortlist]);
-  const visibleShortlist = shortlistPlayers.filter((p) => normalize(p.name).includes(normalize(listSearch)) && (listGroup === "all" || getPositionGroup(p) === listGroup));
+  const visibleShortlist = shortlistPlayers.filter((p) => normalize(p.name).includes(normalize(listSearch)) && (listGroup === "all" || getPositionGroups(p).some((position) => position === listGroup)));
   const candidatePlayers = source === "roster" ? roster : source === "planned" ? pool.filter((p) => p.team_id !== team.id) : source === "shortlist" ? allPlayers.filter((p) => shortlist.includes(p.id)) : results;
-  const filtered = candidatePlayers.filter((p) => (source === "market" || normalize(p.name).includes(normalize(search))) && (group === "all" || getPositionGroup(p) === group));
+  const filtered = candidatePlayers.filter((p) => (source === "market" || normalize(p.name).includes(normalize(search))) && (group === "all" || getPositionGroups(p).some((position) => position === group)));
   const missing = plan ? plan.starters.filter((id) => id !== null).length - (current?.starters.filter((id) => id !== null).length || 0) : 0;
 
   function edit(next: TeamPlan) {

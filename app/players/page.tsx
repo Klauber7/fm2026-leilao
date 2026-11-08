@@ -1,4 +1,5 @@
 "use client";
+import { POSITION_SECTIONS } from "@/lib/squad-positions";
 import {
   useCallback,
   useEffect,
@@ -119,16 +120,7 @@ const ATTRIBUTE_OPTIONS = [
   "Velocidade",
   "Visão de Jogo",
 ] as const;
-const categories = [
-  "Todos",
-  "Goleiro",
-  "Zagueiro",
-  "Lateral",
-  "Volante",
-  "Meia Atacante",
-  "Ponta",
-  "Atacante",
-];
+const categories = ["Todos", ...POSITION_SECTIONS.map(({ category }) => category)];
 function formatMoney(
   value: number | null
 ) {
@@ -148,29 +140,8 @@ function formatMoney(
     }
   ).format(value);
 }
-function getCategoryLabel(
-  category: string
-) {
-  switch (category) {
-    case "Todos":
-      return "Todos";
-    case "Goleiro":
-      return "Goleiros";
-    case "Zagueiro":
-      return "Zagueiros";
-    case "Lateral":
-      return "Laterais";
-    case "Volante":
-      return "Volantes";
-    case "Meia Atacante":
-      return "Meia Atacante";
-    case "Ponta":
-      return "Pontas";
-    case "Atacante":
-      return "Atacantes";
-    default:
-      return category;
-  }
+function getCategoryLabel(category: string) {
+  return POSITION_SECTIONS.find((section) => section.category === category)?.title ?? category;
 }
 function getCAColor(
   ca: number | null
@@ -426,7 +397,7 @@ export default function PlayersPage() {
           "string"
         ) {
           setSelectedCategory(
-            saved.selectedCategory
+            categories.includes(saved.selectedCategory) ? saved.selectedCategory : "Todos"
           );
         }
         if (
