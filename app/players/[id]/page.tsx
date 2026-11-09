@@ -243,36 +243,14 @@ function AttributeRow({
   const percentage = Math.max(5, Math.min(100, (value / 20) * 100));
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(115px,1fr) 80px 24px",
-        alignItems: "center",
-        columnGap: "7px",
-        minHeight: "27px",
-      }}
-    >
-      <div
-        style={{
-          color: "#e4e4e7",
-          fontSize: "12px",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
+    <div className="grid min-h-4 grid-cols-[minmax(0,1fr)_1.5rem] items-center gap-x-1 lg:min-h-[27px] lg:grid-cols-[minmax(0,1fr)_minmax(0,28%)_1.5rem] lg:gap-x-[7px]">
+      <span className="text-[11px] leading-tight text-zinc-200 lg:text-xs">
         {label}
-      </div>
+      </span>
 
       <div
-        style={{
-          width: "80px",
-          height: "11px",
-          borderRadius: "5px",
-          border: "1px solid #71717a",
-          background: "#111827",
-          overflow: "hidden",
-        }}
+        aria-hidden="true"
+        className="hidden h-[11px] overflow-hidden rounded-[5px] border border-zinc-500 bg-gray-900 lg:block"
       >
         <div
           style={{
@@ -284,16 +262,12 @@ function AttributeRow({
         />
       </div>
 
-      <div
-        style={{
-          fontSize: "13px",
-          fontWeight: 800,
-          textAlign: "right",
-          color: numberColor(value),
-        }}
+      <span
+        className="text-right text-xs leading-none font-extrabold tabular-nums lg:text-[13px]"
+        style={{ color: numberColor(value) }}
       >
         {value}
-      </div>
+      </span>
     </div>
   );
 }
@@ -320,30 +294,24 @@ function AttributeCard({
       }}
     >
       <div
+        className="px-1.5 py-1 lg:px-[11px] lg:py-[9px]"
         style={{
           background: "linear-gradient(90deg,#082f49,#071a2b)",
           borderBottom: "1px solid #075985",
-          padding: "9px 11px",
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "5px",
         }}
       >
-        <span style={{ fontSize: "19px" }}>{icon}</span>
+        <span aria-hidden="true" className="text-xs lg:text-[19px]">{icon}</span>
         <span
-          style={{
-            color: "white",
-            fontSize: "14px",
-            fontWeight: 900,
-            fontStyle: "italic",
-            whiteSpace: "nowrap",
-          }}
+          className="text-[11px] leading-tight font-black text-white italic lg:text-sm"
         >
           {title}
         </span>
       </div>
 
-      <div style={{ padding: "9px 10px 11px" }}>
+      <div className="px-1.5 py-1 lg:px-2.5 lg:py-2.5">
         {attributes.map((attribute) => (
           <AttributeRow
             key={attribute.key}
@@ -368,29 +336,24 @@ function PhysicalCard({ player }: { player: Player }) {
       }}
     >
       <div
+        className="px-1.5 py-1 lg:px-[11px] lg:py-[9px]"
         style={{
           background: "linear-gradient(90deg,#082f49,#071a2b)",
           borderBottom: "1px solid #075985",
-          padding: "9px 11px",
           display: "flex",
           alignItems: "center",
-          gap: "8px",
+          gap: "5px",
         }}
       >
-        <span style={{ fontSize: "19px" }}>🏃</span>
+        <span aria-hidden="true" className="text-xs lg:text-[19px]">🏃</span>
         <span
-          style={{
-            color: "white",
-            fontSize: "14px",
-            fontWeight: 900,
-            fontStyle: "italic",
-          }}
+          className="text-[11px] leading-tight font-black text-white italic lg:text-sm"
         >
           FÍSICOS & BIOTIPO
         </span>
       </div>
 
-      <div style={{ padding: "9px 10px 8px" }}>
+      <div className="px-1.5 py-1 lg:px-2.5 lg:py-2">
         {physicalAttributes.map((attribute) => (
           <AttributeRow
             key={attribute.key}
@@ -408,12 +371,7 @@ function PhysicalCard({ player }: { player: Player }) {
       />
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "7px",
-          padding: "10px",
-        }}
+        className="grid grid-cols-2 gap-1 p-1.5 lg:gap-[7px] lg:p-2.5"
       >
         <InfoBox label="📏 ALTURA" value={player.height || "-"} />
         <InfoBox label="⭐ CP" value={player.cp ?? "-"} accent="#7dd3fc" />
@@ -435,11 +393,11 @@ function InfoBox({
 }) {
   return (
     <div
+      className="min-w-0 px-0.5 py-0.5 wrap-anywhere lg:px-1.5 lg:py-2"
       style={{
         background: "#111827",
         border: "1px solid #334155",
         borderRadius: "7px",
-        padding: "8px 6px",
         textAlign: "center",
       }}
     >
@@ -787,21 +745,7 @@ export default function PlayerPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white">
-      <div
-        style={{
-          width: "100%",
-          overflowX: "auto",
-          WebkitOverflowScrolling: "touch",
-        }}
-      >
-        <div
-          style={{
-            width: isGoalkeeper ? "1450px" : "1180px",
-            minWidth: isGoalkeeper ? "1450px" : "1180px",
-            margin: "0 auto",
-            padding: "12px",
-          }}
-        >
+      <div className={`mx-auto w-full px-2 py-2 sm:p-3 ${isGoalkeeper ? "max-w-[1450px]" : "max-w-[1180px]"}`}>
         <button
           type="button"
           onClick={() => router.back()}
@@ -884,8 +828,8 @@ export default function PlayerPage() {
               !team ||
               player.team_id !== null
             }
+            className="max-w-[50%] shrink-0 lg:min-w-[190px]"
             style={{
-              minWidth: "190px",
               background:
                 startingAuction ||
                 !currentWindow ||
@@ -935,7 +879,7 @@ export default function PlayerPage() {
               alignItems: "center",
             }}
           >
-            <div>
+            <div className="min-w-0 wrap-anywhere">
               <div style={{ fontSize: "20px", fontWeight: 900 }}>
                 {player.name}
               </div>
@@ -952,10 +896,9 @@ export default function PlayerPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "5px" }}>
+            <div className="flex shrink-0 gap-[5px] [&>div]:min-w-10 lg:[&>div]:min-w-[60px]">
               <div
                 style={{
-                  minWidth: "60px",
                   textAlign: "center",
                   border: "1px solid #16a34a",
                   borderRadius: "7px",
@@ -984,7 +927,6 @@ export default function PlayerPage() {
 
               <div
                 style={{
-                  minWidth: "60px",
                   textAlign: "center",
                   border: "1px solid #38bdf8",
                   borderRadius: "7px",
@@ -1008,83 +950,60 @@ export default function PlayerPage() {
           </div>
         </div>
 
-        {player.position_ratings && (
-          <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
-            <h2 className="mb-2 text-xs font-bold text-zinc-200">Mapa de posições</h2>
-            <PositionMap ratings={player.position_ratings} />
-          </div>
-        )}
+        <div className="mb-2 flex items-start gap-1.5">
+          {player.position_ratings && (
+            <div className="w-[118px] shrink-0 rounded-lg border border-zinc-800 bg-zinc-900 px-1.5 py-1 sm:w-36 lg:w-56">
+              <h2 className="mb-1 text-[10px] font-bold text-zinc-200 lg:text-xs">Mapa de posições</h2>
+              <PositionMap ratings={player.position_ratings} />
+            </div>
+          )}
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "6px",
-            marginBottom: "8px",
-          }}
-        >
-          <div
-            style={{
-              background: "#18181b",
-              borderRadius: "7px",
-              padding: "6px 9px",
-            }}
-          >
+          <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5 wrap-anywhere">
             <div
               style={{
-                fontSize: "9px",
-                color: "#71717a",
-                fontWeight: 800,
+                background: "#18181b",
+                borderRadius: "7px",
+                padding: "6px 9px",
               }}
             >
-              VALOR
+              <div
+                style={{
+                  fontSize: "9px",
+                  color: "#71717a",
+                  fontWeight: 800,
+                }}
+              >
+                VALOR
+              </div>
+              <div style={{ fontSize: "12px", fontWeight: 800 }}>
+                {formatValue(player.value)}
+              </div>
             </div>
-            <div style={{ fontSize: "12px", fontWeight: 800 }}>
-              {formatValue(player.value)}
-            </div>
-          </div>
 
-          <div
-            style={{
-              background: "#18181b",
-              borderRadius: "7px",
-              padding: "6px 9px",
-            }}
-          >
             <div
               style={{
-                fontSize: "9px",
-                color: "#71717a",
-                fontWeight: 800,
+                background: "#18181b",
+                borderRadius: "7px",
+                padding: "6px 9px",
               }}
             >
-              SALÁRIO
-            </div>
-            <div style={{ fontSize: "12px", fontWeight: 800 }}>
-              {player.salary || "-"}
+              <div
+                style={{
+                  fontSize: "9px",
+                  color: "#71717a",
+                  fontWeight: 800,
+                }}
+              >
+                SALÁRIO
+              </div>
+              <div style={{ fontSize: "12px", fontWeight: 800 }}>
+                {player.salary || "-"}
+              </div>
             </div>
           </div>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isGoalkeeper
-              ? "repeat(5, minmax(0, 1fr))"
-              : "repeat(4, minmax(0, 1fr))",
-            gap: "7px",
-            alignItems: "stretch",
-          }}
-        >
-          {isGoalkeeper && (
-            <AttributeCard
-              icon="🧤"
-              title="ATRIBUTOS DE GOLEIRO"
-              attributes={goalkeeperAttributes}
-              player={player}
-            />
-          )}
-
+        <div className={`grid grid-cols-2 gap-1.5 ${isGoalkeeper ? "min-[360px]:grid-cols-3 lg:grid-cols-5" : "md:grid-cols-3 lg:grid-cols-4"}`}>
           <AttributeCard
             icon="🥾"
             title="ATRIBUTOS TÉCNICOS"
@@ -1107,7 +1026,15 @@ export default function PlayerPage() {
           />
 
           <PhysicalCard player={player} />
-        </div>
+
+          {isGoalkeeper && (
+            <AttributeCard
+              icon="🧤"
+              title="ATRIBUTOS DE GOLEIRO"
+              attributes={goalkeeperAttributes}
+              player={player}
+            />
+          )}
         </div>
       </div>
     </main>
