@@ -292,7 +292,7 @@ function StaffCard({
               Dispensa
             </p>
             <p className="mt-1 text-[11px] leading-tight text-zinc-400">
-              Você recebe 50% do valor pago
+              Você recebe 50% do valor de mercado
             </p>
           </div>
 
@@ -487,7 +487,7 @@ export default function StaffPage() {
 
     const confirmed = window.confirm(
       `Dispensar ${member.name}?\n\n` +
-        "O clube receberá 50% do valor realmente pago por este profissional.\n\n" +
+        `O clube receberá ${money(member.value * 0.5)}, equivalente a 50% do valor de mercado.\n\n` +
         `O staff voltará ao mercado pelo preço normal: ${money(member.value)}.`
     );
 
