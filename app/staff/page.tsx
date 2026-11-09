@@ -487,7 +487,7 @@ export default function StaffPage() {
 
     const confirmed = window.confirm(
       `Dispensar ${member.name}?\n\n` +
-        `O clube receberá ${money(member.value * 0.5)}, equivalente a 50% do valor de mercado.\n\n` +
+        `O clube receberá ${money(Math.max(member.value ?? 0, 0) * 0.5)}, equivalente a 50% do valor de mercado.\n\n` +
         `O staff voltará ao mercado pelo preço normal: ${money(member.value)}.`
     );
 
