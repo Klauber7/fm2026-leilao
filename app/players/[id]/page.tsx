@@ -5,6 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PositionMap from "../PositionMap";
 
+type SeasonPerformance = {
+  appearances: number;
+  goals: number;
+  assists: number;
+  player_of_match: number | null;
+  average_rating: number | null;
+};
+
 type Player = {
   id: number;
   unique_id: string;
@@ -17,7 +25,7 @@ type Player = {
   ca: number | null;
   cp: number | null;
   value: number | null;
-  salary: string | null;
+  player_season_performance: SeasonPerformance | null;
   category: string[] | null;
   available: boolean | null;
   drafted: boolean | null;
@@ -198,6 +206,36 @@ const otherAttributes: AttributeDefinition[] = [
   { key: "professionalism", label: "Profissionalismo" },
   { key: "injury_proneness", label: "Propensão a Lesões" },
 ];
+
+const seasonRatingFormat = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function SeasonPerformanceCard({ performance }: { performance: SeasonPerformance | null }) {
+  const rating = performance?.average_rating;
+  const rows = [
+    { label: "Jogos", value: performance?.appearances },
+    { label: "Gols", value: performance?.goals },
+    { label: "Assistências", value: performance?.assists },
+    { label: "Melhor em campo", value: performance?.player_of_match },
+    { label: "Nota média", value: rating == null ? null : seasonRatingFormat.format(rating) },
+  ];
+
+  return (
+    <section aria-label="Estatísticas da temporada atual" className="rounded-lg border border-sky-800 bg-sky-950/30 px-2 py-1.5">
+      <h2 className="mb-1 text-[9px] font-extrabold uppercase text-sky-200">Temporada atual</h2>
+      <dl className="divide-y divide-sky-900/60">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between gap-1 py-0.5 text-[10px] leading-tight lg:text-xs">
+            <dt className="text-zinc-200">{label}</dt>
+            <dd className="shrink-0 font-bold tabular-nums text-sky-100">{value ?? "—"}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
 
 function formatValue(value: number | null) {
   if (value === null || value === undefined) return "-";
@@ -462,7 +500,7 @@ export default function PlayerPage() {
         ca,
         cp,
         value,
-        salary,
+        player_season_performance(appearances, goals, assists, player_of_match, average_rating),
         category,
         available,
         drafted,
@@ -547,7 +585,11 @@ export default function PlayerPage() {
       return;
     }
 
-    const loadedPlayer = data as Player;
+    const performance: SeasonPerformance | SeasonPerformance[] | null = data.player_season_performance;
+    const loadedPlayer: Player = {
+      ...data,
+      player_season_performance: Array.isArray(performance) ? performance[0] ?? null : performance,
+    };
     setPlayer(loadedPlayer);
 
     const [authResult, windowResult, auctionResult] = await Promise.all([
@@ -958,7 +1000,7 @@ export default function PlayerPage() {
             </div>
           )}
 
-          <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5 wrap-anywhere">
+          <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-1.5 wrap-anywhere">
             <div
               style={{
                 background: "#18181b",
@@ -980,26 +1022,7 @@ export default function PlayerPage() {
               </div>
             </div>
 
-            <div
-              style={{
-                background: "#18181b",
-                borderRadius: "7px",
-                padding: "6px 9px",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "9px",
-                  color: "#71717a",
-                  fontWeight: 800,
-                }}
-              >
-                SALÁRIO
-              </div>
-              <div style={{ fontSize: "12px", fontWeight: 800 }}>
-                {player.salary || "-"}
-              </div>
-            </div>
+            <SeasonPerformanceCard performance={player.player_season_performance} />
           </div>
         </div>
 
