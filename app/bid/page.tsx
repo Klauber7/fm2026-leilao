@@ -55,6 +55,7 @@ function pricingLabel(value: string | null | undefined) {
   const labels: Record<string, string> = {
     auction: "Leilão",
     release100: "Dispensa 100%",
+    dispensa_100: "Dispensa 100%",
     free: "Grátis",
     paid: "Valor aberto",
     manual: "Valor aberto",
@@ -115,22 +116,26 @@ export default function BidPage() {
       ]);
       if (history.error) throw history.error;
       if (releases.error) throw releases.error;
-      const releaseItems: BidFeedRow[] = (releases.data || []).map((release) => ({
-        feed_id: `release100-${release.id}`,
-        item_type: "player",
-        item_name: release.player_name,
-        staff_role: null,
-        origin_name: release.team_name,
-        destination_name: "Mercado",
-        amount: Number(release.refund),
-        pricing_type: "release100",
-        completed_at: release.created_at,
-        player_id: release.player_id,
-        coach_id: null,
-        origin_team_id: release.team_id,
-        destination_team_id: null,
-      }));
-      setItems([...(history.data || []) as BidFeedRow[], ...releaseItems]
+      const historyItems: BidFeedRow[] = history.data || [];
+      const historyIds = new Set(historyItems.map((item) => item.feed_id));
+      const releaseItems: BidFeedRow[] = (releases.data || [])
+        .filter((release) => !historyIds.has(`release-full-${release.id}`))
+        .map((release) => ({
+          feed_id: `release100-${release.id}`,
+          item_type: "player",
+          item_name: release.player_name,
+          staff_role: null,
+          origin_name: release.team_name,
+          destination_name: "Mercado",
+          amount: Number(release.refund),
+          pricing_type: "release100",
+          completed_at: release.created_at,
+          player_id: release.player_id,
+          coach_id: null,
+          origin_team_id: release.team_id,
+          destination_team_id: null,
+        }));
+      setItems([...historyItems, ...releaseItems]
         .sort((a, b) => Date.parse(b.completed_at || "") - Date.parse(a.completed_at || "")));
 
     } catch (loadError) {
