@@ -1043,10 +1043,12 @@ export default function PlayerPage() {
                   {formatValue(player.value)}
                 </div>
               </div>
-              <section aria-label="Disponibilidade no último save" className="grid gap-1">
-                <AvailabilityIndicator label="Lesão" active={Boolean(player.player_availability_snapshot?.injury_return_date)} />
-                <AvailabilityIndicator label="Suspensão" active={Boolean(player.player_availability_snapshot?.suspended)} />
-              </section>
+              {player.team_id !== null && (
+                <section aria-label="Disponibilidade no último save" className="grid gap-1">
+                  <AvailabilityIndicator label="Lesão" active={Boolean(player.player_availability_snapshot?.injury_return_date)} />
+                  <AvailabilityIndicator label="Suspensão" active={Boolean(player.player_availability_snapshot?.suspended)} />
+                </section>
+              )}
             </div>
 
             <SeasonPerformanceCard performance={player.player_season_performance} />
