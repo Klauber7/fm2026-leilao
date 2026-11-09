@@ -13,6 +13,11 @@ type SeasonPerformance = {
   average_rating: number | null;
 };
 
+type AvailabilitySnapshot = {
+  injury_return_date: string | null;
+  suspended: boolean;
+};
+
 type Player = {
   id: number;
   unique_id: string;
@@ -26,6 +31,7 @@ type Player = {
   cp: number | null;
   value: number | null;
   player_season_performance: SeasonPerformance | null;
+  player_availability_snapshot: AvailabilitySnapshot | null;
   category: string[] | null;
   available: boolean | null;
   drafted: boolean | null;
@@ -234,6 +240,18 @@ function SeasonPerformanceCard({ performance }: { performance: SeasonPerformance
         ))}
       </dl>
     </section>
+  );
+}
+
+function AvailabilityIndicator({ label, active }: { label: string; active: boolean }) {
+  return (
+    <div className={`rounded-md border px-2 py-1 text-[10px] font-bold leading-tight lg:text-xs ${
+      active
+        ? "border-red-700 bg-red-950 text-red-200"
+        : "border-zinc-700 bg-zinc-900 text-zinc-400"
+    }`}>
+      {label}<span className="sr-only">{active ? " ativa no save" : " sem registro ativo no save"}</span>
+    </div>
   );
 }
 
@@ -501,6 +519,7 @@ export default function PlayerPage() {
         cp,
         value,
         player_season_performance(appearances, goals, assists, player_of_match, average_rating),
+        player_availability_snapshot(injury_return_date, suspended),
         category,
         available,
         drafted,
@@ -586,8 +605,10 @@ export default function PlayerPage() {
     }
 
     const performance: SeasonPerformance | SeasonPerformance[] | null = data.player_season_performance;
+    const availability: AvailabilitySnapshot | AvailabilitySnapshot[] | null = data.player_availability_snapshot;
     const loadedPlayer: Player = {
       ...data,
+      player_availability_snapshot: Array.isArray(availability) ? availability[0] ?? null : availability,
       player_season_performance: Array.isArray(performance) ? performance[0] ?? null : performance,
     };
     setPlayer(loadedPlayer);
@@ -1001,25 +1022,31 @@ export default function PlayerPage() {
           )}
 
           <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-1.5 wrap-anywhere">
-            <div
-              style={{
-                background: "#18181b",
-                borderRadius: "7px",
-                padding: "6px 9px",
-              }}
-            >
+            <div className="min-w-0 space-y-1.5">
               <div
                 style={{
-                  fontSize: "9px",
-                  color: "#71717a",
-                  fontWeight: 800,
+                  background: "#18181b",
+                  borderRadius: "7px",
+                  padding: "6px 9px",
                 }}
               >
-                VALOR
+                <div
+                  style={{
+                    fontSize: "9px",
+                    color: "#71717a",
+                    fontWeight: 800,
+                  }}
+                >
+                  VALOR
+                </div>
+                <div style={{ fontSize: "12px", fontWeight: 800 }}>
+                  {formatValue(player.value)}
+                </div>
               </div>
-              <div style={{ fontSize: "12px", fontWeight: 800 }}>
-                {formatValue(player.value)}
-              </div>
+              <section aria-label="Disponibilidade no último save" className="grid gap-1">
+                <AvailabilityIndicator label="Lesão" active={Boolean(player.player_availability_snapshot?.injury_return_date)} />
+                <AvailabilityIndicator label="Suspensão" active={Boolean(player.player_availability_snapshot?.suspended)} />
+              </section>
             </div>
 
             <SeasonPerformanceCard performance={player.player_season_performance} />
