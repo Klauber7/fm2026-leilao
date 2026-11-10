@@ -121,7 +121,7 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
   }
 
   return (
-    <section aria-labelledby="internal-market-heading" className="mb-5 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-4 sm:p-5">
+    <section id="mercado-interno" aria-labelledby="internal-market-heading" className="mb-5 scroll-mt-20 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-4 sm:p-5">
       <h2 id="internal-market-heading" className="text-2xl font-black text-emerald-300">Mercado Interno</h2>
       <p className="mt-1 text-sm text-zinc-400">Jogadores anunciados pelos clubes da FriendZone. Clique em um anúncio para montar sua proposta.</p>
 

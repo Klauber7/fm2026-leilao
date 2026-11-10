@@ -39,6 +39,11 @@ const mainMenu: MenuItem[] = [
     icon: "💰",
   },
   {
+    href: "/players#mercado-interno",
+    label: "Mercado Interno",
+    icon: "🤝",
+  },
+  {
     href: "/players",
     label: "Mercado de Jogadores",
     icon: "🌍",
@@ -246,6 +251,7 @@ export default function Navbar() {
           <Link
             key={item.href}
             href={item.href}
+            onNavigate={() => setMobileOpen(false)}
             className={menuLinkClass(
               item.href
             )}
