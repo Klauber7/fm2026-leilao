@@ -1,4 +1,5 @@
 "use client";
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import { POSITION_SECTIONS } from "@/lib/squad-positions";
 import {
   useCallback,
@@ -1858,6 +1859,7 @@ export default function PlayersPage() {
                     }}
                     className="block"
                   >
+                    <PlayerPhoto name={player.name} uniqueId={player.unique_id} className="h-20 w-20" />
                     {/* NOME */}
                     <div className="mt-4 text-[14px] font-black text-white group-hover:text-indigo-300">
                       {

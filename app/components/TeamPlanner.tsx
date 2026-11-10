@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -15,14 +16,8 @@ const control = "rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm
 const action = `${control} font-bold transition hover:border-green-500`;
 const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s'-]/g, " ").trim();
 
-export function PersonPhoto({ name, src, large = false }: { name: string; src: string | null; large?: boolean }) {
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const safeSrc = src && /^https?:\/\//i.test(src) && src !== failedSrc ? src : null;
-  return (
-    <span className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-zinc-800 text-lg font-black text-zinc-300 ${large ? "h-8 w-8 sm:h-9 sm:w-9" : "h-11 w-11"}`}>
-      {safeSrc ? <img src={safeSrc} alt={name} loading="lazy" className="h-full w-full object-contain" onError={() => setFailedSrc(src)} /> : name.slice(0, 1).toUpperCase()}
-    </span>
-  );
+export function PersonPhoto({ name, src, uniqueId, large = false }: { name: string; src: string | null; uniqueId?: string | null; large?: boolean }) {
+  return <PlayerPhoto name={name} uniqueId={uniqueId} src={src} className={large ? "h-8 w-8 sm:h-9 sm:w-9" : "h-11 w-11"} />;
 }
 
 export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam; roster: PlanningPlayer[]; mode: PlanKind }) {
@@ -284,7 +279,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h3 className="text-xl font-black">Reservas <span className="text-sm text-zinc-500">({bench.length})</span></h3>{planning && <button type="button" className={action} onClick={(e) => openPicker(-1, e.currentTarget)}>+ Planejar reserva</button>}</div>
           {bench.length === 0 ? <p className="rounded-xl border border-dashed border-zinc-700 p-5 text-sm text-zinc-400">Nenhum reserva. Os jogadores que não estiverem entre os titulares aparecerão aqui.</p> : <div className={`grid gap-2 ${planning ? "sm:grid-cols-2 2xl:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2"}`}>
             {bench.map((p) => <article key={p.id} className={`flex min-w-0 items-center gap-3 rounded-xl border p-3 ${p.team_id !== team.id ? "border-amber-500/30 bg-amber-500/5" : "border-zinc-800 bg-zinc-900"}`}>
-              <PersonPhoto name={p.name} src={p.image_url} />
+              <PersonPhoto name={p.name} src={p.image_url} uniqueId={p.unique_id} />
               <div className="min-w-0 flex-1"><Link href={`/players/${p.id}`} className="block truncate text-sm font-black hover:text-green-300">{p.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{getPositionBadge(p)} · {p.age ?? "—"} anos · CA {p.ca ?? "—"} · CP {p.cp ?? "—"}</p>{p.team_id !== team.id && <p className="mt-1 text-[11px] text-amber-300">Reforço · {money(p.value)}</p>}</div>
               <div className="flex shrink-0 flex-col gap-2"><button type="button" className={`${action} px-2 py-1 text-xs`} onClick={(e) => {
                 opener.current = e.currentTarget;
@@ -357,7 +352,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
               const starter = current.starters.includes(player.id);
               const included = player.team_id === team.id || current.targets.includes(player.id);
               return <article key={player.id} className={`min-w-0 rounded-xl border bg-zinc-950/70 p-3 ${included ? "border-green-500/40" : "border-zinc-700"}`}>
-                <div className="flex items-start gap-3"><PersonPhoto name={player.name} src={player.image_url} /><div className="min-w-0 flex-1"><Link href={`/players/${player.id}`} className="block truncate text-sm font-black hover:text-green-300">{player.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{player.position || getPositionBadge(player)} · {player.age ?? "—"} anos</p><p className="mt-1 text-[11px] text-zinc-400">CA {player.ca ?? "—"} · CP {player.cp ?? "—"}</p></div></div>
+                <div className="flex items-start gap-3"><PersonPhoto name={player.name} src={player.image_url} uniqueId={player.unique_id} /><div className="min-w-0 flex-1"><Link href={`/players/${player.id}`} className="block truncate text-sm font-black hover:text-green-300">{player.name}</Link><p className="mt-1 text-[11px] text-zinc-400">{player.position || getPositionBadge(player)} · {player.age ?? "—"} anos</p><p className="mt-1 text-[11px] text-zinc-400">CA {player.ca ?? "—"} · CP {player.cp ?? "—"}</p></div></div>
                 <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs"><span className="font-bold text-amber-300">{money(player.value)}</span><span className={included ? "text-green-400" : "text-zinc-400"}>{starter ? "Titular no plano" : included ? "Reserva no plano" : "Disponível para planejar"}</span></div>
                 <div className="mt-3 flex flex-wrap gap-2"><button type="button" className={`${action} flex-1 text-xs`} disabled={starter} onClick={() => {
                   setPendingPlayer(player.id);
@@ -383,7 +378,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
                     const target = player && player.team_id !== team.id;
                     return <button type="button" key={index} aria-label={`${slot.label} ${index + 1}: ${player?.name || "escolher titular"}`} title={player?.name || "Escolher titular"} onClick={(e) => openPicker(index, e.currentTarget)} className={`flex w-full min-w-0 max-w-24 flex-col items-center gap-0.5 rounded-lg border px-1 py-1.5 text-center shadow-sm transition hover:border-green-300 focus-visible:outline-2 focus-visible:outline-green-300 ${target ? "border-amber-400/60 bg-amber-950/80" : "border-white/15 bg-zinc-950/70"}`}>
                       <span className={`text-[9px] font-bold ${target ? "text-amber-300" : "text-green-300"}`}>{slot.label}{target ? " · Alvo" : ""}</span>
-                      {player ? <PersonPhoto name={player.name} src={player.image_url} large /> : <span className="flex h-8 w-8 items-center justify-center text-2xl font-light text-green-300 sm:h-9">+</span>}
+                      {player ? <PersonPhoto name={player.name} src={player.image_url} uniqueId={player.unique_id} large /> : <span className="flex h-8 w-8 items-center justify-center text-2xl font-light text-green-300 sm:h-9">+</span>}
                       <span className="w-full truncate text-[10px] font-bold leading-tight sm:text-[11px]">{player?.name || "Escolher"}</span>
                       {player && <span className="text-[9px] text-zinc-300 sm:text-[10px]">CA {player.ca ?? "—"} · CP {player.cp ?? "—"}</span>}
                     </button>;
@@ -434,7 +429,7 @@ export default function TeamPlanner({ team, roster, mode }: { team: PlanningTeam
         {slotIndex !== null && slotIndex >= 0 && current.starters[slotIndex] !== null && <button type="button" className={`${action} mt-4 w-full text-amber-300`} onClick={() => { edit({ ...current, starters: assignStarter(current.starters, slotIndex, null) }); setSlotIndex(null); }}>Enviar titular para o banco</button>}
         {searchError && <p role="alert" className="mt-4 text-sm text-red-300">{searchError}</p>}
         <div className="mt-4 space-y-2" aria-live="polite">
-          {source === "market" && searching ? <p className="p-4 text-sm text-zinc-400">Buscando jogadores...</p> : filtered.length === 0 ? <p className="p-4 text-sm text-zinc-400">Nenhum jogador encontrado.{source === "shortlist" && " Adicione jogadores à Minha lista no mercado."}</p> : filtered.map((p) => <button type="button" key={p.id} onClick={() => choose(p)} className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-left hover:border-green-500 focus-visible:outline-2 focus-visible:outline-green-400"><PersonPhoto name={p.name} src={p.image_url} /><span className="min-w-0 flex-1"><span className="block text-sm font-black">{p.name}</span><span className="mt-1 block text-xs text-zinc-400">{p.position || getPositionBadge(p)} · {p.age ?? "—"} anos · CA {p.ca ?? "—"} · CP {p.cp ?? "—"}</span><span className={`mt-1 block text-xs ${p.team_id === team.id ? "text-green-400" : "text-amber-300"}`}>{p.team_id === team.id ? "Do elenco" : `Reforço · ${money(p.value)}`}{current.starters.includes(p.id) ? " · Titular (trocar)" : ""}</span></span></button>)}
+          {source === "market" && searching ? <p className="p-4 text-sm text-zinc-400">Buscando jogadores...</p> : filtered.length === 0 ? <p className="p-4 text-sm text-zinc-400">Nenhum jogador encontrado.{source === "shortlist" && " Adicione jogadores à Minha lista no mercado."}</p> : filtered.map((p) => <button type="button" key={p.id} onClick={() => choose(p)} className="flex w-full items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-left hover:border-green-500 focus-visible:outline-2 focus-visible:outline-green-400"><PersonPhoto name={p.name} src={p.image_url} uniqueId={p.unique_id} /><span className="min-w-0 flex-1"><span className="block text-sm font-black">{p.name}</span><span className="mt-1 block text-xs text-zinc-400">{p.position || getPositionBadge(p)} · {p.age ?? "—"} anos · CA {p.ca ?? "—"} · CP {p.cp ?? "—"}</span><span className={`mt-1 block text-xs ${p.team_id === team.id ? "text-green-400" : "text-amber-300"}`}>{p.team_id === team.id ? "Do elenco" : `Reforço · ${money(p.value)}`}{current.starters.includes(p.id) ? " · Titular (trocar)" : ""}</span></span></button>)}
           {source === "market" && <p className="pt-2 text-xs text-zinc-500">Até 40 resultados por busca. Digite o nome para encontrar outras opções; filtre a posição entre os resultados.</p>}
         </div>
       </dialog>

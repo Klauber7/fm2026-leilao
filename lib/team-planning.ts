@@ -1,6 +1,7 @@
 import { getPositionGroup, getPositionGroups, type PositionGroup } from "./squad-positions";
 
 export type PlanningPlayer = {
+  unique_id: string | null;
   id: number;
   name: string;
   position: string | null;
@@ -15,7 +16,7 @@ export type PlanningPlayer = {
   team_id: number | null;
 };
 
-export const PLANNING_PLAYER_COLUMNS = "id,name,position,natural_position,category,position_ratings,age,ca,cp,value,image_url,team_id";
+export const PLANNING_PLAYER_COLUMNS = "id,unique_id,name,position,natural_position,category,position_ratings,age,ca,cp,value,image_url,team_id";
 export type PlanningTeam = { id: number; name: string; budget: number | null };
 export type PlanKind = "lineup" | "planning";
 export type TeamPlan = {

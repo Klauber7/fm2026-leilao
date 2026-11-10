@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -23,6 +24,7 @@ type Team = {
 };
 
 type Player = {
+  unique_id: string | null;
   id: number;
   name: string;
   age: number | null;
@@ -113,19 +115,7 @@ function PlayerCardCompact({
     >
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-700 bg-zinc-800">
-            {player.image_url ? (
-              <img
-                src={player.image_url}
-                alt={player.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="text-sm font-black text-zinc-300">
-                {getPositionBadge(player)}
-              </span>
-            )}
-          </div>
+          <PlayerPhoto name={player.name} uniqueId={player.unique_id} src={player.image_url} className="h-14 w-14" />
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-black uppercase tracking-wide text-green-400">
@@ -329,7 +319,7 @@ export default function TeamPage() {
           supabase
             .from("players")
             .select(
-              "id,name,age,position,natural_position,category,position_ratings,nationality,ca,value,image_url,team_id"
+              "id,unique_id,name,age,position,natural_position,category,position_ratings,nationality,ca,value,image_url,team_id"
             )
             .eq("team_id", teamId)
             .order("ca", {

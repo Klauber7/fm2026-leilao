@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import {
   useCallback,
@@ -12,6 +13,7 @@ import { groupSquadPlayers } from "@/lib/squad-positions";
 import TeamPlanner from "@/app/components/TeamPlanner";
 
 type Player = {
+  unique_id: string | null;
   id: number;
   name: string;
   position: string | null;
@@ -59,9 +61,7 @@ function PlayerCard({
         className="block p-3"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800 text-xl font-black text-zinc-500">
-            {player.name.charAt(0).toUpperCase()}
-          </div>
+          <PlayerPhoto name={player.name} uniqueId={player.unique_id} src={player.image_url} />
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-black uppercase text-green-400">
@@ -186,6 +186,7 @@ export default function SquadPage() {
         .from("players")
         .select(`
           id,
+          unique_id,
           name,
           position,
           natural_position,

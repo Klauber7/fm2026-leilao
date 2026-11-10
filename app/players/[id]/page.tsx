@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -995,7 +996,7 @@ export default function PlayerPage() {
               alignItems: "center",
             }}
           >
-            <div className="min-w-0 wrap-anywhere">
+            <div className="flex min-w-0 items-center gap-2"><PlayerPhoto name={player.name} uniqueId={player.unique_id} src={player.image_url} className="h-12 w-12 sm:h-16 sm:w-16" /><div className="min-w-0 wrap-anywhere">
               <div style={{ fontSize: "20px", fontWeight: 900 }}>
                 {player.name}
               </div>
@@ -1012,6 +1013,7 @@ export default function PlayerPage() {
               </div>
             </div>
 
+            </div>
             <div className="flex shrink-0 gap-[5px] [&>div]:min-w-10 lg:[&>div]:min-w-[60px]">
               <div
                 style={{

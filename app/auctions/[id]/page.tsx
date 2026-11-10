@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import {
   useCallback,
@@ -11,6 +12,8 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Player = {
+  unique_id: string | null;
+  image_url: string | null;
   name: string;
   age: number | null;
   position: string | null;
@@ -344,6 +347,8 @@ export default function AuctionDetailPage() {
                 ends_at,
                 closed_at,
                 players (
+                  unique_id,
+                  image_url,
                   name,
                   age,
                   position,
@@ -1184,6 +1189,7 @@ export default function AuctionDetailPage() {
               }
             </p>
 
+            {auction.players && <PlayerPhoto name={auction.players.name} uniqueId={auction.players.unique_id} src={auction.players.image_url} className="h-24 w-24" />}
             <h1 className="mt-2 text-4xl font-black md:text-6xl">
               {auction.players
                 ?.name ||

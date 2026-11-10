@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { getPositionGroups, POSITION_SECTIONS, type PositionGroup } from "@/lib/squad-positions";
@@ -12,6 +13,8 @@ type Listing = {
   team_id: number;
   asking_price: number;
   player: {
+    unique_id: string | null;
+    image_url: string | null;
     name: string;
     value: number | null;
     position: string | null;
@@ -28,7 +31,7 @@ const field = "rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm t
 function fetchListings() {
   return supabase
     .from("internal_player_listings")
-    .select("id, player_id, team_id, asking_price, player:players!inner(name, value, position, natural_position, category, position_ratings), team:teams!inner(name)")
+    .select("id, player_id, team_id, asking_price, player:players!inner(unique_id, image_url, name, value, position, natural_position, category, position_ratings), team:teams!inner(name)")
     .order("asking_price", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<Listing[]>();
@@ -221,6 +224,7 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
             return (
               <li key={listing.id} className="rounded-xl border border-zinc-700 bg-zinc-950">
                 <Link href={`/players/${listing.player_id}?listing=${listing.id}`} className="block rounded-xl p-3 hover:bg-zinc-800">
+                  <PlayerPhoto name={listing.player.name} uniqueId={listing.player.unique_id} src={listing.player.image_url} className="mb-2 h-14 w-14" />
                   <p className="font-black text-white">{listing.player.name}</p>
                   <p className="text-xs text-zinc-400">{[listing.team.name, listing.player.position].filter(Boolean).join(" · ")}</p>
                   <dl className="mt-2 grid gap-1 text-sm">

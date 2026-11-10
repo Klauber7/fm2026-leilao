@@ -1,5 +1,6 @@
 "use client";
 
+import PlayerPhoto from "@/app/components/PlayerPhoto";
 import Link from "next/link";
 import {
   useCallback,
@@ -9,6 +10,8 @@ import {
 import { supabase } from "@/lib/supabase";
 
 type Player = {
+  unique_id: string | null;
+  image_url: string | null;
   name: string;
   age: number | null;
   position: string | null;
@@ -216,6 +219,8 @@ export default function AuctionsPage() {
                 status,
                 ends_at,
                 players (
+                  unique_id,
+                  image_url,
                   name,
                   age,
                   position,
@@ -742,6 +747,7 @@ export default function AuctionsPage() {
 
                       </div>
 
+                      {auction.players && <PlayerPhoto name={auction.players.name} uniqueId={auction.players.unique_id} src={auction.players.image_url} className="mt-3 h-20 w-20" />}
                       <h3 className="mt-4 text-2xl font-black">
                         {auction.players
                           ?.name ||
@@ -854,6 +860,7 @@ export default function AuctionsPage() {
                         : "ENCERRADO"}
                     </p>
 
+                    {auction.players && <PlayerPhoto name={auction.players.name} uniqueId={auction.players.unique_id} src={auction.players.image_url} className="mt-3 h-16 w-16" />}
                     <h3 className="mt-3 text-xl font-black">
                       {auction.players
                         ?.name ||
