@@ -8,6 +8,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import InternalMarket from "./InternalMarket";
 import PositionMap from "./PositionMap";
 type Player = {
   id: number;
@@ -1378,6 +1379,7 @@ export default function PlayersPage() {
             </div>
           </div>
         </div>
+        <InternalMarket key={myTeam?.id ?? "visitor"} teamId={myTeam?.id ?? null} />
         {/* STATUS DO MERCADO */}
         {marketOpen ? (
           <div className="mb-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4">

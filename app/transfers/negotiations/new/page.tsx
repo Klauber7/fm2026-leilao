@@ -61,6 +61,8 @@ export default function NewNegotiationPage() {
   const counterOf =
     searchParams.get("counterOf");
 
+  const listingId = searchParams.get("listing");
+
   const isCounterOffer =
     Boolean(counterOf);
 
@@ -169,12 +171,13 @@ export default function NewNegotiationPage() {
     if (!sellerTeamId) {
       setTargetPlayers([]);
       setPlayerId("");
+      setLoadingPlayers(false);
       return;
     }
 
-    loadTargetPlayers(
-      Number(sellerTeamId)
-    );
+    let active = true;
+    void loadTargetPlayers(Number(sellerTeamId), () => active);
+    return () => { active = false; };
   }, [sellerTeamId]);
 
   function parseMoney(
@@ -184,11 +187,7 @@ export default function NewNegotiationPage() {
       return 0;
     }
 
-    return Number(
-      value
-        .replace(/\./g, "")
-        .replace(",", ".")
-    );
+    return Number(value);
   }
 
   const totalAmount =
@@ -539,6 +538,20 @@ export default function NewNegotiationPage() {
         Number(counterOf),
         teamData.id
       );
+    } else if (listingId) {
+      const { data: listing, error: listingError } = await supabase
+        .from("internal_player_listings")
+        .select("player_id, team_id, asking_price")
+        .eq("id", listingId)
+        .maybeSingle();
+
+      if (listingError || !listing || !teamsData?.some((team) => team.id === listing.team_id)) {
+        setError("Este anúncio não está disponível para negociação.");
+      } else {
+        setSellerTeamId(String(listing.team_id));
+        setPlayerId(String(listing.player_id));
+        setAmount(String(listing.asking_price));
+      }
     }
 
     setLoading(false);
@@ -744,7 +757,8 @@ export default function NewNegotiationPage() {
   }
 
   async function loadTargetPlayers(
-    teamId: number
+    teamId: number,
+    isActive: () => boolean
   ) {
     setLoadingPlayers(true);
 
@@ -777,6 +791,8 @@ export default function NewNegotiationPage() {
           }
         );
 
+    if (!isActive()) return;
+
     if (error) {
       console.error(error);
 
@@ -797,9 +813,9 @@ export default function NewNegotiationPage() {
       data || []
     );
 
-    if (!isCounterOffer) {
-      setPlayerId("");
-    }
+    setPlayerId((selected) =>
+      data?.some((player) => String(player.id) === selected) ? selected : ""
+    );
 
     setLoadingPlayers(
       false
@@ -1804,11 +1820,11 @@ export default function NewNegotiationPage() {
 
                   <select
                     value={sellerTeamId}
-                    onChange={(event) =>
-                      setSellerTeamId(
-                        event.target.value
-                      )
-                    }
+                    onChange={(event) => {
+                      setPlayerId("");
+                      setTargetPlayers([]);
+                      setSellerTeamId(event.target.value);
+                    }}
                     disabled={isCounterOffer}
                     className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-white outline-none focus:border-green-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -1955,6 +1971,7 @@ export default function NewNegotiationPage() {
                   <input
                     type="number"
                     min="0"
+                    step="0.01"
                     value={amount}
                     onChange={(event) =>
                       setAmount(
