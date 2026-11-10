@@ -17,6 +17,14 @@ type Listing = {
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const field = "rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white";
 
+function fetchListings() {
+  return supabase
+    .from("internal_player_listings")
+    .select("id, player_id, team_id, asking_price, player:players!inner(name, position), team:teams!inner(name)")
+    .order("created_at", { ascending: false })
+    .returns<Listing[]>();
+}
+
 export default function InternalMarket({ teamId }: { teamId: number | null }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [roster, setRoster] = useState<MarketPlayer[]>([]);
@@ -28,11 +36,7 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
   const [message, setMessage] = useState("");
 
   async function loadListings() {
-    const { data, error } = await supabase
-      .from("internal_player_listings")
-      .select("id, player_id, team_id, asking_price, player:players!inner(name, position), team:teams!inner(name)")
-      .order("created_at", { ascending: false })
-      .returns<Listing[]>();
+    const { data, error } = await fetchListings();
     if (error) {
       setMessage("Não foi possível carregar os anúncios.");
       return false;
@@ -50,7 +54,14 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
 
   useEffect(() => {
     if (!signedIn) return;
-    void loadListings().finally(() => setLoading(false));
+    let active = true;
+    void fetchListings().then(({ data, error }) => {
+      if (!active) return;
+      if (error) setMessage("Não foi possível carregar os anúncios.");
+      else setListings(data);
+      setLoading(false);
+    });
+    return () => { active = false; };
   }, [signedIn]);
 
   useEffect(() => {
