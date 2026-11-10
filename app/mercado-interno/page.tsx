@@ -103,11 +103,13 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
 
   const selectedListing = listings.find((listing) => listing.team_id === teamId && String(listing.player_id) === playerId);
 
+  const amount = Number(price.replace(",", "."));
+  const validPrice = /^\d+(?:[,.]\d{1,2})?$/.test(price) && amount > 0 && amount <= 1e12;
+
   async function publish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!teamId || busy) return;
-    const amount = Number(price.replace(",", "."));
-    if (!playerId || !/^\d+(?:[,.]\d{1,2})?$/.test(price) || amount <= 0 || amount > 1e12) {
+    if (!playerId || !validPrice) {
       setMessage("Selecione um jogador e informe um valor válido, sem separador de milhar.");
       return;
     }
@@ -164,11 +166,14 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
               {roster.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}
             </select>
           </label>
-          <label className="grid gap-1 text-xs font-bold text-zinc-300">
-            Preço pedido (R$)
-            <input required inputMode="decimal" placeholder="Ex. 15000000" className={field}
+          <div className="grid w-full gap-1 sm:w-auto">
+            <label htmlFor="internal-market-price" className="text-xs font-bold text-zinc-300">Preço pedido (R$)</label>
+            <input id="internal-market-price" required inputMode="decimal" placeholder="Ex. 15000000" className={field}
               value={price} onChange={(event) => setPrice(event.target.value)} disabled={busy} />
-          </label>
+            <output htmlFor="internal-market-price" className="mt-1 text-sm text-zinc-400">
+              Total em dinheiro: {validPrice || !price ? `R$ ${amount.toLocaleString("pt-BR")}` : "—"}
+            </output>
+          </div>
           <button disabled={busy || !playerId} className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-black text-zinc-950 disabled:opacity-50">
             {selectedListing ? "Atualizar preço" : "Anunciar jogador"}
           </button>
