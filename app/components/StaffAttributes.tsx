@@ -2,7 +2,7 @@
 
 type AttributeValues = Record<string, number | null>;
 
-const GROUPS = [
+export const STAFF_ATTRIBUTE_GROUPS = [
   {
     icon: "🏋️",
     title: "TREINAMENTO",
@@ -123,7 +123,7 @@ export default function StaffAttributes({
 
   return (
     <div className="mt-3 grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="Atributos da comissão técnica">
-      {GROUPS.map((group) => (
+      {STAFF_ATTRIBUTE_GROUPS.map((group) => (
         <section
           key={group.title}
           className="h-full overflow-hidden rounded-[10px] border border-sky-600 bg-[linear-gradient(180deg,#04131c_0%,#031016_100%)]"

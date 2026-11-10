@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { STAFF_ATTRIBUTE_GROUPS } from "@/app/components/StaffAttributes";
 
 type Coach = {
   id: number;
@@ -43,6 +44,19 @@ const STAFF_HIGHLIGHTS: Record<string, string[]> = {
   "Analista de Desempenho": ["Análise de Dados", "Avaliar Capacidade", "Avaliar Potencial"],
   "Cientista Desportivo": ["Ciência Desportiva", "Treino Físico", "Profissionalismo"],
 };
+const FORMATIONS = ["3-4-2-1", "4-2-2-2", "4-2-3-1", "4-2-4", "4-3-3", "4-4-2", "5-2-1-2", "5-2-2-1", "5-2-3", "5-3-2"];
+const ATTRIBUTE_KEYS = new Set<string>(STAFF_ATTRIBUTE_GROUPS.flatMap(({ keys }) => [...keys]));
+const ATTRIBUTE_SCORES = Array.from({ length: 20 }, (_, index) => index + 1);
+const SORT_OPTIONS = [
+  { value: "ca", label: "Maior CA", column: "ca", ascending: false },
+  { value: "cp", label: "Maior CP", column: "cp", ascending: false },
+  { value: "price", label: "Menor valor", column: "value", ascending: true },
+  { value: "age", label: "Mais jovens", column: "age", ascending: true },
+];
+const FILTER_FIELD = "w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-green-500";
+
+type AttributeFilter = { key: string; min: number };
+
 const STAFF_MARKET_STATE_KEY = "friendzone-staff-market-state";
 const STAFF_MARKET_RETURN_KEY = "friendzone-staff-market-return";
 
@@ -54,6 +68,10 @@ type StaffMarketState = {
   maxCA: string;
   minCP: string;
   maxCP: string;
+  formation: string;
+  maxValue: string;
+  sort: string;
+  attributeFilters: AttributeFilter[];
   page: number;
   scrollY: number;
   focusedCoachId?: number;
@@ -121,6 +139,12 @@ export default function CoachesPage() {
   const [minCP, setMinCP] = useState("");
   const [maxCP, setMaxCP] = useState("");
 
+  const [formation, setFormation] = useState("");
+  const [maxValue, setMaxValue] = useState("");
+  const [sort, setSort] = useState("ca");
+  const [attributeFilters, setAttributeFilters] = useState<AttributeFilter[]>([]);
+  const latestRequest = useRef(0);
+
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [currentWindow, setCurrentWindow] = useState<TransferWindow | null>(null);
@@ -158,6 +182,10 @@ export default function CoachesPage() {
       maxCA,
       minCP,
       maxCP,
+      formation,
+      maxValue,
+      sort,
+      attributeFilters,
       page,
       scrollY: window.scrollY,
       ...(focusedCard && focusedCoachId !== undefined
@@ -188,6 +216,10 @@ export default function CoachesPage() {
     maxCA,
     minCP,
     maxCP,
+    formation,
+    maxValue,
+    sort,
+    attributeFilters,
     page,
   ]);
 
@@ -222,6 +254,20 @@ export default function CoachesPage() {
         if (typeof saved.maxCA === "string") setMaxCA(saved.maxCA);
         if (typeof saved.minCP === "string") setMinCP(saved.minCP);
         if (typeof saved.maxCP === "string") setMaxCP(saved.maxCP);
+        if (typeof saved.formation === "string" && FORMATIONS.includes(saved.formation)) {
+          setFormation(saved.formation);
+        }
+        if (typeof saved.maxValue === "string" && /^\d+(\.\d+)?$/.test(saved.maxValue)) {
+          setMaxValue(saved.maxValue);
+        }
+        if (typeof saved.sort === "string" && SORT_OPTIONS.some(({ value }) => value === saved.sort)) {
+          setSort(saved.sort);
+        }
+        if (Array.isArray(saved.attributeFilters)) {
+          setAttributeFilters(saved.attributeFilters.filter(
+            (filter) => filter && (!filter.key || ATTRIBUTE_KEYS.has(filter.key)) && ATTRIBUTE_SCORES.includes(filter.min)
+          ).slice(0, 3));
+        }
         if (
           typeof saved.page === "number" &&
           Number.isFinite(saved.page) &&
@@ -438,6 +484,7 @@ export default function CoachesPage() {
   }, []);
 
   const loadCoaches = useCallback(async () => {
+    const request = ++latestRequest.current;
     setLoading(true);
     setErrorMessage("");
 
@@ -495,19 +542,29 @@ export default function CoachesPage() {
       query = query.lte("cp", Number(maxCP));
     }
 
+    if (formation) {
+      query = query.ilike("preferred_formation", `${formation}%`);
+    }
+
+    if (maxValue !== "" && Number.isFinite(Number(maxValue)) && Number(maxValue) >= 0) {
+      query = query.lte("value", Number(maxValue));
+    }
+
+    for (const { key, min } of attributeFilters) {
+      if (key) {
+        query = query.in(`attributes->>"${key}"`, ATTRIBUTE_SCORES.slice(min - 1));
+      }
+    }
+
+    const ordering = SORT_OPTIONS.find(({ value }) => value === sort) ?? SORT_OPTIONS[0];
     const { data, error, count } = await query
-      .order("ca", {
-        ascending: false,
-        nullsFirst: false,
-      })
-      .order("cp", {
-        ascending: false,
-        nullsFirst: false,
-      })
-      .order("name", {
-        ascending: true,
-      })
+      .order(ordering.column, { ascending: ordering.ascending, nullsFirst: false })
+      .order(ordering.column === "cp" ? "ca" : "cp", { ascending: false, nullsFirst: false })
+      .order("name", { ascending: true })
+      .order("id", { ascending: true })
       .range(from, to);
+
+    if (request !== latestRequest.current) return;
 
     if (error) {
       console.error("Erro ao carregar staffs:", error);
@@ -528,6 +585,10 @@ export default function CoachesPage() {
     maxCA,
     minCP,
     maxCP,
+    formation,
+    maxValue,
+    sort,
+    attributeFilters,
   ]);
 
   useEffect(() => {
@@ -707,6 +768,10 @@ export default function CoachesPage() {
     setMaxCA("");
     setMinCP("");
     setMaxCP("");
+    setFormation("");
+    setMaxValue("");
+    setSort("ca");
+    setAttributeFilters([]);
     setPage(1);
   }
 
@@ -742,7 +807,7 @@ export default function CoachesPage() {
               </h1>
 
               <p className="mt-2 text-sm text-zinc-400">
-                Mercado atualizado com os profissionais do save, classificados por função e ordenados por CA.
+                Encontre profissionais do save por função, formação, atributos e orçamento.
               </p>
             </div>
 
@@ -808,7 +873,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CA mínimo"
               value={minCA}
-              onChange={(event) => setMinCA(event.target.value)}
+              onChange={(event) => { setMinCA(event.target.value); setPage(1); }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -816,7 +881,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CA máximo"
               value={maxCA}
-              onChange={(event) => setMaxCA(event.target.value)}
+              onChange={(event) => { setMaxCA(event.target.value); setPage(1); }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -824,7 +889,7 @@ export default function CoachesPage() {
               type="number"
               placeholder="CP mínimo"
               value={minCP}
-              onChange={(event) => setMinCP(event.target.value)}
+              onChange={(event) => { setMinCP(event.target.value); setPage(1); }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
 
@@ -832,10 +897,88 @@ export default function CoachesPage() {
               type="number"
               placeholder="CP máximo"
               value={maxCP}
-              onChange={(event) => setMaxCP(event.target.value)}
+              onChange={(event) => { setMaxCP(event.target.value); setPage(1); }}
               className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-green-500"
             />
           </div>
+
+          <div className="mt-4 grid gap-3 border-t border-zinc-800 pt-4 sm:grid-cols-3">
+            <label className="space-y-1 text-sm text-zinc-300">
+              <span>Formação favorita</span>
+              <select className={FILTER_FIELD} value={formation} onChange={(event) => {
+                setFormation(event.target.value);
+                setPage(1);
+              }}>
+                <option value="">Todas as formações</option>
+                {FORMATIONS.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="space-y-1 text-sm text-zinc-300">
+              <span>Valor máximo (R$)</span>
+              <input className={FILTER_FIELD} type="number" min="0" step="any" placeholder="Ex. 5000000"
+                value={maxValue} onChange={(event) => { setMaxValue(event.target.value); setPage(1); }} />
+            </label>
+            <label className="space-y-1 text-sm text-zinc-300">
+              <span>Ordenar por</span>
+              <select className={FILTER_FIELD} value={sort} onChange={(event) => {
+                setSort(event.target.value);
+                setPage(1);
+              }}>
+                {SORT_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <fieldset className="mt-4 space-y-2">
+            <legend className="text-sm font-bold text-zinc-200">Atributos mínimos</legend>
+            <p className="text-xs text-zinc-400">
+              Combine até três atributos. O profissional precisa atingir todas as notas escolhidas.
+            </p>
+            {attributeFilters.map((filter, index) => (
+              <div key={index} className="grid max-w-xl grid-cols-[minmax(0,1fr)_5rem_auto] gap-2">
+                <select className={FILTER_FIELD} aria-label={`Atributo ${index + 1}`} value={filter.key}
+                  onChange={(event) => {
+                    const key = event.target.value;
+                    setAttributeFilters((current) => current.map((item, i) => i === index ? { ...item, key } : item));
+                    setPage(1);
+                  }}>
+                  <option value="">Escolha um atributo</option>
+                  {STAFF_ATTRIBUTE_GROUPS.map(({ title, keys }) => (
+                    <optgroup key={title} label={title}>
+                      {keys.map((key) => (
+                        <option key={key} value={key}
+                          disabled={attributeFilters.some((item, i) => i !== index && item.key === key)}>
+                          {key}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <select className={FILTER_FIELD} aria-label={`Nota mínima do atributo ${index + 1}`} value={filter.min}
+                  onChange={(event) => {
+                    const min = Number(event.target.value);
+                    setAttributeFilters((current) => current.map((item, i) => i === index ? { ...item, min } : item));
+                    setPage(1);
+                  }}>
+                  {ATTRIBUTE_SCORES.map((score) => <option key={score}>{score}</option>)}
+                </select>
+                <button type="button" aria-label={`Remover atributo ${index + 1}`}
+                  className="rounded-lg px-2 text-xs text-zinc-300 hover:bg-zinc-800"
+                  onClick={() => {
+                    setAttributeFilters((current) => current.filter((_, i) => i !== index));
+                    setPage(1);
+                  }}>
+                  Remover
+                </button>
+              </div>
+            ))}
+            {attributeFilters.length < 3 && (
+              <button type="button" className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-green-300 hover:bg-zinc-800"
+                onClick={() => setAttributeFilters((current) => [...current, { key: "", min: 15 }])}>
+                + Adicionar atributo
+              </button>
+            )}
+          </fieldset>
 
           <div className="mt-3 flex gap-2">
             <button
@@ -883,6 +1026,10 @@ export default function CoachesPage() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {coaches.map((coach) => {
               const isInCart = cartIds.has(coach.id);
+              const highlights = [...new Set([
+                ...attributeFilters.map(({ key }) => key).filter(Boolean),
+                ...(STAFF_HIGHLIGHTS[coach.role || ""] || ["Conhecimento Tático", "Motivação", "Determinação"]),
+              ])].slice(0, 3);
 
               return (
                 <div
@@ -934,7 +1081,7 @@ export default function CoachesPage() {
 
                     {/* ATRIBUTOS DA FUNÇÃO */}
                     <div className="mt-3 grid grid-cols-3 gap-1.5">
-                      {(STAFF_HIGHLIGHTS[coach.role || ""] || ["Conhecimento Tático", "Motivação", "Determinação"]).map((key) => (
+                      {highlights.map((key) => (
                         <div key={key} className="rounded-lg border border-zinc-800 bg-zinc-950/70 px-1.5 py-2 text-center">
                           <div className="text-[10px] font-black text-sky-300">{coach.attributes?.[key] ?? "–"}</div>
                           <div className="mt-1 line-clamp-2 text-[9px] leading-tight text-zinc-400">{key.replace(/\*$/, "")}</div>
