@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { getPositionGroups, POSITION_SECTIONS, type PositionGroup } from "@/lib/squad-positions";
 import { supabase } from "@/lib/supabase";
 
 type MarketPlayer = { id: number; name: string };
@@ -10,7 +11,13 @@ type Listing = {
   player_id: number;
   team_id: number;
   asking_price: number;
-  player: { name: string; position: string | null };
+  player: {
+    name: string;
+    position: string | null;
+    natural_position: string | null;
+    category: string[] | null;
+    position_ratings: number[] | null;
+  };
   team: { name: string };
 };
 
@@ -20,7 +27,8 @@ const field = "rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm t
 function fetchListings() {
   return supabase
     .from("internal_player_listings")
-    .select("id, player_id, team_id, asking_price, player:players!inner(name, position), team:teams!inner(name)")
+    .select("id, player_id, team_id, asking_price, player:players!inner(name, position, natural_position, category, position_ratings), team:teams!inner(name)")
+    .order("asking_price", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<Listing[]>();
 }
@@ -48,6 +56,7 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
   const signedIn = Boolean(userId);
   const [teamId, setTeamId] = useState<number | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [position, setPosition] = useState<PositionGroup | "all">("all");
   const [roster, setRoster] = useState<MarketPlayer[]>([]);
   const [playerId, setPlayerId] = useState("");
   const [price, setPrice] = useState("");
@@ -101,6 +110,9 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
     return () => { active = false; };
   }, [teamId]);
 
+  const filteredListings = position === "all"
+    ? listings
+    : listings.filter((listing) => getPositionGroups(listing.player).includes(position));
   const selectedListing = listings.find((listing) => listing.team_id === teamId && String(listing.player_id) === playerId);
 
   const amount = Number(price.replace(",", "."));
@@ -182,12 +194,29 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
 
       {signedIn && message && <p role="status" className="mt-3 text-sm text-zinc-200">{message}</p>}
       {userId === null && <Link href="/login" className="mt-3 inline-block text-sm font-bold text-emerald-300">Entre para ver os anúncios</Link>}
+      {signedIn && (
+        <div className="mt-6 flex flex-wrap items-end gap-x-4 gap-y-2 border-t border-zinc-800 pt-4">
+          <label className="grid w-full gap-1 text-sm font-bold text-zinc-300 sm:w-auto">
+            Pesquisar por posição
+            <select value={position} className={field} onChange={(event) => setPosition(event.target.value as PositionGroup | "all")}>
+              <option value="all">Todas as posições</option>
+              {POSITION_SECTIONS.map(({ key, title }) => <option key={key} value={key}>{title}</option>)}
+              <option value="others">Sem posição definida</option>
+            </select>
+          </label>
+          <p className="pb-2 text-sm text-zinc-400">Do maior para o menor preço pedido</p>
+        </div>
+      )}
       {signedIn && loading && <p className="mt-3 text-sm text-zinc-400">Carregando anúncios…</p>}
       {signedIn && !loading && !listings.length && !message && <p className="mt-3 text-sm text-zinc-400">Nenhum jogador anunciado.</p>}
 
-      {signedIn && listings.length > 0 && (
+      {signedIn && !loading && listings.length > 0 && filteredListings.length === 0 && (
+        <p className="mt-3 text-sm text-zinc-400">Nenhum jogador anunciado nessa posição.</p>
+      )}
+
+      {signedIn && filteredListings.length > 0 && (
         <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => {
+          {filteredListings.map((listing) => {
             const own = listing.team_id === teamId;
             const details = (
               <>
