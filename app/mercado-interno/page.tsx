@@ -25,12 +25,32 @@ function fetchListings() {
     .returns<Listing[]>();
 }
 
-export default function InternalMarket({ teamId }: { teamId: number | null }) {
+export default function InternalMarketPage() {
+  const [userId, setUserId] = useState<string | null>();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user.id ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-zinc-950 text-white">
+      <div className="mx-auto max-w-[1550px] px-4 py-5">
+        <InternalMarket key={userId ?? "visitor"} userId={userId} />
+      </div>
+    </main>
+  );
+}
+
+function InternalMarket({ userId }: { userId: string | null | undefined }) {
+  const signedIn = Boolean(userId);
+  const [teamId, setTeamId] = useState<number | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
   const [roster, setRoster] = useState<MarketPlayer[]>([]);
   const [playerId, setPlayerId] = useState("");
   const [price, setPrice] = useState("");
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -46,11 +66,16 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
   }
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSignedIn(Boolean(session));
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+    if (!userId) return;
+    let active = true;
+    void supabase.from("teams").select("id").eq("manager_id", userId)
+      .maybeSingle().then(({ data, error }) => {
+        if (!active) return;
+        if (error) setMessage("Não foi possível identificar o seu clube.");
+        else setTeamId(data?.id ?? null);
+      });
+    return () => { active = false; };
+  }, [userId]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -121,8 +146,8 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
   }
 
   return (
-    <section id="mercado-interno" aria-labelledby="internal-market-heading" className="mb-5 scroll-mt-20 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-4 sm:p-5">
-      <h2 id="internal-market-heading" className="text-2xl font-black text-emerald-300">Mercado Interno</h2>
+    <section aria-labelledby="internal-market-heading" className="mb-5 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-4 sm:p-5">
+      <h1 id="internal-market-heading" className="text-3xl font-black text-emerald-300 sm:text-4xl">Mercado Interno</h1>
       <p className="mt-1 text-sm text-zinc-400">Jogadores anunciados pelos clubes da FriendZone. Clique em um anúncio para montar sua proposta.</p>
 
       {signedIn && teamId && (
@@ -151,7 +176,7 @@ export default function InternalMarket({ teamId }: { teamId: number | null }) {
       )}
 
       {signedIn && message && <p role="status" className="mt-3 text-sm text-zinc-200">{message}</p>}
-      {signedIn === false && <Link href="/login" className="mt-3 inline-block text-sm font-bold text-emerald-300">Entre para ver os anúncios</Link>}
+      {userId === null && <Link href="/login" className="mt-3 inline-block text-sm font-bold text-emerald-300">Entre para ver os anúncios</Link>}
       {signedIn && loading && <p className="mt-3 text-sm text-zinc-400">Carregando anúncios…</p>}
       {signedIn && !loading && !listings.length && !message && <p className="mt-3 text-sm text-zinc-400">Nenhum jogador anunciado.</p>}
 

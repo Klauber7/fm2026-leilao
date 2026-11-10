@@ -39,7 +39,7 @@ const mainMenu: MenuItem[] = [
     icon: "💰",
   },
   {
-    href: "/players#mercado-interno",
+    href: "/mercado-interno",
     label: "Mercado Interno",
     icon: "🤝",
   },
