@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PositionMap from "../PositionMap";
 
@@ -481,6 +482,54 @@ function InfoBox({
   );
 }
 
+function InternalMarketOffer({ player, buyerTeamId }: { player: Player; buyerTeamId: number | undefined }) {
+  const listingId = useSearchParams().get("listing");
+
+  if (!listingId) return null;
+
+  return <InternalMarketListing key={listingId} listingId={listingId} player={player} buyerTeamId={buyerTeamId} />;
+}
+
+function InternalMarketListing({ listingId, player, buyerTeamId }: {
+  listingId: string;
+  player: Player;
+  buyerTeamId: number | undefined;
+}) {
+  const [listing, setListing] = useState<{ team_id: number; asking_price: number } | null>();
+  const playerId = player.id;
+
+  useEffect(() => {
+    let active = true;
+    void supabase.from("internal_player_listings")
+      .select("team_id, asking_price")
+      .eq("id", listingId)
+      .eq("player_id", playerId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active) setListing(data);
+      });
+    return () => { active = false; };
+  }, [listingId, playerId]);
+
+  return (
+    <section aria-label="Mercado Interno" className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-500/30 bg-zinc-900 p-2 text-xs sm:p-3">
+      <Link href="/mercado-interno" className="font-bold text-emerald-300 hover:underline">← Mercado Interno</Link>
+      {listing === null && <p role="status" className="text-zinc-300">Anúncio indisponível.</p>}
+      {listing && (
+        <>
+          <p className="text-zinc-200">Valor atual <strong>{formatValue(player.value)}</strong></p>
+          <p className="text-zinc-200">Preço pedido pelo clube <strong>{formatValue(listing.asking_price)}</strong></p>
+          {buyerTeamId && buyerTeamId !== listing.team_id && (
+            <Link href={`/transfers/negotiations/new?listing=${listingId}`} className="rounded-lg bg-emerald-400 px-3 py-2 font-black text-zinc-950 hover:bg-emerald-300">
+              Fazer oferta
+            </Link>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function PlayerPage() {
   const params = useParams();
   const router = useRouter();
@@ -826,6 +875,10 @@ export default function PlayerPage() {
         >
           ← Jogadores
         </button>
+
+        <Suspense fallback={null}>
+          <InternalMarketOffer player={player} buyerTeamId={team?.id} />
+        </Suspense>
 
         {errorMessage && (
           <div

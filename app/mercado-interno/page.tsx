@@ -13,6 +13,7 @@ type Listing = {
   asking_price: number;
   player: {
     name: string;
+    value: number | null;
     position: string | null;
     natural_position: string | null;
     category: string[] | null;
@@ -27,7 +28,7 @@ const field = "rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm t
 function fetchListings() {
   return supabase
     .from("internal_player_listings")
-    .select("id, player_id, team_id, asking_price, player:players!inner(name, position, natural_position, category, position_ratings), team:teams!inner(name)")
+    .select("id, player_id, team_id, asking_price, player:players!inner(name, value, position, natural_position, category, position_ratings), team:teams!inner(name)")
     .order("asking_price", { ascending: false })
     .order("created_at", { ascending: false })
     .returns<Listing[]>();
@@ -162,7 +163,7 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
   return (
     <section aria-labelledby="internal-market-heading" className="mb-5 rounded-2xl border border-emerald-500/30 bg-zinc-900 p-4 sm:p-5">
       <h1 id="internal-market-heading" className="text-3xl font-black text-emerald-300 sm:text-4xl">Mercado Interno</h1>
-      <p className="mt-1 text-sm text-zinc-400">Jogadores anunciados pelos clubes da FriendZone. Clique em um anúncio para montar sua proposta.</p>
+      <p className="mt-1 text-sm text-zinc-400">Jogadores anunciados pelos clubes da FriendZone. Clique em um jogador para ver os atributos e fazer uma oferta.</p>
 
       {signedIn && teamId && (
         <form onSubmit={publish} className="mt-4 flex flex-wrap items-end gap-3">
@@ -217,27 +218,26 @@ function InternalMarket({ userId }: { userId: string | null | undefined }) {
       {signedIn && filteredListings.length > 0 && (
         <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {filteredListings.map((listing) => {
-            const own = listing.team_id === teamId;
-            const details = (
-              <>
-                <p className="font-black text-white">{listing.player.name}</p>
-                <p className="text-xs text-zinc-400">{[listing.team.name, listing.player.position].filter(Boolean).join(" · ")}</p>
-                <p className="mt-1 text-sm font-bold text-emerald-300">{money.format(listing.asking_price)}</p>
-              </>
-            );
             return (
               <li key={listing.id} className="rounded-xl border border-zinc-700 bg-zinc-950">
-                {own ? (
-                  <div className="flex items-center justify-between gap-2 p-3">
-                    <div>{details}</div>
-                    <button type="button" disabled={busy} onClick={() => void remove(listing)}
-                      className="text-xs font-bold text-zinc-300 hover:text-white disabled:opacity-50">Retirar</button>
-                  </div>
-                ) : (
-                  <Link href={`/transfers/negotiations/new?listing=${listing.id}`} className="block rounded-xl p-3 hover:bg-zinc-800">
-                    {details}
-                    <span className="mt-2 inline-block text-xs font-bold text-zinc-300">Fazer proposta →</span>
-                  </Link>
+                <Link href={`/players/${listing.player_id}?listing=${listing.id}`} className="block rounded-xl p-3 hover:bg-zinc-800">
+                  <p className="font-black text-white">{listing.player.name}</p>
+                  <p className="text-xs text-zinc-400">{[listing.team.name, listing.player.position].filter(Boolean).join(" · ")}</p>
+                  <dl className="mt-2 grid gap-1 text-sm">
+                    <div className="flex flex-wrap justify-between gap-x-2 text-zinc-300">
+                      <dt>Valor atual</dt>
+                      <dd>{listing.player.value == null ? "Indisponível" : money.format(listing.player.value)}</dd>
+                    </div>
+                    <div className="flex flex-wrap justify-between gap-x-2 font-bold text-emerald-300">
+                      <dt>Preço pedido pelo clube</dt>
+                      <dd>{money.format(listing.asking_price)}</dd>
+                    </div>
+                  </dl>
+                  <span className="mt-2 inline-block text-xs font-bold text-zinc-300">Ver atributos →</span>
+                </Link>
+                {listing.team_id === teamId && (
+                  <button type="button" disabled={busy} onClick={() => void remove(listing)}
+                    className="px-3 pb-3 text-xs font-bold text-zinc-300 hover:text-white disabled:opacity-50">Retirar anúncio</button>
                 )}
               </li>
             );
